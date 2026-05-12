@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines, global-variable-not-assigned, consider-iterating-dictionary, pointless-string-statement, cell-var-from-loop, unidiomatic-typecheck, too-many-nested-blocks, ungrouped-imports
 from collections import defaultdict
 from dataclasses import dataclass
 import itertools
@@ -58,13 +59,14 @@ try:
         _is_view_op,
         _VIEW_INVERSE_MAP,
     )
+
     _HAS_INTERNAL_REINPLACE_TOOL = True
 except ImportError as e:
     logger.debug(
         f"Can not import tool functions from torch.fx.passes.reinplace (Torch {torch.__version__}), "
         f"reinplace_with_multi_stream_check is not available, with error: {e}"
     )
-        
+
 
 aten = torch.ops.aten
 # Operators that don't depend on the tensor data
@@ -86,6 +88,7 @@ def check_multi_stream_for_single_reinplace(node: torch.fx.Node) -> bool:
           we just need to verify the 0th input support reinplaces under multiple streams
     """
     from npugraph_ex._acl_concrete_graph.utils import ReinplaceStreamChecker
+
     checker = ReinplaceStreamChecker()
     return checker.check_single_reinplace(node)
 
@@ -98,6 +101,7 @@ def check_multi_stream_for_multi_reinplace(node: torch.fx.Node) -> bool:
           we need to verify that all inputs support reinplaces under multiple streams
     """
     from npugraph_ex._acl_concrete_graph.utils import ReinplaceStreamChecker
+
     checker = ReinplaceStreamChecker()
     return checker.check_multi_reinplace(node)
 
@@ -110,6 +114,7 @@ def check_multi_stream_for_auto_functionalize(node: torch.fx.Node, mutated_arg: 
           we need to verify that all inputs support reinplaces under multiple streams
     """
     from npugraph_ex._acl_concrete_graph.utils import ReinplaceStreamChecker
+
     checker = ReinplaceStreamChecker()
     return checker.check_auto_functionalize(node, mutated_arg)
 
@@ -132,7 +137,7 @@ def register_inplaceable_npu_op(
 ):
     """
     Register a multi-inplace NPU operator for reinplace optimization.
-    
+
     Args:
         functional_op_name: Name of the functional operator (e.g., "npu_kv_rmsnorm_rope_cache_v2_functional")
         inplace_op_name: Name of the inplace operator (e.g., "npu_kv_rmsnorm_rope_cache_v2")
@@ -152,11 +157,13 @@ def register_inplaceable_npu_op(
             )
 
 
-# npu_kv_rmsnorm_rope_cache_v2(Tensor kv, Tensor gamma, Tensor cos, Tensor sin, Tensor index, 
+# npu_kv_rmsnorm_rope_cache_v2(Tensor kv, Tensor gamma, Tensor cos, Tensor sin, Tensor index,
 #                              Tensor(a!) k_cache, Tensor(b!) ckv_cache, *,...)
 # Inplace args: [5]k_cache, [6]ckv_cache
-register_inplaceable_npu_op("npu_kv_rmsnorm_rope_cache_v2_functional", "npu_kv_rmsnorm_rope_cache_v2", mutated_arg=[5, 6])
-# npu_mla_prolog_v3(Tensor token_x, Tensor weight_dq, Tensor weight_uq_qr, Tensor weight_uk, Tensor weight_dkv_kr, Tensor rmsnorm_gamma_cq, 
+register_inplaceable_npu_op(
+    "npu_kv_rmsnorm_rope_cache_v2_functional", "npu_kv_rmsnorm_rope_cache_v2", mutated_arg=[5, 6]
+)
+# npu_mla_prolog_v3(Tensor token_x, Tensor weight_dq, Tensor weight_uq_qr, Tensor weight_uk, Tensor weight_dkv_kr, Tensor rmsnorm_gamma_cq,
 #                   Tensor rmsnorm_gamma_ckv, Tensor rope_sin, Tensor rope_cos, Tensor(a!) kv_cache, Tensor(b!) kr_cache, *, ...)
 # Inplace args: [9]kv_cache, [10]kr_cache
 register_inplaceable_npu_op("npu_mla_prolog_v3_functional", "npu_mla_prolog_v3", mutated_arg=[9, 10])
@@ -214,15 +221,15 @@ def _mutated_input_reinplace(gm: GraphModule) -> GraphModule:
         ):
             dst = node.args[0]
             src = node.args[1]
-            if src.target == operator.getitem and (
-                src.args[0].target in inplaceable_npu_ops
-            ):
+            if src.target == operator.getitem and (src.args[0].target in inplaceable_npu_ops):
                 src = src.args[0]
             copy_args_to_copy_nodes[(dst, src)] = node
             copy_nodes[dst] = node
             to_replace_targets.add(node.args[1])
-    logger.debug(f"[_reinplace_input_mutated_ops] mutated input replace candidates: {to_replace_targets=}, "
-                 f"{copy_args_to_copy_nodes=}")
+    logger.debug(
+        f"[_reinplace_input_mutated_ops] mutated input replace candidates: {to_replace_targets=}, "
+        f"{copy_args_to_copy_nodes=}"
+    )
 
     def any_use_of_views_after_node(node, shared_view_nodes, *, copy_node, mutated_arg):
         node_loc = node_order[node]
@@ -251,10 +258,7 @@ def _mutated_input_reinplace(gm: GraphModule) -> GraphModule:
                 # mutated_arg.copy_(other)
                 # then it's safe for us to reinplace foo because mutated_arg
                 # will get overwritten anyways.
-                if (
-                    user.target is torch.ops.aten.copy_.default
-                    and mutated_arg is user.args[0]
-                ):
+                if user.target is torch.ops.aten.copy_.default and mutated_arg is user.args[0]:
                     continue
                 return True
         return False
@@ -286,11 +290,7 @@ def _mutated_input_reinplace(gm: GraphModule) -> GraphModule:
         shared_view_nodes = storage_to_nodes[get_node_storage(mutated_arg)]
 
         # Only keep tensor that might overlap with mutated_arg.
-        shared_view_nodes = [
-            v
-            for v in shared_view_nodes
-            if _overlap([mutated_arg.meta["val"], v.meta["val"]])
-        ]
+        shared_view_nodes = [v for v in shared_view_nodes if _overlap([mutated_arg.meta["val"], v.meta["val"]])]
 
         if mutated_arg.op in ("placeholder", "get_attr"):
             # Get the first copy_ node that mutates the mutated_arg.
@@ -300,9 +300,7 @@ def _mutated_input_reinplace(gm: GraphModule) -> GraphModule:
                 # Therefore the semantics of the program are that it does not mutate
                 # mutated_arg, so we cannot re-inplace it.
                 return False
-            if any_use_of_views_after_node(
-                node, shared_view_nodes, copy_node=copy_node, mutated_arg=mutated_arg
-            ):
+            if any_use_of_views_after_node(node, shared_view_nodes, copy_node=copy_node, mutated_arg=mutated_arg):
                 return False
 
             return True
@@ -315,10 +313,8 @@ def _mutated_input_reinplace(gm: GraphModule) -> GraphModule:
             # This would require more sophisticated algorithm to handle
             return False
         else:
-            return not any_use_of_views_after_node(
-                node, shared_view_nodes, copy_node=None, mutated_arg=mutated_arg
-            )
-    
+            return not any_use_of_views_after_node(node, shared_view_nodes, copy_node=None, mutated_arg=mutated_arg)
+
     def log_inplace_results(
         node_name,
         old_tensors_to_clone,
@@ -332,11 +328,7 @@ def _mutated_input_reinplace(gm: GraphModule) -> GraphModule:
 
         def node_bytes(node):
             t = node.meta.get("val", None)
-            if (
-                t is not None
-                and isinstance(t.element_size(), int)
-                and isinstance(t.numel(), int)
-            ):
+            if t is not None and isinstance(t.element_size(), int) and isinstance(t.numel(), int):
                 return t.element_size() * t.numel()
             else:
                 return 0
@@ -365,9 +357,7 @@ def _mutated_input_reinplace(gm: GraphModule) -> GraphModule:
 
     replace_dict: dict[torch.fx.Node, torch.fx.Node] = {}
 
-    def reinplace_and_refine_tensors_to_clone(
-        old_tensors_to_clone, kwargs, node_name, trigger
-    ):
+    def reinplace_and_refine_tensors_to_clone(old_tensors_to_clone, kwargs, node_name, trigger):
         tensors_to_clone: list[str] = []
         storage_of_reinplaced_args = set()
 
@@ -377,9 +367,7 @@ def _mutated_input_reinplace(gm: GraphModule) -> GraphModule:
 
         def tensor_with_same_storage_already_reinplaced(arg):
             if isinstance(arg, (list, tuple)):
-                return any(
-                    get_node_storage(a) in storage_of_reinplaced_args for a in arg
-                )
+                return any(get_node_storage(a) in storage_of_reinplaced_args for a in arg)
             return get_node_storage(mutated_arg) in storage_of_reinplaced_args
 
         for arg in old_tensors_to_clone:
@@ -398,11 +386,12 @@ def _mutated_input_reinplace(gm: GraphModule) -> GraphModule:
             # >>> op(x, y)
             # This also applies if we have views: functional_op(x, x[0])
             # should not reinplace into op(x, x[0]).
-            should_attempt_reinplace = not tensor_with_same_storage_already_reinplaced(
-                mutated_arg
-            )
-            if should_attempt_reinplace and can_inplace(node, mutated_arg) and \
-                check_multi_stream_for_auto_functionalize(node, mutated_arg):
+            should_attempt_reinplace = not tensor_with_same_storage_already_reinplaced(mutated_arg)
+            if (
+                should_attempt_reinplace
+                and can_inplace(node, mutated_arg)
+                and check_multi_stream_for_auto_functionalize(node, mutated_arg)
+            ):
                 # In general, we probably do not need those optimizations.
                 copy_node = copy_args_to_copy_nodes.get((mutated_arg, node))
                 if copy_node is not None:
@@ -469,8 +458,10 @@ def _mutated_input_reinplace(gm: GraphModule) -> GraphModule:
                 node.target = inplace_op
             else:
                 logger.debug(f"can_inplace return False, will skip reinplacing for node: {node.target}")
-        elif hasattr(torch.ops.higher_order, "auto_functionalized_v2"
-                     ) and node.target is torch.ops.higher_order.auto_functionalized_v2:
+        elif (
+            hasattr(torch.ops.higher_order, "auto_functionalized_v2")
+            and node.target is torch.ops.higher_order.auto_functionalized_v2
+        ):
             _mutable_op = node.args[0]
             kwargs = node.kwargs
 
@@ -487,16 +478,16 @@ def _mutated_input_reinplace(gm: GraphModule) -> GraphModule:
             # auto_functionalized into clones + a mutable op; this metadata
             # tells the decomp to only clone the following inputs
             node.meta["only_clone_these_tensors"] = new_bases_to_clone
-        elif hasattr(torch.ops.higher_order, "auto_functionalized"
-                     ) and node.target is torch.ops.higher_order.auto_functionalized:
+        elif (
+            hasattr(torch.ops.higher_order, "auto_functionalized")
+            and node.target is torch.ops.higher_order.auto_functionalized
+        ):
             _mutable_op = node.args[0]
             from torch._higher_order_ops.auto_functionalize import get_mutable_args
 
             tensors_to_clone, _ = get_mutable_args(_mutable_op)
             # Don't try to reinplace Tensor | None args that are None.
-            tensors_to_clone = [
-                t for t in tensors_to_clone if node.kwargs[t] is not None
-            ]
+            tensors_to_clone = [t for t in tensors_to_clone if node.kwargs[t] is not None]
             tensors_to_clone = reinplace_and_refine_tensors_to_clone(
                 tensors_to_clone,
                 node.kwargs,
@@ -517,7 +508,7 @@ def _mutated_input_reinplace(gm: GraphModule) -> GraphModule:
         graph.erase_node(node)
 
 
-@debug_compare_fx_graphs(pass_name="reinplace_inplaceable_ops_pass")
+@debug_compare_fx_graphs(pass_name="reinplace_inplaceable_ops_pass")  # nosec B106
 def _reinplace_inplaceable_ops_pass(gm: GraphModule, multi_stream_enabled: bool, *sample_args):
     """
     Given a fx.GraphModule, modifies it to perform "reinplacing". Just call torch.fx.passes.reinplace.
@@ -527,6 +518,7 @@ def _reinplace_inplaceable_ops_pass(gm: GraphModule, multi_stream_enabled: bool,
 
     # Set stream labels for all nodes before pattern pass
     from npugraph_ex._utils.graph_utils import add_stream_label_to_node_meta
+
     add_stream_label_to_node_meta(gm)
 
     try:
@@ -534,24 +526,28 @@ def _reinplace_inplaceable_ops_pass(gm: GraphModule, multi_stream_enabled: bool,
         if _HAS_INTERNAL_REINPLACE_TOOL:
             gm = reinplace_with_multi_stream_check(gm, *sample_args)
         else:
-            logger.warning_once(f"Skipped fx_pass _reinplace_inplaceable_ops_pass for unsupported fx graph {id(gm)}."
-                                f"Reinplace_with_multi_stream_check is not supported.")
+            logger.warning_once(
+                f"Skipped fx_pass _reinplace_inplaceable_ops_pass for unsupported fx graph {id(gm)}."
+                f"Reinplace_with_multi_stream_check is not supported."
+            )
             return original_gm
         logger.debug("[_reinplace_inplaceable_ops_pass]End to process reinplace pass for graph: %s", id(gm))
     except NotImplementedError:
         raise
     except Exception as exception:
         if torch.__version__ < '2.5.0':
-            raise RuntimeError("There is a bug in torch.fx.passes.reinplace module when torch < 2.5.0. Two possible"
-                               " solutions: 1. upgrade torch version(>=2.5.0); 2. disable pass config by setting: "
-                               "config.inplace_pass=False") from exception
+            raise RuntimeError(
+                "There is a bug in torch.fx.passes.reinplace module when torch < 2.5.0. Two possible"
+                " solutions: 1. upgrade torch version(>=2.5.0); 2. disable pass config by setting: "
+                "config.inplace_pass=False"
+            ) from exception
         else:
             logger.warning_once(f"Skipped fx_pass _reinplace_inplaceable_ops_pass for unsupported fx graph {id(gm)}.")
             return original_gm
     return gm
 
 
-@debug_compare_fx_graphs(pass_name="reinplace_input_mutated_ops")
+@debug_compare_fx_graphs(pass_name="reinplace_input_mutated_ops")  # nosec B106
 def _reinplace_input_mutated_ops(gm: GraphModule):
     """
     Given a fx.GraphModule, modifies it to perform "reinplacing", mutating the nodes of the graph.
@@ -564,6 +560,7 @@ def _reinplace_input_mutated_ops(gm: GraphModule):
 
     # Set stream labels for all nodes before pattern pass
     from npugraph_ex._utils.graph_utils import add_stream_label_to_node_meta
+
     add_stream_label_to_node_meta(gm)
 
     _mutated_input_reinplace(gm)
@@ -601,15 +598,24 @@ def _extract_user_stream_info(keys, values, user_stream_info, stream_label) -> D
                 info["device_type"] = int(values[i])
     if info:
         user_stream_info[stream_label] = info
-        logger.debug(f"Collected stream info for label {stream_label}: {info}")            
+        logger.debug(f"Collected stream info for label {stream_label}: {info}")
 
 
-@debug_compare_fx_graphs(pass_name="apply_event_closure_with_multi_stream")
-def apply_event_closure_with_multi_stream(graph_module: fx.GraphModule, graph_name: str, tagged_event_names: List[str],
-                                          user_stream_label: Set[str], user_stream_info: Dict[str, Dict]):
+@debug_compare_fx_graphs(pass_name="apply_event_closure_with_multi_stream")  # nosec B106
+def apply_event_closure_with_multi_stream(
+    graph_module: fx.GraphModule,
+    graph_name: str,
+    tagged_event_names: List[str],
+    user_stream_label: Set[str],
+    user_stream_info: Dict[str, Dict],
+):
     stream_scope_enter_nodes_dict = {}
     stream_scope_exit_nodes_list = []
     scope_enter_nodes_stack: List[fx.Node] = []
+    # 用户通过post_grad_custom_pre_pass自定义pass写的stream不会带stream_id，仍然需要帮用户创建流，并且在对应位置插入闭环event
+    user_pass_stream_enter_node_map = {}
+    user_pass_stream_exit_node_map = {}
+
     for node in graph_module.graph.nodes:
         if str(node.target) == "air.scope_enter.default":
             node.kwargs = {**node.kwargs, 'need_execute': True}
@@ -618,9 +624,11 @@ def apply_event_closure_with_multi_stream(graph_module: fx.GraphModule, graph_na
                 # there must be an 'args[1]' to store value associated with that key.
                 # We store that value for later stream switch.
                 # Use a set for storage to eliminate duplicate values.
-                stream_label = node.args[1][0]
+                stream_label = _get_stream_label(node)
                 user_stream_label.add(stream_label)
                 stream_scope_enter_nodes_dict[node.name] = stream_label
+                if "_user_stream_id" not in node.args[0] and stream_label not in user_pass_stream_enter_node_map:
+                    user_pass_stream_enter_node_map[stream_label] = node
 
                 # Extract stream info from scope_enter args
                 if len(node.args) >= 2:
@@ -628,17 +636,21 @@ def apply_event_closure_with_multi_stream(graph_module: fx.GraphModule, graph_na
             scope_enter_nodes_stack.append(node)
         elif str(node.target) == "air.scope_exit.default":
             node.kwargs = {**node.kwargs, 'need_execute': True}
-            if (len(scope_enter_nodes_stack) > 0 and len(scope_enter_nodes_stack[-1].args) > 0 and
-                    '_user_stream_label' in scope_enter_nodes_stack[-1].args[0]):
+            if (
+                len(scope_enter_nodes_stack) > 0
+                and len(scope_enter_nodes_stack[-1].args) > 0
+                and '_user_stream_label' in scope_enter_nodes_stack[-1].args[0]
+            ):
                 stream_scope_exit_nodes_list.append(node.name)
+                if "_user_stream_id" not in scope_enter_nodes_stack[-1].args[0]:
+                    stream_label = _get_stream_label(scope_enter_nodes_stack[-1])
+                    user_pass_stream_exit_node_map[stream_label] = node
             scope_enter_nodes_stack.pop()
-    if not user_stream_info:
+    if not user_stream_info and not user_pass_stream_enter_node_map:
         logger.debug("No scope_enter node found in graph[%s], no need to insert event.", id(graph_module))
         return False, stream_scope_enter_nodes_dict, stream_scope_exit_nodes_list
 
     # These imports are needed for torch.ops.air.tagged_event_record/wait.default to work.
-    import npugraph_ex
-    from npugraph_ex.ops._tagged_event import _npu_create_tagged_event
     output_node = list(graph_module.graph.nodes)[-1]
     if output_node is None or output_node.op != "output":
         raise RuntimeError(f"Graph must have output node as last node, but got {output_node}")
@@ -647,25 +659,66 @@ def apply_event_closure_with_multi_stream(graph_module: fx.GraphModule, graph_na
     _create_event_by_name(enter_tag)
     tagged_event_names.append(enter_tag)
 
-    no_duplicate_stream_list = list({(d["stream_id"], d["device_index"], d["device_type"]): d for d in user_stream_info.values()}.values())
+    no_duplicate_stream_list = list(
+        {(d["stream_id"], d["device_index"], d["device_type"]): d for d in user_stream_info.values()}.values()
+    )
 
     # Insert event record before graph input, insert event wait after scope_enter node
     with graph_module.graph.inserting_before(first_node):
-        graph_first_record_node = graph_module.graph.call_function(torch.ops.air.tagged_event_record.default, args=(enter_tag, True))
+        graph_first_record_node = graph_module.graph.call_function(
+            torch.ops.air.tagged_event_record.default, args=(enter_tag, True)
+        )
     for stream_info in no_duplicate_stream_list:
         with graph_module.graph.inserting_after(graph_first_record_node):
-            graph_module.graph.call_function(torch.ops.air.tagged_event_wait_on_stream.default,
-                                             args=(enter_tag, str(stream_info["stream_id"]), str(stream_info["device_index"]), str(stream_info["device_type"]), True))
+            graph_module.graph.call_function(
+                torch.ops.air.tagged_event_wait_on_stream.default,
+                args=(
+                    enter_tag,
+                    str(stream_info["stream_id"]),
+                    str(stream_info["device_index"]),
+                    str(stream_info["device_type"]),
+                    True,
+                ),
+            )
 
         # insert event record after scope_exit node, insert event wait before graph output
-        exit_tag = graph_name + '_stream_id_' + str(stream_info["stream_id"]) + '_device_index_' + str(stream_info["device_index"]) + '_device_type_' + str(stream_info["device_type"])
+        exit_tag = (
+            graph_name
+            + '_stream_id_'
+            + str(stream_info["stream_id"])
+            + '_device_index_'
+            + str(stream_info["device_index"])
+            + '_device_type_'
+            + str(stream_info["device_type"])
+        )
         _create_event_by_name(exit_tag)
         tagged_event_names.append(exit_tag)
         with graph_module.graph.inserting_before(output_node):
-            graph_module.graph.call_function(torch.ops.air.tagged_event_record_on_stream.default,
-                                             args=(exit_tag, str(stream_info["stream_id"]), str(stream_info["device_index"]), str(stream_info["device_type"]), True))
+            graph_module.graph.call_function(
+                torch.ops.air.tagged_event_record_on_stream.default,
+                args=(
+                    exit_tag,
+                    str(stream_info["stream_id"]),
+                    str(stream_info["device_index"]),
+                    str(stream_info["device_type"]),
+                    True,
+                ),
+            )
         with graph_module.graph.inserting_before(output_node):
             graph_module.graph.call_function(torch.ops.air.tagged_event_wait.default, args=(exit_tag, True))
+    # 给用户通过post_grad_custom_pre_pass等自定义pass中的stream添加闭环event
+    for user_pass_enter_node in user_pass_stream_enter_node_map.values():
+        with graph_module.graph.inserting_after(user_pass_enter_node):
+            graph_module.graph.call_function(torch.ops.air.tagged_event_wait.default, args=(enter_tag, True))
+    for user_pass_exit_node in user_pass_stream_exit_node_map.values():
+        # insert event record after scope_exit node, insert event wait before graph output
+        user_exit_tag = graph_name + '_' + user_pass_exit_node.name
+        _create_event_by_name(user_exit_tag)
+        tagged_event_names.append(user_exit_tag)
+        with graph_module.graph.inserting_before(user_pass_exit_node):
+            graph_module.graph.call_function(torch.ops.air.tagged_event_record.default, args=(user_exit_tag, True))
+        with graph_module.graph.inserting_before(output_node):
+            graph_module.graph.call_function(torch.ops.air.tagged_event_wait.default, args=(user_exit_tag, True))
 
     graph_module.graph.lint()
     logger.debug("End to insert event in graph[%s].", id(graph_module))
@@ -674,7 +727,16 @@ def apply_event_closure_with_multi_stream(graph_module: fx.GraphModule, graph_na
     return len(user_stream_info.values()) > 0, stream_scope_enter_nodes_dict, stream_scope_exit_nodes_list
 
 
-@debug_compare_fx_graphs(pass_name="apply_event_record")
+def _get_stream_label(node):
+    keys = node.args[0]
+    values = node.args[1]
+    for i, key in enumerate(keys):
+        if key == "_user_stream_label":
+            return values[i]
+    raise RuntimeError(f"There is no _user_stream_label value in node: {node.name}, node.args: {node.args}")
+
+
+@debug_compare_fx_graphs(pass_name="apply_event_record")  # nosec B106
 def apply_event_record(graph_module: fx.GraphModule):
     wait_record_dic = {}
     for node in graph_module.graph.nodes:
@@ -700,7 +762,7 @@ def _insert_record_nodes(graph_module, node, wait_record_dic):
     return new_args
 
 
-@debug_compare_fx_graphs(pass_name="replace_core_limit_nodes")
+@debug_compare_fx_graphs(pass_name="replace_core_limit_nodes")  # nosec B106
 def replace_core_limit_nodes(gm: torch.fx.GraphModule, config: CompilerConfig):
     # use stack to handle nested scope declarations
     scope_enter_stack = []
@@ -718,15 +780,20 @@ def replace_core_limit_nodes(gm: torch.fx.GraphModule, config: CompilerConfig):
     enable_static_shape_kernel = config.static_kernel_compile
     if enable_core_limit and enable_static_shape_kernel:
         from torch_npu.npu.utils import _is_gte_cann_version
+
         cann_supports_both = _is_gte_cann_version("9.0.0", module="CANN")
         if not cann_supports_both:
             config.static_kernel_compile = False
-            warnings.warn('When both static shape kernel and core limit are enabled, '
-                          'only core limit will take effect, static shape kernel will be disabled. '
-                          'CANN 9.0.0 or later supports enabling both features.')
+            warnings.warn(
+                'When both static shape kernel and core limit are enabled, '
+                'only core limit will take effect, static shape kernel will be disabled. '
+                'CANN 9.0.0 or later supports enabling both features.'
+            )
 
 
-def _core_limit_handle_scope_enter(node: torch.fx.Node, gm: torch.fx.GraphModule, core_limit_stack: List, scope_enter_stack: List):
+def _core_limit_handle_scope_enter(
+    node: torch.fx.Node, gm: torch.fx.GraphModule, core_limit_stack: List, scope_enter_stack: List
+):
     core_limit_label = ["_op_aicore_num", "_op_vectorcore_num"]
     stream_switch_label = ["_user_stream_label", "_user_stream_priority"]
     if set(core_limit_label).issubset(set(node.args[0])):
@@ -737,8 +804,9 @@ def _core_limit_handle_scope_enter(node: torch.fx.Node, gm: torch.fx.GraphModule
             core_get_node = gm.graph.call_function(torch.npu.get_stream_limit, args=(stream_node,))
             aicore_num_node = gm.graph.call_function(operator.getitem, args=(core_get_node, 'cube_core_num'))
             vectorcore_num_node = gm.graph.call_function(operator.getitem, args=(core_get_node, 'vector_core_num'))
-            core_set_node = gm.graph.call_function(torch.npu.set_stream_limit, args=((stream_node, int(aicore_num), 
-                                                                                    int(vectorcore_num))))
+            core_set_node = gm.graph.call_function(
+                torch.npu.set_stream_limit, args=((stream_node, int(aicore_num), int(vectorcore_num)))
+            )
         # core limit scope enter node can be replaced by set stream limit node
         node.replace_all_uses_with(core_set_node)
         gm.graph.erase_node(node)
@@ -758,24 +826,32 @@ def _core_limit_handle_scope_enter(node: torch.fx.Node, gm: torch.fx.GraphModule
         with gm.graph.inserting_after(stream_node):
             core_get_node = gm.graph.call_function(torch.npu.get_stream_limit, args=(stream_node,))
         with gm.graph.inserting_after(core_get_node):
-            gm.graph.call_function(torch.npu.set_stream_limit, args=((stream_node, int(last_aicore_num), int(last_vectorcore_num))))
+            gm.graph.call_function(
+                torch.npu.set_stream_limit, args=((stream_node, int(last_aicore_num), int(last_vectorcore_num)))
+            )
             vectorcore_num_node = gm.graph.call_function(operator.getitem, args=(core_get_node, 'vector_core_num'))
             aicore_num_node = gm.graph.call_function(operator.getitem, args=(core_get_node, 'cube_core_num'))
-        core_limit_stack.append([stream_node, aicore_num_node, vectorcore_num_node, last_aicore_num, last_vectorcore_num])
+        core_limit_stack.append(
+            [stream_node, aicore_num_node, vectorcore_num_node, last_aicore_num, last_vectorcore_num]
+        )
         scope_enter_stack.append("stream_switch")
     else:
         # still push current scope enter into stack to match forward scope exits
         scope_enter_stack.append("other")
 
 
-def _core_limit_handle_scope_exit(node: torch.fx.Node, gm: torch.fx.GraphModule, core_limit_stack: List, scope_enter_stack: List):
+def _core_limit_handle_scope_exit(
+    node: torch.fx.Node, gm: torch.fx.GraphModule, core_limit_stack: List, scope_enter_stack: List
+):
     last_scope_enter_op = scope_enter_stack.pop()
     if last_scope_enter_op == "other":
         return
     # retrieve current stream, original core states when exit scope
     cur_stream, original_aicore_num, original_vectorcore_num, _, _ = core_limit_stack.pop()
     with gm.graph.inserting_after(node):
-        core_set_node = gm.graph.call_function(torch.npu.set_stream_limit, args=(cur_stream, original_aicore_num, original_vectorcore_num))
+        core_set_node = gm.graph.call_function(
+            torch.npu.set_stream_limit, args=(cur_stream, original_aicore_num, original_vectorcore_num)
+        )
     if last_scope_enter_op == "core_limit":
         node.replace_all_uses_with(core_set_node)
         gm.graph.erase_node(node)
@@ -788,7 +864,7 @@ def reinplace_with_multi_stream_check(gm, *sample_args):
     This is identical to the original reinplace implementation, except that
     inplace transformations are conservatively disallowed when aliasing uses
     occur across different streams.
-    
+
     Given an fx.GraphModule, modifies it to perform "reinplacing",
     mutating the nodes of the graph.
     We look for out-of-place op call sites like `b = a.add(...)`,
@@ -1013,12 +1089,9 @@ def reinplace_with_multi_stream_check(gm, *sample_args):
     input_storages = {
         StorageWeakRef(node.meta["fake_result"]._typed_storage())
         for node in gm.graph.nodes
-        if (
-            node.op == "placeholder"
-            and isinstance(node.meta["fake_result"], torch.Tensor)
-        )
+        if (node.op == "placeholder" and isinstance(node.meta["fake_result"], torch.Tensor))
     }
- 
+
     # We also need to know for a given node, what are all of its aliasing nodes.
     storage_to_nodes: dict[StorageWeakRef, set[torch.fx.Node]] = defaultdict(set)
     for n in gm.graph.nodes:
@@ -1029,14 +1102,14 @@ def reinplace_with_multi_stream_check(gm, *sample_args):
                     storage_to_nodes[StorageWeakRef(x._typed_storage())].add(n)
 
             pytree.tree_map_(_add_to_map, n.meta["fake_result"])
-    
+
     # inplace-ify functional ops, subject to the constraints written below.
     all_later_view_inverse_nodes_to_delete = set()
-    
+
     for node in gm.graph.nodes:
         if node.op != "call_function":
             continue
-        
+
         # Identify operator type and build mutated arguments list.
         # This unified identification step supports:
         # - Single inplace ops (original logic)
@@ -1047,7 +1120,7 @@ def reinplace_with_multi_stream_check(gm, *sample_args):
         check_stream = False
         is_multi_inplace = False
         npu_op_config = None
-        
+
         # (1) Custom multi-inplace operator
         # For custom multi-inplace ops, output structure of it's functinal ops is (*out, *mutated_args_new)
         # where outputs for mutated args are in the last n_inplace positions.
@@ -1055,7 +1128,7 @@ def reinplace_with_multi_stream_check(gm, *sample_args):
             is_multi_inplace = True
             npu_op_config = inplaceable_npu_ops[node.target]
             mutated_arg_indices = npu_op_config.mutated_arg
-            
+
             # Validate argument indices
             if not all(0 <= idx < len(node.args) for idx in mutated_arg_indices):
                 continue
@@ -1066,54 +1139,54 @@ def reinplace_with_multi_stream_check(gm, *sample_args):
             n_inplace = len(mutated_arg_indices)
             output_indices = list(range(total_outputs - n_inplace, total_outputs))
             input_output_map = dict(zip(mutated_arg_indices, output_indices))
-            
+
             check_stream = npu_op_config.extra_check(node)
-        
+
         # (2) Single inplace operator (original logic)
         elif isinstance(node.target, torch._ops.OpOverload):
             if len(node.target._schema.arguments) < 1:
                 continue
-            if type(node.target._schema.arguments[0].type) != torch.TensorType:
+            if type(node.target._schema.arguments[0].type) != torch.TensorType:  # noqa
                 continue
-            
+
             self_arg = node.args[0]
             mutated_args = [(0, self_arg)]
             input_output_map = {0: 0}  # For single inplace, input and output are at same position
             check_stream = check_multi_stream_for_single_reinplace(node)
-        
+
         logger.debug("Node[%s] check multi-stream is %s", node.name, check_stream)
         # Skip if no valid mutated arguments or no stream check function
         if not mutated_args or not check_stream:
             continue
-        
+
         skip_node = False
         later_view_inverse_usages_list = []
-        
+
         for arg_index, self_arg in mutated_args:
             if not is_multi_inplace:
-                # ---- Step 1a: metadata checks ----	 
-                # Step 1a: Check that the self argument we're attempting to reinplace 
-                # has the same size/stride as the output. 
-                # For example, we shouldn't try to reinplace torch.add(scalar_tensor, larger_tensor) 
-                # As it would require resizing scalar_tensor. 
-                # (We could potentially swizzle this into larger_tensor.add_(scalar_tensor), 
+                # ---- Step 1a: metadata checks ----
+                # Step 1a: Check that the self argument we're attempting to reinplace
+                # has the same size/stride as the output.
+                # For example, we shouldn't try to reinplace torch.add(scalar_tensor, larger_tensor)
+                # As it would require resizing scalar_tensor.
+                # (We could potentially swizzle this into larger_tensor.add_(scalar_tensor),
                 # this is probably an optimization to revisit later).
                 self_flattened = pytree.tree_leaves(self_arg.meta["fake_result"])
                 node_flattened = pytree.tree_leaves(node.meta["fake_result"])
                 self_has_wrong_metadata = False
-                
+
                 if len(self_flattened) == len(node_flattened):
                     for self_meta, node_meta in zip(self_flattened, node_flattened):
                         if self_meta.numel() != node_meta.numel():
                             self_has_wrong_metadata = True
                         if self_meta.dtype != node_meta.dtype:
                             self_has_wrong_metadata = True
-                        # We also cannot re-inplace on tensors that have internal memory overlap. 
+                        # We also cannot re-inplace on tensors that have internal memory overlap.
                         # e.g. torch.ones(1).expand(4, 4).add_(1)
                         if torch._debug_has_internal_overlap(self_meta) == 1:
                             self_has_wrong_metadata = True
-                # Here, we (optimistically) assume that a.resize(b) is valid to re-inplace,	 
-                # Since users should never really be calling the functional "torch.ops.aten.resize" 
+                # Here, we (optimistically) assume that a.resize(b) is valid to re-inplace,
+                # Since users should never really be calling the functional "torch.ops.aten.resize"
                 # op directly in their programs.
                 if self_has_wrong_metadata and node.target != torch.ops.aten.resize.default:
                     skip_node = True
@@ -1122,24 +1195,22 @@ def reinplace_with_multi_stream_check(gm, *sample_args):
 
                 # ---- Step 1c: repeated self argument ----
                 if len([x for x in node.args if x is self_arg]) > 1:
-                    # Step 1c:	 
-                    # Calling stuff like aten.mul_(a, a) isn't guaranteed to be sound,	 
+                    # Step 1c:
+                    # Calling stuff like aten.mul_(a, a) isn't guaranteed to be sound,
                     # so we prevent re-inplacing in this case.
                     skip_node = True
                     logger.debug("Node[%s] has repeated self argument, skip reinplace", node.name)
                     break
-            
-            # ---- Step 1b: do not mutate program inputs ----	 
+
+            # ---- Step 1b: do not mutate program inputs ----
             # Step 1b: ensure that the op we're trying to re-inplace isn't a program input
-            self_arg_storage = StorageWeakRef(
-                self_arg.meta["fake_result"]._typed_storage()
-            )
+            self_arg_storage = StorageWeakRef(self_arg.meta["fake_result"]._typed_storage())
             if self_arg_storage in input_storages:
                 skip_node = True
                 logger.debug("Node[%s] arg_index[%s] mutate program inputs, skip reinplace", node.name, arg_index)
                 break
             self_aliases = storage_to_nodes[self_arg_storage]
-            
+
             # For multi-inplace ops, skip Step 2 usage checking.
             # Multi-inplace ops use functional versions where inputs are inherently used
             # (modified in-place and returned as outputs), so we don't need to check
@@ -1149,18 +1220,12 @@ def reinplace_with_multi_stream_check(gm, *sample_args):
             if not is_multi_inplace:
                 # ---- Step 2: find later aliasing usages (stream-aware) ----
                 # First, we find all later usages of any of the aliases of self_arg.
-                later_node_usages = _get_all_later_node_usages(
-                    self_aliases, node.meta["node_idx"]
-                )
-                
-                # Get view inverse node usages (scatter ops that can be safely removed)
-                later_view_inverse_node_usages = _get_view_inverse_node_usages(
-                    later_node_usages, self_aliases
-                )
+                later_node_usages = _get_all_later_node_usages(self_aliases, node.meta["node_idx"])
 
-                can_reinplace = (
-                    len(later_node_usages - later_view_inverse_node_usages) == 0
-                )
+                # Get view inverse node usages (scatter ops that can be safely removed)
+                later_view_inverse_node_usages = _get_view_inverse_node_usages(later_node_usages, self_aliases)
+
+                can_reinplace = len(later_node_usages - later_view_inverse_node_usages) == 0
 
                 logger.debug("Node[%s] arg_index[%s] check reinplace is %s", node.name, arg_index, can_reinplace)
                 if not can_reinplace:
@@ -1170,11 +1235,11 @@ def reinplace_with_multi_stream_check(gm, *sample_args):
             else:
                 # For multi-inplace ops, we can always reinplace (usage check skipped)
                 later_view_inverse_usages_list.append(set())
-        
+
         # Skip node if Step 1 validation failed or any argument doesn't satisfy conditions
         if skip_node:
             continue
-        
+
         # ---- Step 3a: handle view_scatter ----
         # Step 3a: Special handling for when we see *_scatter operators.
         # When we see an operator like `b = torch.slice_scatter(a, ...)`,
@@ -1182,10 +1247,7 @@ def reinplace_with_multi_stream_check(gm, *sample_args):
         # we would prefer to remove it from the graph entirely,
         # and instead copy_() the slice directly into the larger tensor.
         # See the description of the algorithm for a full example.
-        if (
-            node.target in _VIEW_INVERSE_MAP
-            and node not in all_later_view_inverse_nodes_to_delete
-        ):
+        if node.target in _VIEW_INVERSE_MAP and node not in all_later_view_inverse_nodes_to_delete:
             view_op = _VIEW_INVERSE_MAP[node.target]
             # Before:
             #   base_updated = torch.ops.aten.slice_scatter.default(base, mutated_slice, args...)
@@ -1205,7 +1267,7 @@ def reinplace_with_multi_stream_check(gm, *sample_args):
                     "call_function",
                     torch.ops.aten.copy_.default,
                     (
-                        slice_node, 
+                        slice_node,
                         mutated_slice_node,
                     ),
                     {},
@@ -1235,76 +1297,52 @@ def reinplace_with_multi_stream_check(gm, *sample_args):
         for idx, (arg_index, self_arg) in enumerate(mutated_args):
             # Step 4.1: Update storage maps
             # After reinplacing, the storage of self_arg and the output should be merged.
-            self_arg_storage = StorageWeakRef(
-                self_arg.meta["fake_result"]._typed_storage()
-            )
-            
+            self_arg_storage = StorageWeakRef(self_arg.meta["fake_result"]._typed_storage())
+
             # Get corresponding output storage using input_output_map
             if arg_index in input_output_map and input_output_map[arg_index] < len(node_flattened):
                 out_idx = input_output_map[arg_index]
-                curr_node_storage = StorageWeakRef(
-                    node_flattened[out_idx]._typed_storage()
-                )
+                curr_node_storage = StorageWeakRef(node_flattened[out_idx]._typed_storage())
             else:
-                curr_node_storage = StorageWeakRef(
-                    node_flattened[0]._typed_storage()
-                )
+                curr_node_storage = StorageWeakRef(node_flattened[0]._typed_storage())
 
-            storage_to_nodes[self_arg_storage].update(
-                storage_to_nodes[curr_node_storage]
-            )
-            storage_to_nodes[curr_node_storage].update(
-                storage_to_nodes[self_arg_storage]
-            )
+            storage_to_nodes[self_arg_storage].update(storage_to_nodes[curr_node_storage])
+            storage_to_nodes[curr_node_storage].update(storage_to_nodes[self_arg_storage])
 
             if idx >= len(later_view_inverse_usages_list):
                 continue
             later_view_inverse_node_usages = later_view_inverse_usages_list[idx]
             # Need to remember the view_scatter view nodes we found so we can remove them alter.
-            all_later_view_inverse_nodes_to_delete.update(
-                later_view_inverse_node_usages
-            )
+            all_later_view_inverse_nodes_to_delete.update(later_view_inverse_node_usages)
 
             # Step 4:
             # Now that we've replaced b = a.foo() with a.foo_(),
             # We need to replace any later usages of "b" with "a"
             for old in itertools.chain([node], later_view_inverse_node_usages):
                 new = self_arg
-                nodes_to_update = [
-                    n for n in old.users if n.meta["node_idx"] > node.meta["node_idx"]
-                ]
+                nodes_to_update = [n for n in old.users if n.meta["node_idx"] > node.meta["node_idx"]]
                 for node_to_update in nodes_to_update:
 
                     def replace_arg(a):
                         if a == old:
                             return new
                         return a
-                    
+
                     # First, replace usages of "b" with "a"
-                    node_to_update.args = tree_map_only(
-                        torch.fx.Node, replace_arg, node_to_update.args
-                    )
-                    node_to_update.kwargs = tree_map_only(
-                        torch.fx.Node, replace_arg, node_to_update.kwargs
-                    )
-                    
+                    node_to_update.args = tree_map_only(torch.fx.Node, replace_arg, node_to_update.args)
+                    node_to_update.kwargs = tree_map_only(torch.fx.Node, replace_arg, node_to_update.kwargs)
+
                     # Second, update our storage_to_nodes data structure.
                     old_flattened_res = pytree.tree_leaves(old.meta["fake_result"])
-                    node_flattened_res = pytree.tree_leaves(
-                        node_to_update.meta["fake_result"]
-                    )
-    
+                    node_flattened_res = pytree.tree_leaves(node_to_update.meta["fake_result"])
+
                     old_res_storage = {
-                        StorageWeakRef(x._typed_storage())
-                        for x in old_flattened_res
-                        if isinstance(x, FakeTensor)
+                        StorageWeakRef(x._typed_storage()) for x in old_flattened_res if isinstance(x, FakeTensor)
                     }
                     node_res_storage = {
-                        StorageWeakRef(x._typed_storage())
-                        for x in node_flattened_res
-                        if isinstance(x, FakeTensor)
+                        StorageWeakRef(x._typed_storage()) for x in node_flattened_res if isinstance(x, FakeTensor)
                     }
-                    
+
                     # This will happen if we're updating a view op, e.g.
                     # e.g. replacing
                     #     x = view(old)
@@ -1315,16 +1353,10 @@ def reinplace_with_multi_stream_check(gm, *sample_args):
                     # We're checking for len(...) == 1 here because all view ops are guaranteed to return either a single tensor,
                     # or multiple tensors that all share the same storage.
                     # We can't just check equality because we might encounter FX nodes that return zero tensor outputs.
-                    if (
-                        len(old_res_storage) == 1
-                        and len(node_res_storage) == 1
-                        and old_res_storage == node_res_storage
-                    ):
+                    if len(old_res_storage) == 1 and len(node_res_storage) == 1 and old_res_storage == node_res_storage:
                         new_flattened_res = pytree.tree_leaves(new.meta["fake_result"])
                         new_res_storage = {
-                            StorageWeakRef(x._typed_storage())
-                            for x in new_flattened_res
-                            if isinstance(x, FakeTensor)
+                            StorageWeakRef(x._typed_storage()) for x in new_flattened_res if isinstance(x, FakeTensor)
                         }
                         (new_ref,) = new_res_storage
                         (node_ref,) = node_res_storage
@@ -1332,12 +1364,8 @@ def reinplace_with_multi_stream_check(gm, *sample_args):
                         # in our mapping.
                         # That should be fine though, since we deleted "old"
                         # from the graph at this point.
-                        storage_to_nodes[node_ref].update(
-                            storage_to_nodes[new_ref]
-                        )
-                        storage_to_nodes[new_ref].update(
-                            storage_to_nodes[node_ref]
-                        )
+                        storage_to_nodes[node_ref].update(storage_to_nodes[new_ref])
+                        storage_to_nodes[new_ref].update(storage_to_nodes[node_ref])
 
     # ---- Step 5: delete eliminated view_scatter nodes ----
     # Need to take care not to delete any of these nodes until after *all* modifications
@@ -1349,7 +1377,7 @@ def reinplace_with_multi_stream_check(gm, *sample_args):
     return gm
 
 
-@debug_compare_fx_graphs(pass_name="resolve_default_stream_markers")
+@debug_compare_fx_graphs(pass_name="resolve_default_stream_markers")  # nosec B106
 def resolve_default_stream_markers(gm: torch.fx.GraphModule) -> torch.fx.GraphModule:
     """
     解析 fx 图中的 default stream 标记字符串。
@@ -1364,8 +1392,12 @@ def resolve_default_stream_markers(gm: torch.fx.GraphModule) -> torch.fx.GraphMo
         logger.warning("torch has no attr npu or npu.current_stream, skip resolve_default_stream_markers pass")
         return gm
 
-    from npugraph_ex.ops._tagged_event import (_npu_create_tagged_event, _npu_tagged_event_record, 
-                            _npu_tagged_event_wait, _npu_record_tagged_stream)
+    from npugraph_ex.ops._tagged_event import (  # noqa
+        _npu_create_tagged_event,  # noqa
+        _npu_tagged_event_record,  # noqa
+        _npu_tagged_event_wait,  # noqa
+        _npu_record_tagged_stream,  # noqa
+    )  # noqa
     from npugraph_ex._acl_concrete_graph.replace_stream_event import (
         DEFAULT_STREAM_ID_MARKER,
         DEFAULT_DEVICE_INDEX_MARKER,
@@ -1386,7 +1418,11 @@ def resolve_default_stream_markers(gm: torch.fx.GraphModule) -> torch.fx.GraphMo
         if node.target not in WHITELIST_OPS:
             continue
         for arg in node.args:
-            if isinstance(arg, str) and arg in (DEFAULT_STREAM_ID_MARKER, DEFAULT_DEVICE_INDEX_MARKER, DEFAULT_DEVICE_TYPE_MARKER):
+            if isinstance(arg, str) and arg in (
+                DEFAULT_STREAM_ID_MARKER,
+                DEFAULT_DEVICE_INDEX_MARKER,
+                DEFAULT_DEVICE_TYPE_MARKER,
+            ):
                 has_markers = True
                 break
         if has_markers:
@@ -1441,7 +1477,7 @@ def resolve_default_stream_markers(gm: torch.fx.GraphModule) -> torch.fx.GraphMo
     return gm
 
 
-@debug_compare_fx_graphs(pass_name="eliminate_self_copy")
+@debug_compare_fx_graphs(pass_name="eliminate_self_copy")  # nosec B106
 def eliminate_self_copy(gm: torch.fx.GraphModule) -> torch.fx.GraphModule:
     """
     Remove copy_(x, x) nodes where source and destination are the same tensor.
