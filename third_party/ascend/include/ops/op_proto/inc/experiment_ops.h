@@ -1847,7 +1847,7 @@ REG_OP(MlaPrologV2)
     .ATTR(cache_mode, String, "PA_BSND")
     .OP_END_FACTORY_REG(MlaPrologV2)
 
-REG_OP(MlaPrologV3) 
+REG_OP(MlaPrologV3)
     .INPUT(token_x, TensorType({DT_INT8, DT_BF16}))
     .INPUT(weight_dq, TensorType({DT_INT8, DT_BF16}))
     .INPUT(weight_uq_qr, TensorType({DT_INT8, DT_BF16}))
@@ -2133,23 +2133,25 @@ REG_OP(MoeInitRouting)
     .REQUIRED_ATTR(active_num, Int)
     .OP_END_FACTORY_REG(MoeInitRouting)
 
-    
+
 /**
  * @brief compute init routing for moe.
  * @par Inputs:
- * @li x: A 2D Tensor. Shape is: (B*S, H). Type is:Int8, BFloat16, Float16, Float32, DT_HIFLOAT8, DT_FLOAT8_E5M2 or DT_FLOAT8_E4M3FN. Format support ND.
+ * @li x: A 2D Tensor. Shape is: (B*S, H). Type is:Int8, BFloat16, Float16, Float32, DT_HIFLOAT8, DT_FLOAT8_E5M2,
+          DT_FLOAT8_E4M3FN or DT_FLOAT4_E2M1. Format support ND.
  * @li expert_idx: A 2D Tensor. Shape is: (B*S, K). Type is:Int32. Format support ND.
- * @li scale: A 1D or 2D Tensor. Shape is: (B*S) or (B*S, H). Type is:Float32, DT_FLOAT8_E8M0. Format support ND.
+ * @li scale: A 1D or 2D Tensor. Shape is: (B*S) or (B*S, H). Type is:Float32 or DT_FLOAT8_E8M0. Format support ND.
  * @li offset: A 2D Tensor. Shape is: (expert_end - expert_start, 1) or (expert_end - expert_start, H).
                Type is:Float32. Format support ND.
  * @par Outputs:
- * @li expanded_x: A 2D Tensor. Shape is: (B*S*K, H). Type is: Int8, BFloat16, Float16, Float32, DT_HIFLOAT8, DT_FLOAT8_E5M2 or DT_FLOAT8_E4M3FN. 
+ * @li expanded_x: A 2D Tensor. Shape is: (B*S*K, H). Type is: Int8, BFloat16, Float16, Float32, DT_HIFLOAT8, DT_FLOAT8_E5M2,
+                   DT_FLOAT8_E4M3FN or DT_FLOAT4_E2M1.
                    The data type must be the same as that of x. Format support ND.
  * @li expanded_row_idx: A 1D Tensor. Shape is: (B*S*K). Type is: Int32. Format support ND.
  * @li expert_tokens_count_or_cumsum: A 1D Tensor. represents the number of tokens processed by each expert and the
                                       cumulative value. The value is controlled by expert_tokens_num_flag to output.
                                       Type is:Int64. shape is (expert_end - expert_start, ). Format support ND.
- * @li expanded_scale: A 1D Tensor. Shape is: (B*S*K). Type is: Float32, DT_FLOAT8_E8M0. 
+ * @li expanded_scale: A 1D Tensor. Shape is: (B*S*K). Type is: Float32 or DT_FLOAT8_E8M0.
                        The data type must be the same as that of scale. Format support ND.
  * @par Attributes:
  * @li active_num: Optional parameter. Type is:Int32. identify activate scenario. The value 0 indicates a non-active
@@ -2168,12 +2170,13 @@ REG_OP(MoeInitRouting)
                             expert_start must be less than expert_end.
  * @li row_idx_type: Optional parameter. Type is:Int. The value is 0(gather) or 1(scatter). Default: 0.
  */
+
 REG_OP(MoeInitRoutingV3)
-    .INPUT(x, TensorType({DT_INT8, DT_FLOAT16, DT_FLOAT, DT_BF16, DT_HIFLOAT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN}))
+    .INPUT(x, TensorType({DT_INT8, DT_FLOAT16, DT_FLOAT, DT_BF16, DT_HIFLOAT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN, DT_FLOAT4_E2M1}))
     .INPUT(expert_idx, TensorType({DT_INT32}))
     .OPTIONAL_INPUT(scale, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))
     .OPTIONAL_INPUT(offset, TensorType({DT_FLOAT}))
-    .OUTPUT(expanded_x, TensorType({DT_INT8, DT_FLOAT16, DT_FLOAT, DT_BF16, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN, DT_HIFLOAT8}))
+    .OUTPUT(expanded_x, TensorType({DT_INT8, DT_FLOAT16, DT_FLOAT, DT_BF16, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN, DT_HIFLOAT8, DT_FLOAT4_E2M1}))
     .OUTPUT(expanded_row_idx, TensorType({DT_INT32}))
     .OUTPUT(expert_tokens_count_or_cumsum, TensorType({DT_INT64}))
     .OUTPUT(expanded_scale, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))
@@ -2260,7 +2263,7 @@ REG_OP(MoeGatingTopKSoftmax)
     .ATTR(renorm, Int)
     .ATTR(output_softmax, Bool)
     .OP_END_FACTORY_REG(MoeGatingTopKSoftmaxV2)
-    
+
 
 /**
 * @brief Apply add operation for each tensor in tensor list with a scalar in manner of element-wise
@@ -3780,7 +3783,7 @@ REG_OP(MoeGatingTopK)
 * The swi activate_left algorithm to use:
 *     'false'(activate right) or 'true'(activate left), defalut is 'false'(activate right).
 * @li quant_mode: Type is: String. The quant mode to use: 'static' or 'dynamic', defalut is 'static'.
-* @li swiglu_mode: Type is int. Optional parameter, default is 0. The SWIGLU computation mode to use: 
+* @li swiglu_mode: Type is int. Optional parameter, default is 0. The SWIGLU computation mode to use:
 *     '0' (default) for standard SWIGLU, '1' for a variant using odd-even blocking, which requires support for clamp_limit, activation coefficient, and bias.
 * @li clamp_limit: Type is float. Optional parameter, default is 7.0. The threshold limit for SWIGLU input.
 * @li glu_alpha: Type is float. Optional parameter, default is 1.702. The activation coefficient for the GLU activation function.
@@ -3814,7 +3817,7 @@ REG_OP(DequantSwigluQuant)
 * @par Inputs:
 * Two inputs, including:
 * @li x: A tensor. Type is bfloat16, float16, float32.
-* @li group_index: An optional tensor. Shape is (N,). Type is int64. 
+* @li group_index: An optional tensor. Shape is (N,). Type is int64.
 
 * @par Outputs:
 * one output, including:
@@ -3854,7 +3857,7 @@ REG_OP(ClippedSwiglu)
 * @par Outputs:
 * Two outputs, including:
 * @li output: A tensor. Type is float32, float16, bfloat16.
-* @li lse_m: A tensor. Type is float32.  
+* @li lse_m: A tensor. Type is float32.
 
 * @par Attributes:
 * Two attributes, including:
@@ -3971,7 +3974,7 @@ REG_OP(FusedInferAttentionScore)
 
 * @par Attributes
 * @li cache_mode: A string. The data format of key_cache and value_cache, "Norm" means ND.
-* @li scatter_mode: An optional attribute. Describing the format of cache. Defaults to "None". 
+* @li scatter_mode: An optional attribute. Describing the format of cache. Defaults to "None".
 * @li strides: An optional attribute. A list of 2 integers. The stride of the key and value, its' shape is [stride_k, stride_v].
 * @li offsets: An optional attribute. A list of 2 integers. The offsets of the key and value, its' shape is [offset_k, offset_v].
 
