@@ -1,3 +1,4 @@
+# pylint: disable=W1203,E1125,W1514,R1729,W0246,W0201
 import dataclasses
 import itertools
 import contextlib
@@ -9,6 +10,7 @@ from collections import OrderedDict
 import sympy
 import torch
 
+from sympy.printing.pycode import pycode
 from torch.utils._ordered_set import OrderedSet
 from torch._inductor.codegen.triton import TritonScheduling
 from torch._inductor.codegen.wrapper import PythonWrapperCodegen
@@ -18,9 +20,10 @@ from torch._inductor.scheduler import BaseSchedulerNode, BaseScheduling, Schedul
 from torch._inductor.utils import get_kernel_metadata, get_fused_kernel_name
 from torch._inductor.utils import sympy_subs
 from torch._inductor.virtualized import V
-from torch._inductor.codegen.common import IndentedBuffer, Kernel
+from torch._inductor.codegen.common import IndentedBuffer, Kernel, TensorArg
 
 from inductor_npu_ext.common import logger
+from inductor_npu_ext.common import fused_layout_check
 from inductor_npu_ext.common.asc_graph import ASCGraph, FusedASCGraph, ASCIndexing
 from inductor_npu_ext.common.symbols import Axis
 from inductor_npu_ext.common.debug import _left_align_lines, OP_SUMMARY
@@ -49,15 +52,15 @@ class ASCBuffer:
         return [AscExpr(s) for s in self.size]
 
     def bind(self, src: _Tensor) -> _Tensor:
-        src.op.set_private_attr(f'layout.device', self.device)
-        src.op.set_private_attr(f'layout.dtype', self.dtype)
-        src.op.set_private_attr(f'layout.size', self.size)
-        src.op.set_private_attr(f'layout.stride', self.stride)
-        src.op.set_private_attr(f'layout.offset', self.offset)
+        src.op.set_private_attr('layout.device', self.device)
+        src.op.set_private_attr('layout.dtype', self.dtype)
+        src.op.set_private_attr('layout.size', self.size)
+        src.op.set_private_attr('layout.stride', self.stride)
+        src.op.set_private_attr('layout.offset', self.offset)
 
-        src.op.set_private_attr(f'layout.hint.size', self._hint_size)
-        src.op.set_private_attr(f'layout.hint.stride', self._hint_stride)
-        src.op.set_private_attr(f'layout.hint.offset', self._hint_offset)
+        src.op.set_private_attr('layout.hint.size', self._hint_size)
+        src.op.set_private_attr('layout.hint.stride', self._hint_stride)
+        src.op.set_private_attr('layout.hint.offset', self._hint_offset)
         return src
 
 
@@ -78,6 +81,7 @@ class Reduction:
 
 def _get_nodes_outputs(nodes: List[BaseSchedulerNode]):
     from torch._inductor.scheduler import OutputNode
+
     buffers = []
     for node in nodes:
         for output in node.outputs:
@@ -144,7 +148,9 @@ class NPUKernel(Kernel):
         min_score = None
         min_transpose_order = None
         for axis_vars in itertools.permutations(body.var_ranges.keys()):  # dict[axis:range]循环轴和对应的大小
-            index_transposed = _get_transposed_indexing(body.indexing_exprs, axis_vars)  # dict[idx:expr]读写内存使用的index
+            index_transposed = _get_transposed_indexing(
+                body.indexing_exprs, axis_vars
+            )  # dict[idx:expr]读写内存使用的index
             for idx_name, expr, score in index_transposed:
                 logger.debug("Expr %s of %s is transposed score %s under %s", expr, idx_name, score, axis_vars)
             score = sum(score for _, _, score in index_transposed)
@@ -158,8 +164,7 @@ class NPUKernel(Kernel):
         return min_transpose_order
 
     @contextlib.contextmanager
-    def new_subgraph(self, asc_axis: List[sympy.Symbol], asc_axis_range: List[sympy.Expr], *,
-                     hint_str=None):
+    def new_subgraph(self, asc_axis: List[sympy.Symbol], asc_axis_range: List[sympy.Expr], *, hint_str=None):
         if not asc_axis:
             asc_axis = [sympy.Symbol("z0")]
             asc_axis_range = [1]
@@ -178,7 +183,7 @@ class NPUKernel(Kernel):
     def tracing_asc(self):
         with self:
             for i, node in enumerate(self._nodes):
-                logger.debug("Codegen [%s] %s", f"{i+1}/{len(self._nodes)}", node.debug_str())
+                logger.debug("Codegen [%s] %s", f"{i + 1}/{len(self._nodes)}", node.debug_str())
                 body: LoopBody = getattr(node, '_body')
 
                 var_to_asc_axis = {}
@@ -193,10 +198,12 @@ class NPUKernel(Kernel):
                     asc_axis.append(var_to_asc_axis[var])
                     asc_axis_range.append(self.rename_indexing(body.var_ranges[var]))
 
-                with self.set_current_node(node), self.new_subgraph(asc_axis, asc_axis_range,
-                                                                    hint_str='\n'.join(_node_label(node))):
+                with (
+                    self.set_current_node(node),
+                    self.new_subgraph(asc_axis, asc_axis_range, hint_str='\n'.join(_node_label(node))),
+                ):
                     node.run(*axis_indexings)
-                    logger.debug(f"{self.graph.name} reads {self.graph.inputs} and writes {self.graph.outputs}")
+                    logger.debug(f"{self.graph.name} reads {self.graph.inputs} and writes {self.graph.outputs}")  # noqa
 
         if hasattr(self, 'removed_buffers') and hasattr(V.graph, 'removed_buffers'):
             V.graph.removed_buffers |= self.removed_buffers
@@ -218,9 +225,10 @@ class NPUKernel(Kernel):
         self._fused_graph.args = precompile_args
 
         from inductor_npu_ext import codegen as npu_codegen
+
         self._fused_graph.cpp_wrapper = npu_codegen.codegen_cpp_wrapper(self._fused_graph)
         self._fused_graph.asc_graph = self._fused_graph.codegen("cache_hint").getvalue()
-        md5 = hashlib.md5(f"{self._fused_graph.asc_graph}_{self._fused_graph.cpp_wrapper}".encode()).hexdigest()
+        md5 = hashlib.md5(f"{self._fused_graph.asc_graph}_{self._fused_graph.cpp_wrapper}".encode()).hexdigest()  # nosec B324
         self._fused_graph.name = f"auto{get_fused_kernel_name(self._nodes, 'original_aten')}_{md5}"
 
         unsupported_ops = set()
@@ -241,12 +249,13 @@ class NPUKernel(Kernel):
 
     def codegen(self):
         from inductor_npu_ext import codegen as npu_codegen
+
         artifacts = npu_codegen.codegen_kernel_def(self.fused_graph)
         artifacts['cpp_wrapper'] = npu_codegen.codegen_cpp_wrapper(self.fused_graph)
         if not all(v.strip() for v in artifacts.values()):
             raise RuntimeError(f"Failed to generate artifacts for kernel {self.kernel_name}: {artifacts}")
 
-        self._artifacts = NPUKernel.Artifacts(**artifacts)
+        self._artifacts = NPUKernel.Artifacts(**artifacts)  # noqa
 
         kernel_def = IndentedBuffer()
         kernel_obj = f"{self._artifacts.name}_artifacts"
@@ -257,7 +266,8 @@ class NPUKernel(Kernel):
         kernel_def.splice(f"{kernel_obj}['device_impl'] = r'''{self._artifacts.device_impl}'''")
         kernel_def.splice(f"{kernel_obj}['cpp_wrapper'] = r'''{self._artifacts.cpp_wrapper}'''")
         kernel_def.writeline(
-            f"{self.kernel_name} = async_compile_ascendc(globals().get('async_compile', None), {kernel_obj})")
+            f"{self.kernel_name} = async_compile_ascendc(globals().get('async_compile', None), {kernel_obj})"
+        )
 
         return kernel_def.getvalue()
 
@@ -269,6 +279,7 @@ class NPUKernel(Kernel):
     def view_dot(self, nodes, svg_path=None):
         try:
             import pydot
+
             dot_graph = self.fused_graph.as_dot()
             symbol_to_hint = []
             for s, ks in self.args.sizevars.items():
@@ -277,8 +288,8 @@ class NPUKernel(Kernel):
             lines = list(itertools.chain(symbol_to_hint, ['-' * 20], *labels))
             lines = _left_align_lines(lines)
             dot_graph.add_node(
-                pydot.Node(f"{self.kernel_name}_body", shape="plaintext", label='\n'.join(lines),
-                           fontname="Courier"))
+                pydot.Node(f"{self.kernel_name}_body", shape="plaintext", label='\n'.join(lines), fontname="Courier")
+            )
             svg_path = svg_path if svg_path else f"./{self.kernel_name}.svg"
             dot_graph.write_svg(svg_path)
         except ImportError:
@@ -293,22 +304,21 @@ class NPUKernel(Kernel):
         used_buffers = []
         seen_symbols = []
         for buffer, buffer_type in zip(call_args, precompile_args):
-            from torch._inductor.codegen.common import TensorArg
             if not isinstance(buffer_type, TensorArg):
                 continue
             used_buffers.append(buffer)
             layout = V.graph.get_buffer(buffer).layout
             for expr in itertools.chain(layout.stride or [], layout.size or [], [layout.offset]):
-                seen_symbols.extend(V.graph.sizevars.simplify(
-                    expr).free_symbols if isinstance(expr, sympy.Expr) else [])
+                seen_symbols.extend(
+                    V.graph.sizevars.simplify(expr).free_symbols if isinstance(expr, sympy.Expr) else []
+                )
 
-        with open(file_path, "w") as f:
+        with open(file_path, "w") as f:  # noqa
             benchmark_code = IndentedBuffer()
-            benchmark_code.writeline(f"import sys")
-            benchmark_code.writeline(f"import torch")
-            benchmark_code.writeline(f"import torch_npu")
-            benchmark_code.writeline(
-                "from inductor_npu_ext.compiler import async_compile as async_compile_ascendc")
+            benchmark_code.writeline("import sys")
+            benchmark_code.writeline("import torch")
+            benchmark_code.writeline("import torch_npu")
+            benchmark_code.writeline("from inductor_npu_ext.compiler import async_compile as async_compile_ascendc")
             kernel_obj = f"{self._artifacts.name}_artifacts"
             benchmark_code.writeline(f"{kernel_obj} = {{}}")
             benchmark_code.splice(f"{kernel_obj}['name'] = r'''{self._artifacts.name}'''")
@@ -318,22 +328,23 @@ class NPUKernel(Kernel):
             benchmark_code.writeline("if __name__ == '__main__':")
             with benchmark_code.indent():
                 benchmark_code.writeline(
-                    f"assert len(sys.argv) == 1 or sys.argv[-1] == 'e2e', 'Usage: python {file_path} [e2e]'")
-                benchmark_code.writeline(f"if sys.argv[-1] == 'e2e':")
+                    f"assert len(sys.argv) == 1 or sys.argv[-1] == 'e2e', 'Usage: python {file_path} [e2e]'"
+                )
+                benchmark_code.writeline("if sys.argv[-1] == 'e2e':")
                 with benchmark_code.indent():
-                    with open(os.path.join(os.path.dirname(file_path), "asc_graph.py"), "r") as asc_graph:
+                    with open(os.path.join(os.path.dirname(file_path), "asc_graph.py"), "r") as asc_graph:  # noqa
                         benchmark_code.splice(asc_graph.read())
                     benchmark_code.splice(f"{kernel_obj}['tiling_def'] = tiling_def")
                     benchmark_code.splice(f"{kernel_obj}['host_impl'] = host_impl")
                     benchmark_code.splice(f"{kernel_obj}['device_impl'] = device_impl")
-                benchmark_code.writeline(f"else:")
+                benchmark_code.writeline("else:")
                 with benchmark_code.indent():
                     benchmark_code.splice(f"{kernel_obj}['tiling_def'] = r'''{self._artifacts.tiling_def}'''")
                     benchmark_code.splice(f"{kernel_obj}['host_impl'] = r'''{self._artifacts.host_impl}'''")
                     benchmark_code.splice(f"{kernel_obj}['device_impl'] = r'''{self._artifacts.device_impl}'''")
 
                 benchmark_code.writeline(f"{self.kernel_name} = async_compile_ascendc(None, {kernel_obj})")
-                benchmark_code.writeline(f"from torch._dynamo.testing import rand_strided")
+                benchmark_code.writeline("from torch._dynamo.testing import rand_strided")
                 for s, ks in self.args.sizevars.items():
                     benchmark_code.writeline(f"{ks} = {s} = {self.size_hint(s)}")
                 for k in seen_symbols:
@@ -343,7 +354,8 @@ class NPUKernel(Kernel):
                     layout = V.graph.get_buffer(buffer).layout
                     benchmark_code.writeline(
                         f"{buffer} = rand_strided({tuple(layout.size)}, {tuple(layout.stride)}, "
-                        f"device='{layout.device if layout.device.type != 'npu' else 'npu'}', dtype={layout.dtype})")
+                        f"device='{layout.device if layout.device.type != 'npu' else 'npu'}', dtype={layout.dtype})"
+                    )
 
                 benchmark_code.splice("""
                     experimental_config = torch_npu.profiler._ExperimentalConfig(
@@ -379,11 +391,11 @@ class NPUKernel(Kernel):
                     benchmark_code.splice("for _ in range(11):")
                     with benchmark_code.indent():
                         benchmark_code.writeline(f"{self.kernel_name}({', '.join([str(v) for v in call_args])})")
-                        benchmark_code.writeline(f"prof.step()")
+                        benchmark_code.writeline("prof.step()")
             f.write(benchmark_code.getvalue())
 
     def load(self, name: str, index: sympy.Expr):
-        if any([isinstance(s, ASCIndexing) for s in index.free_symbols]):
+        if any([isinstance(s, ASCIndexing) for s in index.free_symbols]):  # noqa
             return self.indirect_load(name, index)
 
         index = self.rename_indexing(index)
@@ -451,9 +463,7 @@ class NPUKernel(Kernel):
         load = ir.indirect_load(data, *asc_tensors, indirect_expr=index, loop=loop)
         return load
 
-    def check_bounds(
-        self, expr: sympy.Expr, size: sympy.Expr, lower: bool, upper: bool
-    ) -> None:
+    def check_bounds(self, expr: sympy.Expr, size: sympy.Expr, lower: bool, upper: bool) -> None:
         asc_tensors = [s.asc_tensor for s in expr.free_symbols if isinstance(s, ASCIndexing)]
         ir.check_bounds(*asc_tensors, expr=expr, size=size, lower=lower, upper=upper)
 
@@ -536,8 +546,11 @@ class NPUKernel(Kernel):
             road.insert(0, MoveOp(kind="transpose", src=src_loop, dst=dst))
 
         road_dst = road[0].src if road else dst
-        broadcast_dims = [i for i, (src_size, dst_size) in enumerate(zip(src_loop.size, road_dst.size))
-                          if str(src_size) == '1' and str(src_size) != str(dst_size)]
+        broadcast_dims = [
+            i
+            for i, (src_size, dst_size) in enumerate(zip(src_loop.size, road_dst.size))
+            if str(src_size) == '1' and str(src_size) != str(dst_size)
+        ]
         for dim in broadcast_dims:
             road_dst = road[0].src if road else dst
             road.insert(0, MoveOp(kind="broadcast", src=road_dst.copy().debroadcast_(dim), dst=road_dst))
@@ -577,11 +590,67 @@ def _get_transposed_indexing(load_index, axis_vars):
     return transposed_index
 
 
+def _fused_layout_tuple_py(parts: List[str]) -> str:
+    """Python tuple literal for generated wrapper; keep (x,) for rank-1 / scalar metadata."""
+    if len(parts) == 1:
+        return f"({parts[0]},)"
+    return "(" + ", ".join(parts) + ")"
+
+
+def _emit_fused_layout_checks(
+    wrapper: PythonWrapperCodegen,
+    kernel: NPUKernel,
+    call_args,
+    precompile_args,
+    scheduling: "NPUScheduling",
+) -> None:
+    """
+    Emit layout checks for kernel inputs (size/stride/dtype/device, skips storage_offset).
+    Deduplicates by buffer name, each tensor checked only once.
+    """
+    input_set = set(kernel.fused_graph.inputs)
+    seen_buffers: Set[str] = set()
+
+    if not scheduling._fused_layout_import_emitted:
+        wrapper.writeline(fused_layout_check.IMPORT_LINE)
+        scheduling._fused_layout_import_emitted = True
+
+    for buffer, buffer_type in zip(call_args, precompile_args):
+        if not isinstance(buffer_type, TensorArg) or buffer not in input_set or buffer in seen_buffers:
+            continue
+        seen_buffers.add(buffer)
+
+        buf = V.graph.get_buffer(buffer)
+        layout = buf.layout
+        stride = getattr(layout, "stride", None)
+        if stride is None:
+            logger.debug("skip layout check for buffer: no stride attribute")
+            continue
+
+        sz_py = [pycode(V.graph.sizevars.simplify(s)) for s in layout.size]
+        st_py = [pycode(V.graph.sizevars.simplify(s)) for s in stride]
+
+        from torch._inductor import config
+
+        file_path = None
+        if config.trace.enabled and hasattr(V.debug, "filename"):
+            file_path = V.debug.filename('')
+        wrapper.writeline(
+            f"maybe_check_fused_input_layout("
+            f"kernel_name={kernel.kernel_name!r}, buffer_name={buffer!r}, tensor={buffer}, "
+            f"expected_sizes={_fused_layout_tuple_py(sz_py)}, "
+            f"expected_strides={_fused_layout_tuple_py(st_py)}, "
+            f"expected_dtype={repr(layout.dtype)}, expected_device_type={layout.device.type!r}, "
+            f"path={file_path!r})"
+        )
+
+
 class NPUScheduling(BaseScheduling):
     def __init__(self, scheduler):
         super().__init__(scheduler)
         self._fuse_judge = TritonScheduling(scheduler)
         self._kernel_cache: Dict[str, NPUKernel] = dict()
+        self._fused_layout_import_emitted: bool = False
 
     def can_fuse_vertical(self, node1: BaseSchedulerNode, node2: BaseSchedulerNode):
         if "canfuse" in _debug_options:
@@ -601,9 +670,7 @@ class NPUScheduling(BaseScheduling):
     def get_backend_features(self, device: torch.device) -> OrderedSet[BackendFeature]:
         return OrderedSet([BackendFeature.REDUCE_TO_SINGLE_ELEMENT, BackendFeature.INPLACE_BUFFERS])
 
-    def codegen_template(
-            self, template_node: SchedulerNode, epilogue_nodes: List[SchedulerNode]
-    ):
+    def codegen_template(self, template_node: SchedulerNode, epilogue_nodes: List[SchedulerNode]):
         raise NotImplementedError()
 
     def codegen_node(self, node: Union[FusedSchedulerNode, SchedulerNode]) -> None:
@@ -628,16 +695,21 @@ class NPUScheduling(BaseScheduling):
         cache_kernel = self._kernel_cache.get(cache_hint, None)
         if cache_kernel is not None:
             logger.debug("Reuse cached kernel %s for %s", cache_kernel.kernel_name, kernel.kernel_name)
+            # 缓存命中仍用当前图的 buffer/layout 生成校验，调用的是缓存的 kernel 符号名。
+            _emit_fused_layout_checks(wrapper, kernel, call_args, precompile_args, self)
             wrapper.writeline(wrapper.wrap_kernel_call(cache_kernel.kernel_name, [str(v) for v in call_args]))
             return
 
         wrapper.header.splice("\n\n")
         wrapper.header.splice(kernel.codegen())
 
+        # 在 wrap_kernel_call / ctypes 进入 C++ launch 之前做 Python 侧 layout 契约校验。
+        _emit_fused_layout_checks(wrapper, kernel, call_args, precompile_args, self)
         wrapper.writeline(wrapper.wrap_kernel_call(kernel.kernel_name, [str(v) for v in call_args]))
         self._kernel_cache[cache_hint] = kernel
 
         from torch._inductor import config
+
         if config.trace.enabled:
             kernel.benchmark(nodes, V.debug.filename(f"{kernel.kernel_name}/benchmark.py"))
             kernel.view_dot(nodes, V.debug.filename(f"{kernel.kernel_name}/graph.svg"))
@@ -657,6 +729,5 @@ class NpuWrapperCodeGen(PythonWrapperCodegen):
     @staticmethod
     def create(*args, **kwargs):
         wrapper_codegen = PythonWrapperCodegen.create(*args, **kwargs)
-        wrapper_codegen.imports.splice(
-            "from inductor_npu_ext.compiler import async_compile as async_compile_ascendc")
+        wrapper_codegen.imports.splice("from inductor_npu_ext.compiler import async_compile as async_compile_ascendc")
         return wrapper_codegen

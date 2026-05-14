@@ -1,3 +1,4 @@
+# pylint: disable=W0143,W1203,R1729
 import sys
 import itertools
 
@@ -28,46 +29,53 @@ def _finetune_inductor_config():
     reduction unrolling, size assertions, and device properties. It also restricts operator decompositions
     to a whitelist and sets a custom pre-gradient pass if not already set.
     """
-    from torch._inductor.codegen import cpu_device_op_overrides
+    from torch._inductor.codegen import cpu_device_op_overrides  # noqa: F401
     from torch._dynamo import config as dynamo_config
+
     dynamo_config.recompile_limit = 16  # default 8 is always not enough for per-layer compile
     dynamo_config.specialize_float = True  # enable float specialization until launch with scalar supported
     from torch._inductor import config as inductor_config
+
     inductor_config.unroll_reductions_threshold = 1  # disable unroll reductions
-    inductor_config.size_asserts = False  # npu ops always return contiguous tensors which maybe different from meta outputs
+    inductor_config.size_asserts = (
+        False  # npu ops always return contiguous tensors which maybe different from meta outputs
+    )
     from torch._inductor.runtime.hints import DeviceProperties
+
     DeviceProperties.multi_processor_count = 0  # disable multi processor count
 
 
 def _load_npu_passes():
     from torch._inductor import config as inductor_config
     from inductor_npu_ext.passes.auto_functionalize_legacy_ops import auto_functionalize_legacy_ops
+
     if inductor_config.pre_grad_custom_pass is None:
         inductor_config.pre_grad_custom_pass = auto_functionalize_legacy_ops
     else:
         if inductor_config.pre_grad_custom_pass != auto_functionalize_legacy_ops:
-            logger.warning(f"`pre_grad_custom_pass` has already been registered as {inductor_config.pre_grad_custom_pass}, "
-                           f"registration of `auto_functionalize_legacy_ops` will be skipped. "
-                           f"Note that this may introduce extra tensormove operations. "
-                           f"You can import `auto_functionalize_legacy_ops` and call it within your custom pass: "
-                           f"`from inductor_npu_ext.passes.auto_functionalize_legacy_ops import auto_functionalize_legacy_ops`")
+            logger.warning(
+                f"`pre_grad_custom_pass` has already been registered as {inductor_config.pre_grad_custom_pass}, "
+                f"registration of `auto_functionalize_legacy_ops` will be skipped. "
+                f"Note that this may introduce extra tensormove operations. "
+                f"You can import `auto_functionalize_legacy_ops` and call it within your custom pass: "
+                f"`from inductor_npu_ext.passes.auto_functionalize_legacy_ops import auto_functionalize_legacy_ops`"
+            )
 
 
 def _finetune_decompose():
     from torch._inductor.decomposition import decompositions
-    decompositions_whitelist = {
-        k: v for k, v in decompositions.items() if k in {aten._to_copy.default}
-    }
+
+    decompositions_whitelist = {k: v for k, v in decompositions.items() if k in {aten._to_copy.default}}
     decompositions.clear()
     decompositions.update(decompositions_whitelist)
 
 
 def _finetune_lowering():
-    import inductor_npu_ext.lowering.aten_lowering  # noqa: F401, make sure lowering rules for npu opps are registered
+    import inductor_npu_ext.lowering.aten_lowering  # noqa: F401, make sure lowering rules for npu ops are registered  # typos:ignore
 
 
 def _load_npu_lowering():
-    import inductor_npu_ext.lowering.npu_lowering  # noqa: F401, make sure lowering rules for npu opps are registered
+    import inductor_npu_ext.lowering.npu_lowering  # noqa: F401, make sure lowering rules for npu ops are registered  # typos:ignore
 
 
 _finetune_inductor_config()
