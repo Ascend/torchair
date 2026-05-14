@@ -84,6 +84,21 @@ export ASCEND_LAUNCH_BLOCKING=1
 export TORCHINDUCTOR_NPU_EXT_CACHE_DIR=/path/to/cache
 ```
 
+---
+
+### TORCHINDUCTOR_NPU_EXT_LAYOUT_CHECK
+
+**作用：** 用于对比融合kernel输入的stride/shape在编译和运行时是否存在差异，如果存在差异则直接报错。不配置或者配置为0为关闭，配置为1表示开启。
+
+**使用方法：**
+
+```bash
+export TORCHINDUCTOR_NPU_EXT_LAYOUT_CHECK=1
+```
+
+**注意：**
+开启该环境变量可能会降低运行性能，建议首次运行无误后，关闭该环境变量。
+
 ## 3. 调测输出说明
 
 本节结合具体示例，说明在启用 TORCH_COMPILE_DEBUG=1 后，相关的调试日志和编译产物。
