@@ -73,9 +73,9 @@ def record_tagged_stream_impl(input: torch.Tensor, tagged_stream: str):
     input.record_stream(stream)
 
 
-if not hasattr(getattr(torch.ops, "air"), "tagged_event_record"):
+if not hasattr(getattr(torch.ops, "npugraph_ex"), "tagged_event_record"):
     lib.define("tagged_event_record(str tag, bool created_inside=False) -> ()")
-    has_side_effect(torch.ops.air.tagged_event_record.default)
+    has_side_effect(torch.ops.npugraph_ex.tagged_event_record.default)
 
     @torch.library.impl(lib, "tagged_event_record", "Meta")
     def record_meta(tag: str, created_inside: bool = False):
@@ -83,9 +83,9 @@ if not hasattr(getattr(torch.ops, "air"), "tagged_event_record"):
 
     torch.library.impl(lib, "tagged_event_record", "CompositeExplicitAutograd")(record_impl)
 
-if not hasattr(getattr(torch.ops, "air"), "tagged_event_wait"):
+if not hasattr(getattr(torch.ops, "npugraph_ex"), "tagged_event_wait"):
     lib.define("tagged_event_wait(str tag, bool created_inside=False) -> ()")
-    has_side_effect(torch.ops.air.tagged_event_wait.default)
+    has_side_effect(torch.ops.npugraph_ex.tagged_event_wait.default)
 
     @torch.library.impl(lib, "tagged_event_wait", "Meta")
     def wait_meta(tag: str, created_inside: bool = False):
@@ -93,11 +93,11 @@ if not hasattr(getattr(torch.ops, "air"), "tagged_event_wait"):
 
     torch.library.impl(lib, "tagged_event_wait", "CompositeExplicitAutograd")(wait_impl)
 
-if not hasattr(getattr(torch.ops, "air"), "record_tagged_stream"):
+if not hasattr(getattr(torch.ops, "npugraph_ex"), "record_tagged_stream"):
     lib.define("record_tagged_stream(Tensor input, str tag) -> ()")
     lib.define("record_tagged_stream_(Tensor(a!) input, str tag) -> ()")
 
-    has_side_effect(torch.ops.air.record_tagged_stream.default)
+    has_side_effect(torch.ops.npugraph_ex.record_tagged_stream.default)
 
     @torch.library.impl(lib, "record_tagged_stream", "Meta")
     def record_tagged_stream_meta(input: torch.Tensor, tagged_stream: str):
@@ -111,7 +111,7 @@ if not hasattr(getattr(torch.ops, "air"), "record_tagged_stream"):
     def record_tagged_stream_inplace_func(input: torch.Tensor, tagged_stream: str):
         # The record_stream interface does not involve input mutation,
         # so there is no need to copy the output of out-of-place op to the original input.
-        torch.ops.air.record_tagged_stream(input, tagged_stream)
+        torch.ops.npugraph_ex.record_tagged_stream(input, tagged_stream)
 
     torch.library.impl(lib, "record_tagged_stream", "CompositeExplicitAutograd")(record_tagged_stream_impl)
     torch.library.impl(lib, "record_tagged_stream_", "CompositeExplicitAutograd")(record_tagged_stream_impl)
@@ -140,7 +140,7 @@ def _npu_tagged_event_record(event: torch.npu.Event):
         raise AssertionError(
             "call npu_tagged_event_record failed while event tag is None, please use "
             "npu_create_tagged_tagged_event(tag: str) to create event then do event record!")
-    return torch.ops.air.tagged_event_record(tag)
+    return torch.ops.npugraph_ex.tagged_event_record(tag)
 
 
 def _npu_tagged_event_wait(event: torch.npu.Event):
@@ -149,11 +149,11 @@ def _npu_tagged_event_wait(event: torch.npu.Event):
         raise AssertionError(
             "call npu_tagged_event_wait failed while event tag is None, please use "
             "npu_create_tagged_tagged_event(tag: str) to create event then do event wait!")
-    return torch.ops.air.tagged_event_wait(tag)
+    return torch.ops.npugraph_ex.tagged_event_wait(tag)
 
 
 def _npu_record_tagged_stream(input: torch.Tensor, tagged_stream: str):
-    return torch.ops.air.record_tagged_stream_(input, tagged_stream)
+    return torch.ops.npugraph_ex.record_tagged_stream_(input, tagged_stream)
 
 
 # ============================================================================
@@ -223,9 +223,9 @@ def stream_wait_stream_impl(stream_id, device_index, device_type,
 
 
 # Register tagged_event_record_on_stream operator
-if not hasattr(getattr(torch.ops, "air"), "tagged_event_record_on_stream"):
+if not hasattr(getattr(torch.ops, "npugraph_ex"), "tagged_event_record_on_stream"):
     lib.define("tagged_event_record_on_stream(str event_tag, str stream_id, str device_index, str device_type, bool created_inside=False) -> ()")
-    has_side_effect(torch.ops.air.tagged_event_record_on_stream.default)
+    has_side_effect(torch.ops.npugraph_ex.tagged_event_record_on_stream.default)
 
     @torch.library.impl(lib, "tagged_event_record_on_stream", "Meta")
     def record_on_stream_meta(event_tag: str, stream_id, device_index, device_type, created_inside: bool = False):
@@ -234,9 +234,9 @@ if not hasattr(getattr(torch.ops, "air"), "tagged_event_record_on_stream"):
     torch.library.impl(lib, "tagged_event_record_on_stream", "CompositeExplicitAutograd")(record_on_stream_impl)
 
 # Register tagged_event_wait_on_stream operator
-if not hasattr(getattr(torch.ops, "air"), "tagged_event_wait_on_stream"):
+if not hasattr(getattr(torch.ops, "npugraph_ex"), "tagged_event_wait_on_stream"):
     lib.define("tagged_event_wait_on_stream(str event_tag, str stream_id, str device_index, str device_type, bool created_inside=False) -> ()")
-    has_side_effect(torch.ops.air.tagged_event_wait_on_stream.default)
+    has_side_effect(torch.ops.npugraph_ex.tagged_event_wait_on_stream.default)
 
     @torch.library.impl(lib, "tagged_event_wait_on_stream", "Meta")
     def wait_on_stream_meta(event_tag: str, stream_id, device_index, device_type, created_inside: bool = False):
@@ -245,9 +245,9 @@ if not hasattr(getattr(torch.ops, "air"), "tagged_event_wait_on_stream"):
     torch.library.impl(lib, "tagged_event_wait_on_stream", "CompositeExplicitAutograd")(wait_on_stream_impl)
 
 # Register tagged_stream_wait_stream operator
-if not hasattr(getattr(torch.ops, "air"), "tagged_stream_wait_stream"):
+if not hasattr(getattr(torch.ops, "npugraph_ex"), "tagged_stream_wait_stream"):
     lib.define("tagged_stream_wait_stream(str stream_id, str device_index, str device_type, str other_stream_id, str other_device_index, str other_device_type) -> ()")
-    has_side_effect(torch.ops.air.tagged_stream_wait_stream.default)
+    has_side_effect(torch.ops.npugraph_ex.tagged_stream_wait_stream.default)
 
     @torch.library.impl(lib, "tagged_stream_wait_stream", "Meta")
     def stream_wait_stream_meta(stream_id, device_index, device_type,

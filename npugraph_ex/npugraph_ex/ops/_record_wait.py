@@ -4,7 +4,7 @@ from torch.fx.node import has_side_effect
 from ._lib import lib
 
 
-if not hasattr(torch.ops.air, "record"):
+if not hasattr(torch.ops.npugraph_ex, "record"):
     lib.define("record(*, Device? device=None) -> Tensor")
 
 
@@ -20,9 +20,9 @@ if not hasattr(torch.ops.air, "record"):
         return torch.empty(0, device='meta')
 
 
-if not hasattr(torch.ops.air, "wait"):
+if not hasattr(torch.ops.npugraph_ex, "wait"):
     lib.define("wait(Tensor[] x) -> ()")
-    has_side_effect(torch.ops.air.wait.default)
+    has_side_effect(torch.ops.npugraph_ex.wait.default)
 
 
     def wait_impl(tensors):

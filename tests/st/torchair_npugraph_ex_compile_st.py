@@ -1912,27 +1912,27 @@ class NpugraphExSt(unittest.TestCase):
             for node in fx_graph.nodes:
                 if node.op == "call_function" and node.target == torch.ops.aten.sqrt.default:
                     with fx_graph.inserting_before(node):
-                        fx_graph.call_function(torch.ops.air.scope_enter.default, args=(
+                        fx_graph.call_function(torch.ops.npugraph_ex.scope_enter.default, args=(
                             ['_user_stream_label', '_user_stream_priority', '_user_stream_id', '_user_stream_device_index', '_user_stream_device_type'],
                             ["stream0", '0', '96', '1', '20']))
 
                 if node.op == "call_function" and node.target == torch.ops.aten.add.Tensor:
                     with fx_graph.inserting_after(node):
                         fx_graph.call_function(
-                            torch.ops.air.scope_exit.default, args=())
+                            torch.ops.npugraph_ex.scope_exit.default, args=())
 
         def parallel_abs_sub_2(gm, example_inputs, config: CompilerConfig):
             fx_graph = gm.graph
             for node in fx_graph.nodes:
                 if node.op == "call_function" and node.target == torch.ops.aten._softmax.default:
                     with fx_graph.inserting_before(node):
-                        fx_graph.call_function(torch.ops.air.scope_enter.default, args=(
+                        fx_graph.call_function(torch.ops.npugraph_ex.scope_enter.default, args=(
                             ['_user_stream_label', '_user_stream_priority', '_user_stream_id', '_user_stream_device_index', '_user_stream_device_type'],
                             ["stream1", '0', '97', '1', '20']))
 
                 if node.op == "call_function" and node.target == torch.ops.aten.split_with_sizes.default:
                     with fx_graph.inserting_after(node):
-                        fx_graph.call_function(torch.ops.air.scope_exit.default, args=())
+                        fx_graph.call_function(torch.ops.npugraph_ex.scope_exit.default, args=())
 
         options = {
             "clone_input": False,

@@ -17,7 +17,7 @@ class GraphCounter:
     def graph_id(cls):
         cls.COUNT += 1
         return "graph_" + str(cls.COUNT) + "_"
-    
+
     @classmethod
     def set_graph_id(cls, value):
         cls.COUNT = value
@@ -27,10 +27,10 @@ def replace_stream_event_pass(gm: torch.fx.GraphModule):
     if not hasattr(torch, "npu") or not hasattr(torch.npu, "fake_record_stream"):
         logger.warning("torch has no attr npu or npu.fake_record_stream, skip replace_stream_event_pass")
         return gm
-    
-    from npugraph_ex.ops._tagged_event import (_npu_create_tagged_event, _npu_tagged_event_record, 
+
+    from npugraph_ex.ops._tagged_event import (_npu_create_tagged_event, _npu_tagged_event_record,
                           _npu_tagged_event_wait, _npu_record_tagged_stream)
-    
+
     logger.debug(f'after dynamo out, graph is: {gm.graph}')
     event_index_to_node_name = {}
     stream_stack = []
@@ -54,23 +54,23 @@ def replace_stream_event_pass(gm: torch.fx.GraphModule):
             elif is_high_version and node.target == torch.ops.streams.record_event:
                 if len(node.args) > 1 and node.args[1] is not None:
                     stream_obj = torch._dynamo.graph_bytecode_inputs.get_external_object_by_index(node.args[1])
-                    node.target = torch.ops.air.tagged_event_record_on_stream
+                    node.target = torch.ops.npugraph_ex.tagged_event_record_on_stream
                     node.args = (graph_id + event_index_to_node_name[node.args[0]],
                                     stream_obj.stream_id, stream_obj.device_index, stream_obj.device_type, True)
                 else:
-                    node.target = torch.ops.air.tagged_event_record
+                    node.target = torch.ops.npugraph_ex.tagged_event_record
                     node.args = (graph_id + event_index_to_node_name[node.args[0]], True)
             elif is_high_version and node.target == torch.ops.streams.wait_event:
                 if len(node.args) > 1 and node.args[1] is not None:
                     stream_obj = torch._dynamo.graph_bytecode_inputs.get_external_object_by_index(node.args[1])
-                    node.target = torch.ops.air.tagged_event_wait_on_stream
+                    node.target = torch.ops.npugraph_ex.tagged_event_wait_on_stream
                     node.args = (graph_id + event_index_to_node_name[node.args[0]],
                                     stream_obj.stream_id, stream_obj.device_index, stream_obj.device_type, True)
                 else:
-                    node.target = torch.ops.air.tagged_event_wait
-                    node.args = (graph_id + event_index_to_node_name[node.args[0]], True)    
+                    node.target = torch.ops.npugraph_ex.tagged_event_wait
+                    node.args = (graph_id + event_index_to_node_name[node.args[0]], True)
             elif node.target == torch.npu.fake_record_stream:
-                node.target = torch.ops.air.record_tagged_stream_
+                node.target = torch.ops.npugraph_ex.record_tagged_stream_
                 node.args = (node.args[0], node.args[1].name,)
             elif _is_stream(node):
                 new_stream_list.append(node)
@@ -87,11 +87,11 @@ def replace_stream_event_pass(gm: torch.fx.GraphModule):
                 if len(node.args) > 1:
                     stream_node = node.args[1]  # args[0] = self (event)
                     stream_id, device_index, device_type = _get_stream_info_from_node(stream_node, stream_info_map, default_stream_id)
-                    node.target = torch.ops.air.tagged_event_record_on_stream
+                    node.target = torch.ops.npugraph_ex.tagged_event_record_on_stream
                     node.op = "call_function"
                     node.args = (graph_id + node.args[0].name, stream_id, device_index, device_type, True)
                 else:
-                    node.target = torch.ops.air.tagged_event_record
+                    node.target = torch.ops.npugraph_ex.tagged_event_record
                     node.op = "call_function"
                     node.args = (graph_id + node.args[0].name, True)
             elif node.target == "wait":
@@ -99,11 +99,11 @@ def replace_stream_event_pass(gm: torch.fx.GraphModule):
                 if len(node.args) > 1:
                     stream_node = node.args[1]  # args[0] = self (event)
                     stream_id, device_index, device_type = _get_stream_info_from_node(stream_node, stream_info_map, default_stream_id)
-                    node.target = torch.ops.air.tagged_event_wait_on_stream
+                    node.target = torch.ops.npugraph_ex.tagged_event_wait_on_stream
                     node.op = "call_function"
                     node.args = (graph_id + node.args[0].name, stream_id, device_index, device_type, True)
                 else:
-                    node.target = torch.ops.air.tagged_event_wait
+                    node.target = torch.ops.npugraph_ex.tagged_event_wait
                     node.op = "call_function"
                     node.args = (graph_id + node.args[0].name, True)
             elif node.target == "wait_event":
@@ -111,7 +111,7 @@ def replace_stream_event_pass(gm: torch.fx.GraphModule):
                 stream_node = node.args[0]  # self (stream)
                 event_node = node.args[1]   # event
                 stream_id, device_index, device_type = _get_stream_info_from_node(stream_node, stream_info_map, default_stream_id)
-                node.target = torch.ops.air.tagged_event_wait_on_stream
+                node.target = torch.ops.npugraph_ex.tagged_event_wait_on_stream
                 node.op = "call_function"
                 node.args = (graph_id + event_node.name, stream_id, device_index, device_type, True)
             elif node.target == "wait_stream":
@@ -119,7 +119,7 @@ def replace_stream_event_pass(gm: torch.fx.GraphModule):
                 other_stream_node = node.args[1] # other_stream
                 stream_id, device_index, device_type = _get_stream_info_from_node(stream_node, stream_info_map, default_stream_id)
                 other_stream_id, other_device_index, other_device_type = _get_stream_info_from_node(other_stream_node, stream_info_map, default_stream_id)
-                node.target = torch.ops.air.tagged_stream_wait_stream
+                node.target = torch.ops.npugraph_ex.tagged_stream_wait_stream
                 node.op = "call_function"
                 node.args = (stream_id, device_index, device_type, other_stream_id, other_device_index, other_device_type)
             elif node.target == "record_event":
@@ -128,7 +128,7 @@ def replace_stream_event_pass(gm: torch.fx.GraphModule):
                 stream_id, device_index, device_type = _get_stream_info_from_node(stream_node, stream_info_map, default_stream_id)
                 if len(node.args) > 1 and node.args[1] is not None:
                     event_node = node.args[1]  # event
-                    node.target = torch.ops.air.tagged_event_record_on_stream
+                    node.target = torch.ops.npugraph_ex.tagged_event_record_on_stream
                     node.op = "call_function"
                     node.args = (graph_id + event_node.name, stream_id, device_index, device_type, True)
                     node.replace_all_uses_with(event_node)
@@ -136,7 +136,7 @@ def replace_stream_event_pass(gm: torch.fx.GraphModule):
                     # event=None: create new event and register, then reuse tagged_event_record_on_stream
                     new_event_tag = graph_id + node.name
                     _create_event_by_name(new_event_tag)
-                    node.target = torch.ops.air.tagged_event_record_on_stream
+                    node.target = torch.ops.npugraph_ex.tagged_event_record_on_stream
                     node.op = "call_function"
                     node.args = (new_event_tag, stream_id, device_index, device_type, True)
 
@@ -152,13 +152,13 @@ def replace_stream_event_pass(gm: torch.fx.GraphModule):
                 _to_set_stream = current_stream_map[node.args[0]]
 
             # 将current_stream设置为set_stream的传入的流
-            current_stream = _to_set_stream  
+            current_stream = _to_set_stream
 
             if _to_set_stream not in stream_stack and _to_set_stream in new_stream_list:
                 # 如果是set_stream创建的流，且不在栈里，则入栈，并创建scope_enter节点
                 logger.debug(f"replace_stream_event: push stream: {graph_id + node.name} to stack")
                 stream_stack.append(_to_set_stream)
-                node.target = torch.ops.air.scope_enter
+                node.target = torch.ops.npugraph_ex.scope_enter
                 node.args = _build_scope_enter_args(stream_info_map, _to_set_stream, graph_id, default_stream_id)
             elif _to_set_stream in stream_stack:
                 # 如果是已经栈里，则出栈，并创建scope_exit节点
@@ -166,14 +166,14 @@ def replace_stream_event_pass(gm: torch.fx.GraphModule):
                     pop_node = stream_stack.pop()
                     logger.debug(f"replace_stream_event: pop stream: {graph_id + pop_node.name} of stack")
                     with graph.inserting_after(node):
-                        graph.call_function(torch.ops.air.scope_exit, args=())
+                        graph.call_function(torch.ops.npugraph_ex.scope_exit, args=())
             elif _to_set_stream == "default_stream":
                 # 如果是切到初始流，则把栈里元素全部出栈
                 while stream_stack:
                     pop_node = stream_stack.pop()
                     logger.debug(f"replace_stream_event: pop stream: {graph_id + pop_node.name} of stack")
                     with graph.inserting_after(node):
-                        graph.call_function(torch.ops.air.scope_exit, args=())
+                        graph.call_function(torch.ops.npugraph_ex.scope_exit, args=())
             else:
                 raise RuntimeError(f"Can not find stream: {_to_set_stream.name} in FX graph when parse torch.npu.set_stream."
                                    "Please submit a issue to TorchAir")
@@ -233,8 +233,8 @@ def _get_stream_info(stream_node):
         raise RuntimeError(f"Can't read stream info from node: {stream_node.name}, "
                            f"cause there is no example_value in stream_node.meta: {stream_node.meta}")
 
-    if (not hasattr(example_value, "stream_id") 
-        or not hasattr(example_value, "device_index") 
+    if (not hasattr(example_value, "stream_id")
+        or not hasattr(example_value, "device_index")
         or not hasattr(example_value, "device_type")):
         raise RuntimeError(f"Can't read stream info from node: {stream_node.name},"
                            f" cause there is no stream_id/device_index/device_type"

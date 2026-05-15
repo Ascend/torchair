@@ -1,3 +1,3 @@
 import torch
 
-lib = torch.library.Library("air", "FRAGMENT")
+lib = torch.library.Library("npugraph_ex", "FRAGMENT")

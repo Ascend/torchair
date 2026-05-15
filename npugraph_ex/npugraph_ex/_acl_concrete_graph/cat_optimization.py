@@ -193,7 +193,7 @@ def optimize_cat_with_out_tensor(gm: GraphModule, config=None) -> GraphModule:
         with gm.graph.inserting_before(first_input):
             if cat_stream is not None:
                 gm.graph.call_function(
-                    torch.ops.air.scope_enter.default,
+                    torch.ops.npugraph_ex.scope_enter.default,
                     args=(['_user_stream_label'], [cat_stream])
                 )
             output_tensor = gm.graph.call_function(
@@ -207,7 +207,7 @@ def optimize_cat_with_out_tensor(gm: GraphModule, config=None) -> GraphModule:
                 }
             )
             if cat_stream is not None:
-                gm.graph.call_function(torch.ops.air.scope_exit.default, args=())
+                gm.graph.call_function(torch.ops.npugraph_ex.scope_exit.default, args=())
 
         output_tensor.meta['val'] = output_meta
         output_tensor.meta['stream_label'] = cat_stream

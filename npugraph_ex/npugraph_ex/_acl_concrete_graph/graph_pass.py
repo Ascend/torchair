@@ -43,7 +43,7 @@ except ImportError:
     tree_map_only,
 ) = (None,) * 10
 
-# flag which indicates whether torchair reinplace_with_multi_stream_check with multi-stream is available
+# flag which indicates whether npugraph_ex reinplace_with_multi_stream_check with multi-stream is available
 _HAS_INTERNAL_REINPLACE_TOOL = False
 
 try:
@@ -617,10 +617,10 @@ def apply_event_closure_with_multi_stream(
     user_pass_stream_exit_node_map = {}
 
     for node in graph_module.graph.nodes:
-        if str(node.target) == "air.scope_enter.default":
+        if str(node.target) == "npugraph_ex.scope_enter.default":
             node.kwargs = {**node.kwargs, 'need_execute': True}
             if len(node.args) > 0 and '_user_stream_label' in node.args[0]:
-                # When 'args[0]' of air.scope_enter.default includes the string '_user_stream_label',
+                # When 'args[0]' of npugraph_ex.scope_enter.default includes the string '_user_stream_label',
                 # there must be an 'args[1]' to store value associated with that key.
                 # We store that value for later stream switch.
                 # Use a set for storage to eliminate duplicate values.
@@ -634,7 +634,7 @@ def apply_event_closure_with_multi_stream(
                 if len(node.args) >= 2:
                     _extract_user_stream_info(node.args[0], node.args[1], user_stream_info, stream_label)
             scope_enter_nodes_stack.append(node)
-        elif str(node.target) == "air.scope_exit.default":
+        elif str(node.target) == "npugraph_ex.scope_exit.default":
             node.kwargs = {**node.kwargs, 'need_execute': True}
             if (
                 len(scope_enter_nodes_stack) > 0
@@ -650,7 +650,7 @@ def apply_event_closure_with_multi_stream(
         logger.debug("No scope_enter node found in graph[%s], no need to insert event.", id(graph_module))
         return False, stream_scope_enter_nodes_dict, stream_scope_exit_nodes_list
 
-    # These imports are needed for torch.ops.air.tagged_event_record/wait.default to work.
+    # These imports are needed for torch.ops.npugraph_ex.tagged_event_record/wait.default to work.
     output_node = list(graph_module.graph.nodes)[-1]
     if output_node is None or output_node.op != "output":
         raise RuntimeError(f"Graph must have output node as last node, but got {output_node}")
@@ -666,12 +666,12 @@ def apply_event_closure_with_multi_stream(
     # Insert event record before graph input, insert event wait after scope_enter node
     with graph_module.graph.inserting_before(first_node):
         graph_first_record_node = graph_module.graph.call_function(
-            torch.ops.air.tagged_event_record.default, args=(enter_tag, True)
+            torch.ops.npugraph_ex.tagged_event_record.default, args=(enter_tag, True)
         )
     for stream_info in no_duplicate_stream_list:
         with graph_module.graph.inserting_after(graph_first_record_node):
             graph_module.graph.call_function(
-                torch.ops.air.tagged_event_wait_on_stream.default,
+                torch.ops.npugraph_ex.tagged_event_wait_on_stream.default,
                 args=(
                     enter_tag,
                     str(stream_info["stream_id"]),
@@ -695,7 +695,7 @@ def apply_event_closure_with_multi_stream(
         tagged_event_names.append(exit_tag)
         with graph_module.graph.inserting_before(output_node):
             graph_module.graph.call_function(
-                torch.ops.air.tagged_event_record_on_stream.default,
+                torch.ops.npugraph_ex.tagged_event_record_on_stream.default,
                 args=(
                     exit_tag,
                     str(stream_info["stream_id"]),
@@ -705,20 +705,20 @@ def apply_event_closure_with_multi_stream(
                 ),
             )
         with graph_module.graph.inserting_before(output_node):
-            graph_module.graph.call_function(torch.ops.air.tagged_event_wait.default, args=(exit_tag, True))
+            graph_module.graph.call_function(torch.ops.npugraph_ex.tagged_event_wait.default, args=(exit_tag, True))
     # 给用户通过post_grad_custom_pre_pass等自定义pass中的stream添加闭环event
     for user_pass_enter_node in user_pass_stream_enter_node_map.values():
         with graph_module.graph.inserting_after(user_pass_enter_node):
-            graph_module.graph.call_function(torch.ops.air.tagged_event_wait.default, args=(enter_tag, True))
+            graph_module.graph.call_function(torch.ops.npugraph_ex.tagged_event_wait.default, args=(enter_tag, True))
     for user_pass_exit_node in user_pass_stream_exit_node_map.values():
         # insert event record after scope_exit node, insert event wait before graph output
         user_exit_tag = graph_name + '_' + user_pass_exit_node.name
         _create_event_by_name(user_exit_tag)
         tagged_event_names.append(user_exit_tag)
         with graph_module.graph.inserting_before(user_pass_exit_node):
-            graph_module.graph.call_function(torch.ops.air.tagged_event_record.default, args=(user_exit_tag, True))
+            graph_module.graph.call_function(torch.ops.npugraph_ex.tagged_event_record.default, args=(user_exit_tag, True))
         with graph_module.graph.inserting_before(output_node):
-            graph_module.graph.call_function(torch.ops.air.tagged_event_wait.default, args=(user_exit_tag, True))
+            graph_module.graph.call_function(torch.ops.npugraph_ex.tagged_event_wait.default, args=(user_exit_tag, True))
 
     graph_module.graph.lint()
     logger.debug("End to insert event in graph[%s].", id(graph_module))
@@ -740,7 +740,7 @@ def _get_stream_label(node):
 def apply_event_record(graph_module: fx.GraphModule):
     wait_record_dic = {}
     for node in graph_module.graph.nodes:
-        if str(node.target) == "air.wait.default":
+        if str(node.target) == "npugraph_ex.wait.default":
             new_args = _insert_record_nodes(graph_module, node, wait_record_dic)
             node.args = (new_args,)
     graph_module.graph.lint()
@@ -750,13 +750,13 @@ def apply_event_record(graph_module: fx.GraphModule):
 def _insert_record_nodes(graph_module, node, wait_record_dic):
     new_args = []
     for wait_node in node.args[0]:
-        if str(wait_node.target) == "air.record.default":
+        if str(wait_node.target) == "npugraph_ex.record.default":
             new_args.append(wait_node)
         elif wait_node in wait_record_dic:
             new_args.append(wait_record_dic[wait_node])
         else:
             with graph_module.graph.inserting_after(wait_node):
-                node = graph_module.graph.call_function(torch.ops.air.record.default, args=())
+                node = graph_module.graph.call_function(torch.ops.npugraph_ex.record.default, args=())
                 new_args.append(node)
                 wait_record_dic[wait_node] = node
     return new_args
@@ -771,9 +771,9 @@ def replace_core_limit_nodes(gm: torch.fx.GraphModule, config: CompilerConfig):
     enable_core_limit = False
 
     for node in gm.graph.nodes:
-        if str(node.target) == "air.scope_enter.default":
+        if str(node.target) == "npugraph_ex.scope_enter.default":
             _core_limit_handle_scope_enter(node, gm, core_limit_stack, scope_enter_stack)
-        elif str(node.target) == "air.scope_exit.default":
+        elif str(node.target) == "npugraph_ex.scope_exit.default":
             _core_limit_handle_scope_exit(node, gm, core_limit_stack, scope_enter_stack)
         if not enable_core_limit and core_limit_stack:
             enable_core_limit = True
@@ -1406,10 +1406,10 @@ def resolve_default_stream_markers(gm: torch.fx.GraphModule) -> torch.fx.GraphMo
 
     # 白名单：只有在 replace_stream_event_pass 中涉及的算子才需要做参数替换
     WHITELIST_OPS = {
-        torch.ops.air.tagged_event_record_on_stream.default,
-        torch.ops.air.tagged_event_wait_on_stream.default,
-        torch.ops.air.tagged_stream_wait_stream.default,
-        torch.ops.air.scope_enter.default,
+        torch.ops.npugraph_ex.tagged_event_record_on_stream.default,
+        torch.ops.npugraph_ex.tagged_event_wait_on_stream.default,
+        torch.ops.npugraph_ex.tagged_stream_wait_stream.default,
+        torch.ops.npugraph_ex.scope_enter.default,
     }
 
     # 检查图中是否有需要替换的标记（只检查白名单算子）

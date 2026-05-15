@@ -401,12 +401,12 @@ def _valid_graph(graph_module):
         scope_enter_stack = []
         super_kernel_scope_nodes = []
         for node in graph_module.graph.nodes:
-            if str(node.target) == "air.scope_enter.default":
+            if str(node.target) == "npugraph_ex.scope_enter.default":
                 scope_enter_stack.append(node)
-            elif str(node.target) == "air.scope_exit.default":
+            elif str(node.target) == "npugraph_ex.scope_exit.default":
                 if not scope_enter_stack:
-                    raise RuntimeError(f"When you call the torch.ops.air.scope_exit operator: {node.name}, "
-                                       f"you must first call the torch.ops.air.scope_enter operator, as they must be called in pairs. "
+                    raise RuntimeError(f"When you call the torch.ops.npugraph_ex.scope_exit operator: {node.name}, "
+                                       f"you must first call the torch.ops.npugraph_ex.scope_enter operator, as they must be called in pairs. "
                                        f"Please check your code or your post_grad_custom_pre_pass post_grad_custom_post_pass!"
                                        f"This error may also occur in a Dynamo graph break scenario.")
                 scope_enter_stack.pop()
@@ -441,9 +441,9 @@ def _valid_graph(graph_module):
                 super_kernel_scope_nodes.pop(matched_index)
         if scope_enter_stack:
             args_list = [node.args for node in scope_enter_stack]
-            raise RuntimeError(f"After you call the torch.ops.air.scope_enter operator, "
-                               f"there is no paired call to the torch.ops.air.scope_exit operator. "
-                               f"The parameters for these torch.ops.air.scope_enter calls are:{args_list}. "
+            raise RuntimeError(f"After you call the torch.ops.npugraph_ex.scope_enter operator, "
+                               f"there is no paired call to the torch.ops.npugraph_ex.scope_exit operator. "
+                               f"The parameters for these torch.ops.npugraph_ex.scope_enter calls are:{args_list}. "
                                f"Please check your code or your post_grad_custom_pre_pass post_grad_custom_post_pass!"
                                f"This error may also occur in a Dynamo graph break scenario.")
 

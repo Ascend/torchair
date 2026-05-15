@@ -234,7 +234,7 @@ class AclgraphTest(unittest.TestCase):
                 for param in self.parameters():
                     torch.nn.init.ones_(param)
 
-                # 通过torchair.inference.cache_compile实现编译缓存
+                # 通过torch.npu.npugraph_ex.inference.cache_compile实现编译缓存
                 self.cached_prompt = torch.npu.npugraph_ex.inference.cache_compile(self.prompt, options=options)
                 self.cached_decode = torch.npu.npugraph_ex.inference.cache_compile(self.decode, options=options)
 
@@ -790,7 +790,7 @@ class AclgraphTest(unittest.TestCase):
             f"not found in logs: {cm.output}"
         )
 
-    @unittest.skipIf('ATB_HOME_PATH' not in os.environ, 
+    @unittest.skipIf('ATB_HOME_PATH' not in os.environ,
                     "_npu_paged_attention is unsupported without ATB_HOME_PATH environment variable")
     def test_aclgraph_update_param_with__npu_paged_attention(self):
         class Model(torch.nn.Module):
@@ -800,11 +800,11 @@ class AclgraphTest(unittest.TestCase):
             def forward(self, query, key_cache, value_cache, block_table, context_lens):
                 output = torch.zeros_like(query[:, :, :96])
                 torch_npu._npu_paged_attention(
-                    query=query, 
-                    key_cache=key_cache, 
+                    query=query,
+                    key_cache=key_cache,
                     value_cache=value_cache,
                     num_kv_heads=16,
-                    num_heads=32, 
+                    num_heads=32,
                     scale_value=0.38888,
                     block_table=block_table,
                     context_lens=context_lens,
@@ -843,7 +843,7 @@ class AclgraphTest(unittest.TestCase):
         value_cache = torch.from_numpy(value_cache_np).npu()
         block_table = torch.from_numpy(block_table_np).npu()
         context_lens = torch.from_numpy(context_lens_np)
-        context_lens_new = torch.from_numpy(context_lens_np_new)        
+        context_lens_new = torch.from_numpy(context_lens_np_new)
 
         torch._dynamo.mark_static(query)
         torch._dynamo.mark_static(key_cache)
@@ -889,25 +889,25 @@ class AclgraphTest(unittest.TestCase):
             for node in fx_graph.nodes:
                 if node.op == "call_function" and node.target == torch.ops.aten.sqrt.default:
                     with fx_graph.inserting_before(node):
-                        fx_graph.call_function(torch.ops.air.scope_enter.default, args=(
+                        fx_graph.call_function(torch.ops.npugraph_ex.scope_enter.default, args=(
                             ["_user_stream_label"], ["stream0"]))
 
                 if node.op == "call_function" and node.target == torch.ops.aten.add.Tensor:
                     with fx_graph.inserting_after(node):
                         fx_graph.call_function(
-                            torch.ops.air.scope_exit.default, args=())
+                            torch.ops.npugraph_ex.scope_exit.default, args=())
 
         def parallel_abs_sub_2(gm, example_inputs, config: CompilerConfig):
             fx_graph = gm.graph
             for node in fx_graph.nodes:
                 if node.op == "call_function" and node.target == torch.ops.aten._softmax.default:
                     with fx_graph.inserting_before(node):
-                        fx_graph.call_function(torch.ops.air.scope_enter.default, args=(
+                        fx_graph.call_function(torch.ops.npugraph_ex.scope_enter.default, args=(
                             ["_user_stream_label"], ["stream1"]))
 
                 if node.op == "call_function" and node.target == torch.ops.aten.split_with_sizes.default:
                     with fx_graph.inserting_after(node):
-                        fx_graph.call_function(torch.ops.air.scope_exit.default, args=())
+                        fx_graph.call_function(torch.ops.npugraph_ex.scope_exit.default, args=())
 
         options = {
             "clone_input": False,
@@ -1075,7 +1075,7 @@ class AclgraphTest(unittest.TestCase):
             y, _, xOut = torch_npu.npu_add_rms_norm(x1, x2, gamma, 4e-6)
             yOut = torch_npu.npu_quantize(y, scales, zero_points, torch.qint8, axis=-1, div_mode=div_mode)
             return yOut, xOut
-        
+
         def f_static(x1, x2, gamma, scales, zero_points):
             y, _, xOut = torch_npu.npu_add_rms_norm(x1, x2, gamma, 1e-6)
             yOut = torch_npu.npu_quantize(y, scales, zero_points=zero_points, dtype=torch.int8, axis=-1)
@@ -1129,7 +1129,7 @@ class AclgraphTest(unittest.TestCase):
 
     @unittest.skipIf(torch.__version__ < "2.6", "pattern_fusion_pass is unsupported when torch < 2.6")
     def test_pattern_pass_addrmsnorm_quant_mismatched(self):
-    
+
         def f(x1, x2, gamma, scales, zero_points, out_dtype=torch.qint8, div_mode=True):
             x1 = x1.reshape([1, -1, 16])
             x2 = x2.reshape([1, -1, 16])
@@ -1167,7 +1167,7 @@ class AclgraphTest(unittest.TestCase):
         zero_points = torch.zeros(16, dtype=torch.int8, device='npu')
         f(x1, x2, gamma, scales, zero_points)
         compile_model(x1, x2, gamma, scales, zero_points)
-        
+
         # test out_dtype=int32
         x1, x2, gamma, scales, zero_points = self.get_quant_input(16, torch.bfloat16, torch.bfloat16, torch.bfloat16)
         f(x1, x2, gamma, scales, zero_points, torch.int32)
@@ -1177,7 +1177,7 @@ class AclgraphTest(unittest.TestCase):
         compile_model = torch.compile(f_use, backend="npugraph_ex", fullgraph=True, dynamic=True)
         f_use(x1, x2, gamma, scales, zero_points)
         compile_model(x1, x2, gamma, scales, zero_points)
-        
+
         # test div_mode=False
         compile_model = torch.compile(f, backend="npugraph_ex", fullgraph=True, dynamic=True)
         f(x1, x2, gamma, scales, zero_points, div_mode=False)
@@ -1193,12 +1193,12 @@ class AclgraphTest(unittest.TestCase):
         zero_points = torch.zeros(16, dtype=torch.bfloat16, device='npu')
         f(x1, x2, gamma, scales, zero_points)
         compile_model(x1, x2, gamma, scales, zero_points)
-        
+
         scales = torch.ones(1, dtype=torch.bfloat16, device='npu')
         zero_points = torch.zeros(1, dtype=torch.bfloat16, device='npu')
         f(x1, x2, gamma, scales, zero_points)
         compile_model(x1, x2, gamma, scales, zero_points)
-        
+
         # test last axis not aligned 32byte
         compile_model = torch.compile(f_noreshape, backend="npugraph_ex", fullgraph=True, dynamic=False)
         x1, x2, gamma, scales, zero_points = self.get_quant_input(3, torch.bfloat16, torch.bfloat16, torch.bfloat16)
@@ -1414,7 +1414,7 @@ class AclgraphTest(unittest.TestCase):
         def cus_func(t):
             s = torch.npu.Stream()
             tmp = torch.add(t, 2)
-            event = torch.npu.Event()        
+            event = torch.npu.Event()
             event.record()
             with torch.npu.stream(s):
                 event.wait(s)
@@ -1430,7 +1430,7 @@ class AclgraphTest(unittest.TestCase):
                 if hasattr(node.target, "__name__"):
                     fx_target_list.append(node.target.__name__)
                 else:
-                    fx_target_list.append(node.target)   
+                    fx_target_list.append(node.target)
 
                 if node.name == "record":
                     self.assertEqual(node.args[0], "graph_0_event")
@@ -1438,7 +1438,7 @@ class AclgraphTest(unittest.TestCase):
                     self.assertEqual(node.args[0], "graph_0_event")
                 if node.name == "set_stream":
                     self.assertIn("graph_0_stream", node.args[1])
-                
+
 
             print(f"fx_target_list is :{fx_target_list}")
             torchair_ir_list = ('tagged_event_record',
@@ -1446,14 +1446,14 @@ class AclgraphTest(unittest.TestCase):
                                 'record_tagged_stream_',
                                 'scope_enter',
                                 'scope_exit')
-            
+
             for torchair_ir in torchair_ir_list:
-                self.assertIn(torchair_ir, fx_target_list)             
+                self.assertIn(torchair_ir, fx_target_list)
             return gm
 
         opt_m = torch.compile(cus_func, backend=my_backend, fullgraph=True, dynamic=False)
         i = torch.randn([3, 3]).to('npu')
-        r = opt_m(i)  
+        r = opt_m(i)
 
 
     @unittest.skipIf(torch.__version__ < "2.6", "torch_npu stream api is unsupported when torch < 2.6")
@@ -1488,7 +1488,7 @@ class AclgraphTest(unittest.TestCase):
                 if hasattr(node.target, "__name__"):
                     fx_target_list.append(node.target.__name__)
                 else:
-                    fx_target_list.append(node.target)   
+                    fx_target_list.append(node.target)
 
             self.assertEqual(fx_target_list.count('scope_enter'), fx_target_list.count('scope_exit'))
             self.assertEqual(fx_node_name_list[13], 'set_stream_3')
@@ -1504,7 +1504,7 @@ class AclgraphTest(unittest.TestCase):
 
         opt_m = torch.compile(cus_func, backend=my_backend, fullgraph=True, dynamic=False)
         i = torch.randn([3, 3]).to('npu')
-        r = opt_m(i) 
+        r = opt_m(i)
 
 
     @unittest.skipIf(torch.__version__ < "2.6", "torch_npu stream api is unsupported when torch < 2.6")
@@ -1524,9 +1524,9 @@ class AclgraphTest(unittest.TestCase):
         opt_m = torch.compile(cus_func, backend=my_backend, fullgraph=True, dynamic=False)
         i = torch.randn([3, 3]).to('npu')
         with self.assertRaises(RuntimeError) as context:
-            r = opt_m(i)   
+            r = opt_m(i)
         self.assertIn("When use npugraph_ex, you must make sure at the end of your code set stream to the same stream "
-                        "as the begin of your code", str(context.exception))                           
+                        "as the begin of your code", str(context.exception))
 
 
     def create_cat_optimization_pass_wrapper(self, assert_func):
@@ -1951,10 +1951,10 @@ class AclgraphTest(unittest.TestCase):
             set_stream_count = 0
             get_stream_count = 0
             for node in concrete_graph.fx_graph.graph.nodes:
-                if str(node.target) == "air.scope_enter.default":
+                if str(node.target) == "npugraph_ex.scope_enter.default":
                     scope_enter_count += 1
 
-                if str(node.target) == "air.scope_exit.default":
+                if str(node.target) == "npugraph_ex.scope_exit.default":
                     scope_enter_count -= 1
                 if "function get_stream_limit" in str(node.target):
                     assert "function current_stream" in str(node.prev.target)
@@ -2182,13 +2182,13 @@ def patch_dynamo():
     def patch_user_defined_class_variable():
         import functools
         original_method = UserDefinedClassVariable._in_graph_classes
-        
+
         @staticmethod
         @functools.lru_cache(None)
         def patched_in_graph_classes():
             result = original_method()
-            result.add(torch.npu.Event)  
-            result.add(torch.npu.Stream) 
+            result.add(torch.npu.Event)
+            result.add(torch.npu.Stream)
             return result
         UserDefinedClassVariable._in_graph_classes = patched_in_graph_classes
 
@@ -2212,7 +2212,7 @@ def patch_dynamo():
             return torch._dynamo.variables.TorchInGraphFunctionVariable(
                 torch.npu.fake_record_stream
             ).call_function(tx, [self, s], {})
-        
+
         torch._dynamo.variables.tensor.TensorVariable.method_record_stream = method_record_stream
 
     def patch_variable_builder():

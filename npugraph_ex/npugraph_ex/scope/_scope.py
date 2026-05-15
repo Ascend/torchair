@@ -7,13 +7,13 @@ from ._lib import lib
 from ._scope_attr import scope_enter, scope_exit
 
 
-if not hasattr(torch.ops.air, "scope_enter"):
+if not hasattr(torch.ops.npugraph_ex, "scope_enter"):
     lib.define(
         """
         scope_enter(str[] keys, str[] values, bool need_execute=False) -> None
         """
     )
-    has_side_effect(torch.ops.air.scope_enter.default)
+    has_side_effect(torch.ops.npugraph_ex.scope_enter.default)
 
 
     @torch.library.impl(lib, "scope_enter", "Meta")
@@ -35,16 +35,16 @@ if not hasattr(torch.ops.air, "scope_enter"):
 def _npu_scope_enter(attrs):
     keys, values = zip(*attrs)
     keys, values = list(keys), list(values)
-    return torch.ops.air.scope_enter(keys, values)
+    return torch.ops.npugraph_ex.scope_enter(keys, values)
 
 
-if not hasattr(torch.ops.air, "scope_exit"):
+if not hasattr(torch.ops.npugraph_ex, "scope_exit"):
     lib.define(
         """
         scope_exit(bool need_execute=False) -> None
         """
     )
-    has_side_effect(torch.ops.air.scope_exit.default)
+    has_side_effect(torch.ops.npugraph_ex.scope_exit.default)
 
 
     @torch.library.impl(lib, "scope_exit", "Meta")
@@ -64,4 +64,4 @@ if not hasattr(torch.ops.air, "scope_exit"):
 
 
 def _npu_scope_exit():
-    return torch.ops.air.scope_exit()
+    return torch.ops.npugraph_ex.scope_exit()

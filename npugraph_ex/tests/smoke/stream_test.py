@@ -73,7 +73,7 @@ class StreamTest(unittest.TestCase):
             from npugraph_ex._acl_concrete_graph import cat_optimization
             cat_optimization.optimize_cat_with_out_tensor = self.optimize_cat_bak
         return super().tearDown()
-    
+
     def test_npu_stream_switch_with_stream_closure(self):
         class Model(torch.nn.Module):
             def __init__(self):
@@ -97,40 +97,40 @@ class StreamTest(unittest.TestCase):
             opt_model(x, x, x, x)
 
         self.assertTrue(
-            any("tagged_event_record_default = torch.ops.air.tagged_event_record.default"
+            any("tagged_event_record_default = torch.ops.npugraph_ex.tagged_event_record.default"
                 in log for log in cm.output),
             f"Expected no DEBUG log 'Try to capture node names[tagged_event_record_default] "
-            f"type[air.tagged_event_record.default]' in logs: {cm.output}")
+            f"type[npugraph_ex.tagged_event_record.default]' in logs: {cm.output}")
         self.assertTrue(
-            any("tagged_event_wait_default = torch.ops.air.tagged_event_wait.default"
+            any("tagged_event_wait_default = torch.ops.npugraph_ex.tagged_event_wait.default"
                 in log for log in cm.output),
             f"Expected no DEBUG log 'Try to capture node names[tagged_event_wait_default] "
-            f"type[air.tagged_event_wait.default]' in logs: {cm.output}")
+            f"type[npugraph_ex.tagged_event_wait.default]' in logs: {cm.output}")
 
         self.assertTrue(
-            any("tagged_event_record_on_stream_default = torch.ops.air.tagged_event_record_on_stream.default"
+            any("tagged_event_record_on_stream_default = torch.ops.npugraph_ex.tagged_event_record_on_stream.default"
                 in log for log in cm.output),
             f"Expected no DEBUG log 'Try to capture node names[tagged_event_record_on_stream_default] "
-            f"type[air.tagged_event_wait.default]' in logs: {cm.output}")
+            f"type[npugraph_ex.tagged_event_wait.default]' in logs: {cm.output}")
 
         self.assertTrue(
-            any("tagged_event_record_on_stream_default_1 = torch.ops.air.tagged_event_record_on_stream.default"
+            any("tagged_event_record_on_stream_default_1 = torch.ops.npugraph_ex.tagged_event_record_on_stream.default"
                 in log for log in cm.output),
             f"Expected no DEBUG log 'Try to capture node names[tagged_event_record_on_stream_default_1] "
-            f"type[air.tagged_event_wait.default]' in logs: {cm.output}")
+            f"type[npugraph_ex.tagged_event_wait.default]' in logs: {cm.output}")
 
         self.assertTrue(
-            any("tagged_event_wait_on_stream_default = torch.ops.air.tagged_event_wait_on_stream.default"
+            any("tagged_event_wait_on_stream_default = torch.ops.npugraph_ex.tagged_event_wait_on_stream.default"
                 in log for log in cm.output),
             f"Expected no DEBUG log 'Try to capture node names[tagged_event_wait_on_stream_default] "
-            f"type[air.tagged_event_wait.default]' in logs: {cm.output}")
+            f"type[npugraph_ex.tagged_event_wait.default]' in logs: {cm.output}")
 
 
         self.assertTrue(
-            any("tagged_event_wait_on_stream_default_1 = torch.ops.air.tagged_event_wait_on_stream.default"
+            any("tagged_event_wait_on_stream_default_1 = torch.ops.npugraph_ex.tagged_event_wait_on_stream.default"
                 in log for log in cm.output),
             f"Expected no DEBUG log 'Try to capture node names[tagged_event_wait_on_stream_default_1] "
-            f"type[air.tagged_event_wait.default]' in logs: {cm.output}")
+            f"type[npugraph_ex.tagged_event_wait.default]' in logs: {cm.output}")
 
 
     def test_npu_stream_switch_with_tagged_event(self):
@@ -162,8 +162,8 @@ class StreamTest(unittest.TestCase):
             event_record = 0
             for node in concrete_graph.fx_graph.graph.nodes:
                 if str(node.target) == "aten.mm.default":
-                    assert str(node.prev.target) == "air.tagged_event_wait.default"
-                if str(node.target) == "air.tagged_event_record.default":
+                    assert str(node.prev.target) == "npugraph_ex.tagged_event_wait.default"
+                if str(node.target) == "npugraph_ex.tagged_event_record.default":
                     event_record += 1
             assert event_record == 5, f"expect event record count is 5, but got {event_record}"
 
@@ -218,8 +218,8 @@ class StreamTest(unittest.TestCase):
             model()
 
         self.assertTrue(
-            any("call_function[target=torch.ops.air.record_tagged_stream.default]" in log for log in cm.output),
-            f"Expected DEBUG log 'call_function[target=torch.ops.air.record_tagged_stream.default]' in logs: {cm.output}"
+            any("call_function[target=torch.ops.npugraph_ex.record_tagged_stream.default]" in log for log in cm.output),
+            f"Expected DEBUG log 'call_function[target=torch.ops.npugraph_ex.record_tagged_stream.default]' in logs: {cm.output}"
         )
         torch.Tensor.record_stream = origin
 
@@ -258,7 +258,7 @@ class StreamTest(unittest.TestCase):
     def test_npu_multi_stream_with_multi_graph(self):
         from npugraph_ex._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
         options = {"clone_input": False, "input_inplace_pass": True}
-        
+
         class Model(torch.nn.Module):
             def __init__(self):
                 super().__init__()
@@ -307,7 +307,7 @@ class StreamTest(unittest.TestCase):
 
         class StubTensor:
             def record_stream(self, stream):
-                return 
+                return
 
         origin = torch.Tensor.record_stream
         torch.Tensor.record_stream = StubTensor.record_stream
@@ -315,7 +315,7 @@ class StreamTest(unittest.TestCase):
         class Model(torch.nn.Module):
             def __init__(self):
                 super().__init__()
-            
+
             def forward(self, in1, in2, in3, in4):
                 stream1 = torch.npu.Stream()
                 stream2 = torch.npu.Stream()
@@ -338,7 +338,7 @@ class StreamTest(unittest.TestCase):
                     event2.wait()
                     add2 = torch.add(in3, in4)
                 return add_result, mm_result, mm1, add2, C
-        
+
         model = Model()
         options = {
             "static_kernel_compile": True,
@@ -404,7 +404,7 @@ class StreamTest(unittest.TestCase):
             model(x)
 
     def test_custom_mutated_arg_used_by_multi_stream_with_event_wait(self):
-        
+
         class Model(torch.nn.Module):
             def __init__(self):
                 super().__init__()
@@ -418,21 +418,21 @@ class StreamTest(unittest.TestCase):
                 event.wait()
                 res = x + 1
                 return res
-        
+
         model = Model()
         opt_model = torch.compile(model, backend="npugraph_ex", fullgraph=True, dynamic=False)
         x = torch.randn(3, 3)
         y = torch.randn(3, 3)
         with capture_logger() as stdout:
             res = opt_model(x, y)
-        
+
         self.assertTrue(
             any("The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events." in log for log in stdout.getvalue().splitlines()),
             f"Expected DEBUG log 'The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events.' in logs: {stdout.getvalue()}"
         )
-    
+
     def test_custom_mutated_arg_used_by_multi_stream_with_event_wait_on_stream(self):
-        
+
         class Model(torch.nn.Module):
             def __init__(self):
                 super().__init__()
@@ -447,21 +447,21 @@ class StreamTest(unittest.TestCase):
                 event.wait(current_stream)
                 res = x + 1
                 return res
-        
+
         model = Model()
         opt_model = torch.compile(model, backend="npugraph_ex", fullgraph=True, dynamic=False)
         x = torch.randn(3, 3)
         y = torch.randn(3, 3)
         with capture_logger() as stdout:
             res = opt_model(x, y)
-        
+
         self.assertTrue(
             any("The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events." in log for log in stdout.getvalue().splitlines()),
             f"Expected DEBUG log 'The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events.' in logs: {stdout.getvalue()}"
         )
 
     def test_custom_mutated_arg_used_by_multi_stream_with_event_record_on_stream(self):
-        
+
         class Model(torch.nn.Module):
             def __init__(self):
                 super().__init__()
@@ -476,21 +476,21 @@ class StreamTest(unittest.TestCase):
                 event.wait(current_stream)
                 res = x + 1
                 return res
-        
+
         model = Model()
         opt_model = torch.compile(model, backend="npugraph_ex", fullgraph=True, dynamic=False)
         x = torch.randn(3, 3)
         y = torch.randn(3, 3)
         with capture_logger() as stdout:
             res = opt_model(x, y)
-        
+
         self.assertTrue(
             any("The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events." in log for log in stdout.getvalue().splitlines()),
             f"Expected DEBUG log 'The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events.' in logs: {stdout.getvalue()}"
         )
 
     def test_custom_mutated_arg_used_by_chained_multi_stream_events(self):
-        
+
         class Model(torch.nn.Module):
             def __init__(self):
                 super().__init__()
@@ -511,21 +511,21 @@ class StreamTest(unittest.TestCase):
                 event2.wait(current_stream)
                 res = x + mid
                 return res
-        
+
         model = Model()
         opt_model = torch.compile(model, backend="npugraph_ex", fullgraph=True, dynamic=False)
         x = torch.randn(3, 3)
         y = torch.randn(3, 3)
         with capture_logger() as stdout:
             res = opt_model(x, y)
-        
+
         self.assertTrue(
             any("The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events." in log for log in stdout.getvalue().splitlines()),
             f"Expected DEBUG log 'The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events.' in logs: {stdout.getvalue()}"
         )
 
     def test_custom_mutated_arg_used_by_multi_stream_user_before_inplace(self):
-        
+
         class Model(torch.nn.Module):
             def __init__(self):
                 super().__init__()
@@ -539,21 +539,21 @@ class StreamTest(unittest.TestCase):
                     event.wait(stream)
                     ori_x = torch.ops.custom.custom_scatter_update(x, y)
                 return res
-        
+
         model = Model()
         opt_model = torch.compile(model, backend="npugraph_ex", fullgraph=True, dynamic=False)
         x = torch.randn(3, 3)
         y = torch.randn(3, 3)
         with capture_logger() as stdout:
             res = opt_model(x, y)
-        
+
         self.assertTrue(
             any("The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events." in log for log in stdout.getvalue().splitlines()),
             f"Expected DEBUG log 'The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events.' in logs: {stdout.getvalue()}"
         )
 
     def test_custom_mutated_arg_used_by_multi_stream_without_event_protection(self):
-        
+
         class Model(torch.nn.Module):
             def __init__(self):
                 super().__init__()
@@ -564,21 +564,21 @@ class StreamTest(unittest.TestCase):
                     ori_x = torch.ops.custom.custom_scatter_update(x, y)
                 res = x + 1
                 return res
-        
+
         model = Model()
         opt_model = torch.compile(model, backend="npugraph_ex", fullgraph=True, dynamic=False)
         x = torch.randn(3, 3)
         y = torch.randn(3, 3)
         with capture_logger() as stdout:
             res = opt_model(x, y)
-        
+
         self.assertTrue(
             any("The users of the mutated input node have multiple streams without event protection." in log for log in stdout.getvalue().splitlines()),
             f"Expected DEBUG log 'The users of the mutated input node have multiple streams without event protection.' in logs: {stdout.getvalue()}"
         )
 
     def test_builtin_inplace_arg_used_by_multi_stream_with_event_wait_on_stream(self):
-        
+
         class Model(torch.nn.Module):
             def __init__(self):
                 super().__init__()
@@ -593,21 +593,21 @@ class StreamTest(unittest.TestCase):
                 event.wait(current_stream)
                 res = y + x
                 return res
-        
+
         model = Model()
         opt_model = torch.compile(model, backend="npugraph_ex", fullgraph=True, dynamic=False)
         x = torch.randn(3, 3)
         y = torch.randn(3, 3)
         with capture_logger() as stdout:
             res = opt_model(x, y)
-        
+
         self.assertTrue(
             any("The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events." in log for log in stdout.getvalue().splitlines()),
             f"Expected DEBUG log 'The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events.' in logs: {stdout.getvalue()}"
         )
 
     def test_builtin_inplace_arg_used_by_chained_multi_stream_events(self):
-        
+
         class Model(torch.nn.Module):
             def __init__(self):
                 super().__init__()
@@ -628,14 +628,14 @@ class StreamTest(unittest.TestCase):
                 event2.wait(current_stream)
                 res = y + mid + x
                 return res
-        
+
         model = Model()
         opt_model = torch.compile(model, backend="npugraph_ex", fullgraph=True, dynamic=False)
         x = torch.randn(3, 3)
         y = torch.randn(3, 3)
         with capture_logger() as stdout:
             res = opt_model(x, y)
-        
+
         self.assertTrue(
             any("The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events." in log for log in stdout.getvalue().splitlines()),
             f"Expected DEBUG log 'The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events.' in logs: {stdout.getvalue()}"
@@ -700,7 +700,7 @@ class StreamTest(unittest.TestCase):
         )
 
     def test_builtin_inplace_arg_used_by_multi_stream_without_explicit_event(self):
-        
+
         class Model(torch.nn.Module):
             def __init__(self):
                 super().__init__()
@@ -711,14 +711,14 @@ class StreamTest(unittest.TestCase):
                     y.mul_(2)
                 res = y + x
                 return res
-        
+
         model = Model()
         opt_model = torch.compile(model, backend="npugraph_ex", fullgraph=True, dynamic=False)
         x = torch.randn(3, 3)
         y = torch.randn(3, 3)
         with capture_logger() as stdout:
             res = opt_model(x, y)
-        
+
         self.assertTrue(
             any("The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events." in log for log in stdout.getvalue().splitlines()),
             f"Expected DEBUG log 'The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events.' in logs: {stdout.getvalue()}"
