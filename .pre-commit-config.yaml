@@ -14,7 +14,7 @@ repos:
       - id: end-of-file-fixer
       - id: check-yaml
         args: ["--allow-multiple-documents"]
-      #- id: check-added-large-files
+      - id: check-added-large-files
       - id: check-merge-conflict
       - id: detect-private-key
       - id: check-json
@@ -31,18 +31,18 @@ repos:
 #        args: ["--config", "pre-commit/pyproject.toml"]
 #        types: [python]
 #
-#  # codespell
-#  - repo: https://gitcode.com/gh_mirrors/co/codespell
-#    rev: v2.4.1
-#    hooks:
-#      - id: codespell
-#        args: [
-#            "-L",
-#            "CANN,cann,NNAL,nnal,ASCEND,ascend,EnQue,CopyIn,ArchType,AND,ND,tbe,copyin,alog",
-#            "--skip",
-#            "*.toml,*.py,*.cpp,*.hpp,*.c,*.h",
-#          ]
-#
+  # codespell
+  - repo: https://gitcode.com/gh_mirrors/co/codespell
+    rev: v2.4.1
+    hooks:
+      - id: codespell
+        args: [
+            "-L",
+            "CANN,cann,NNAL,nnal,ASCEND,ascend,EnQue,CopyIn,ArchType,AND,ND,tbe,copyin,alog",
+            "--skip",
+            "*.toml,*.py,*.cpp,*.hpp,*.c,*.h",
+          ]
+
 #  # pylint：指定 pre-commit/pyproject.toml
 #  - repo: https://gitcode.com/gh_mirrors/pyl/pylint
 #    rev: v4.0.5
@@ -53,25 +53,25 @@ repos:
 #        args: ["--rcfile=pre-commit/pyproject.toml"]
 #        verbose: false
 #
-#  # Bandit：指定 pre-commit/pyproject.toml
-#  - repo: https://gitcode.com/gh_mirrors/ba/bandit
-#    rev: 1.9.4
-#    hooks:
-#      - id: bandit
-#        name: bandit (Python 安全漏洞检查)
-#        types: [python]
-#        args: [
-#          "--config=pre-commit/pyproject.toml",
-#          "--quiet",
-#        ]
-#
-#  # typos
-#  - repo: https://gitcode.com/gh_mirrors/ty/typos
-#    rev: v1.32.0
-#    hooks:
-#      - id: typos
-#        args: ["--force-exclude", "--config", "pre-commit/typos.toml"]
-#
+  # Bandit：指定 pre-commit/pyproject.toml
+  - repo: https://gitcode.com/gh_mirrors/ba/bandit
+    rev: 1.9.4
+    hooks:
+      - id: bandit
+        name: bandit (Python 安全漏洞检查)
+        types: [python]
+        args: [
+          "--config=pre-commit/pyproject.toml",
+          "--quiet",
+        ]
+
+  # typos
+  - repo: https://gitcode.com/gh_mirrors/ty/typos
+    rev: v1.32.0
+    hooks:
+      - id: typos
+        args: ["--force-exclude", "--config", "pre-commit/typos.toml"]
+
 #  #--------------- C++ 核心检查 ---------------------------------------------
 #  - repo: https://gitcode.com/pre-commit-clang/mirrors-clang-format
 #    rev: v18.1.8
