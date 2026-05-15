@@ -39,7 +39,7 @@ torch._register_device_module('npu', generate_faked_module())
 
 def get_npugraph_ex_backend():
     def _exec(*args, **kwargs):
-        import npugraph_ex       
+        import npugraph_ex
         config = npugraph_ex.CompilerConfig()
         config.mode = "npugraph_ex"
         return npugraph_ex.get_npu_backend(compiler_config=config)(*args, **kwargs)
@@ -94,6 +94,11 @@ class NpugraphExSt(unittest.TestCase):
         from npugraph_ex._acl_concrete_graph import cat_optimization
         cat_optimization.optimize_cat_with_out_tensor = self.optimize_cat_with_out_tensor
         reset_debug_ctx()
+        from npugraph_ex.core import utils
+        utils._torchair_debug_log_path = None
+        for h in list(logger.handlers):
+            if isinstance(h, logging.FileHandler):
+                logger.removeHandler(h)
         return super().tearDown()
 
     def test_aclgraph_capture_and_replay(self):
@@ -111,7 +116,7 @@ class NpugraphExSt(unittest.TestCase):
         x = torch.randn([3, 2])
         for i in range(2):
             model(x)
-    
+
     def test_fx_node_shape_analysis(self):
         class Dim:
             def __init__(self, node: fx.Node):
@@ -1240,7 +1245,7 @@ class NpugraphExSt(unittest.TestCase):
 
 
     # Generate patterns with auto-incremented indics
-    def check_debug_dump_full_files(self, root_path, sub_dir="model", phases=["forward", "backward"], high_version=False, is_custom_backend=False):
+    def check_debug_dump_full_files(self, root_path, sub_dir="model", phases=["forward", "backward"], high_version=False):
 
         # Define templates for ACL mode (without hardcoded indices)
         ACL_DEBUG_FILES = [
@@ -1273,9 +1278,8 @@ class NpugraphExSt(unittest.TestCase):
         ]
 
         patterns = []
-        if not is_custom_backend:
-            for file in ACL_DEBUG_FILES:
-                patterns.append(file)
+        for file in ACL_DEBUG_FILES:
+            patterns.append(file)
         # Add common files
         for file in ACL_COMMON_FILES:
             patterns.append(f"{sub_dir}__{{id}}/{file}")
@@ -1321,7 +1325,7 @@ class NpugraphExSt(unittest.TestCase):
                 msg=f"File count mismatch: expected {expected_count} files, got {actual_count} files\n{actual_msg}"
             )
         return patterns
-        
+
     @unittest.skipIf(torch.__version__ < "2.6", "")
     def test_torch_compile_acl_debug_dump(self):
 
@@ -1338,7 +1342,7 @@ class NpugraphExSt(unittest.TestCase):
 
             def _custom_post_fn(gm, example_inputs, config: CompilerConfig):
                 return None
-            
+
             options = {"remove_noop_ops":  True, "post_grad_custom_pre_pass": _custom_pre_fn, "post_grad_custom_post_pass": _custom_post_fn}
             class Model(torch.nn.Module):
                 def forward(self, x):
@@ -1371,7 +1375,6 @@ class NpugraphExSt(unittest.TestCase):
             torch._dynamo.config.patch(debug_dir_root=tmpdir):
             self.assertIsNotNone(tmpdir)
             os.environ['TORCH_COMPILE_DEBUG'] = '1'
-
             def _custom_pre_fn(gm, example_inputs, config: CompilerConfig):
                 return None
 
@@ -1407,7 +1410,7 @@ class NpugraphExSt(unittest.TestCase):
 
     @unittest.skipIf(torch.__version__ < "2.6", "")
     def test_compile_fx_debug_dump(self):
-        
+
         from torch._dynamo.utils import get_debug_dir
         import tempfile
 
@@ -1415,20 +1418,19 @@ class NpugraphExSt(unittest.TestCase):
             torch._dynamo.config.patch(debug_dir_root=tmpdir):
             self.assertIsNotNone(tmpdir)
             os.environ['TORCH_COMPILE_DEBUG'] = '1'
-
             def _custom_pre_fn(gm, example_inputs, config: CompilerConfig):
                 return None
 
             def _custom_post_fn(gm, example_inputs, config: CompilerConfig):
                 return None
-            
+
             options = {"remove_noop_ops":  True, "post_grad_custom_pre_pass": _custom_pre_fn, "post_grad_custom_post_pass": _custom_post_fn}
             class Model(torch.nn.Module):
                 def forward(self, x):
                     return 2 * x
 
             def custom_compiler(gm: torch.fx.GraphModule, example_inputs):
-              
+
                 compiled_graph = compile_fx(
                     gm,
                     example_inputs,
@@ -1449,7 +1451,7 @@ class NpugraphExSt(unittest.TestCase):
             torchair_root = os.path.join(debug_dir_output, "npugraph_ex")
             self.assertTrue(os.path.exists(torchair_root), msg=f"torchair directory does not exist: {torchair_root}")
 
-            self.check_debug_dump_full_files(torchair_root, sub_dir="compile", phases=["compile_fx"], high_version=True, is_custom_backend=True)
+            self.check_debug_dump_full_files(torchair_root, sub_dir="compile", phases=["compile_fx"], high_version=True)
 
     def test_aclgraph_userinput_construct_in_share_memory_with_parameter_and_mutated(self):
         class Model(torch.nn.Module):
@@ -1911,7 +1913,7 @@ class NpugraphExSt(unittest.TestCase):
                 if node.op == "call_function" and node.target == torch.ops.aten.sqrt.default:
                     with fx_graph.inserting_before(node):
                         fx_graph.call_function(torch.ops.air.scope_enter.default, args=(
-                            ['_user_stream_label', '_user_stream_priority', '_user_stream_id', '_user_stream_device_index', '_user_stream_device_type'], 
+                            ['_user_stream_label', '_user_stream_priority', '_user_stream_id', '_user_stream_device_index', '_user_stream_device_type'],
                             ["stream0", '0', '96', '1', '20']))
 
                 if node.op == "call_function" and node.target == torch.ops.aten.add.Tensor:
@@ -1925,7 +1927,7 @@ class NpugraphExSt(unittest.TestCase):
                 if node.op == "call_function" and node.target == torch.ops.aten._softmax.default:
                     with fx_graph.inserting_before(node):
                         fx_graph.call_function(torch.ops.air.scope_enter.default, args=(
-                            ['_user_stream_label', '_user_stream_priority', '_user_stream_id', '_user_stream_device_index', '_user_stream_device_type'], 
+                            ['_user_stream_label', '_user_stream_priority', '_user_stream_id', '_user_stream_device_index', '_user_stream_device_type'],
                             ["stream1", '0', '97', '1', '20']))
 
                 if node.op == "call_function" and node.target == torch.ops.aten.split_with_sizes.default:
@@ -1989,7 +1991,7 @@ class NpugraphExSt(unittest.TestCase):
         empty_found_after = False
         slice_found_after = False
         out_ops_found_after = False
-        
+
         # Check graph after optimization
         for node in graph_after.graph.nodes:
             if node.op == "call_function":
@@ -2002,7 +2004,7 @@ class NpugraphExSt(unittest.TestCase):
                 # Check for operations with 'out' in kwargs
                 if node.kwargs and 'out' in node.kwargs:
                     out_ops_found_after = True
-        
+
         # Cat optimization should succeed: cat removed, empty+slice+out ops added
         self.assertFalse(
             cat_found_after,
@@ -2023,11 +2025,11 @@ class NpugraphExSt(unittest.TestCase):
 
     def assert_optimization_skipped(self, graph_before, graph_after):
         """Verify that optimization was skipped."""
-        cat_nodes_before = [n for n in graph_before.graph.nodes 
+        cat_nodes_before = [n for n in graph_before.graph.nodes
                             if n.op == "call_function" and n.target == torch.ops.aten.cat.default]
-        cat_nodes_after = [n for n in graph_after.graph.nodes 
+        cat_nodes_after = [n for n in graph_after.graph.nodes
                             if n.op == "call_function" and n.target == torch.ops.aten.cat.default]
-        
+
         # Cat node should still exist (optimization skipped)
         self.assertEqual(len(cat_nodes_before), len(cat_nodes_after),
                            "Cat node should still exist when optimization is skipped")
@@ -2041,16 +2043,16 @@ class NpugraphExSt(unittest.TestCase):
             return result
 
         x = torch.randn(8, dtype=torch.float32)
-        
+
         from npugraph_ex._acl_concrete_graph import cat_optimization
         cat_optimization.optimize_cat_with_out_tensor = create_cat_optimization_pass_wrapper(self.assert_cat_optimization_success)
-        
+
         options = {}
 
         model = torch.compile(f, backend="npugraph_ex", options=options, dynamic=True)
         x = torch.randn(8, dtype=torch.float32)
         result = model(x)
-        
+
         expected = torch.cat([x.exp(), x.exp()], dim=0)
         self.assertTrue(torch.allclose(result, expected, atol=1e-5))
 
@@ -2082,10 +2084,10 @@ class NpugraphExSt(unittest.TestCase):
             return result
 
         x = torch.randn(2, 8, dtype=torch.float32)
-        
+
         from npugraph_ex._acl_concrete_graph import cat_optimization
         cat_optimization.optimize_cat_with_out_tensor = create_cat_optimization_pass_wrapper(self.assert_optimization_skipped)
-        
+
         options = {}
         model = torch.compile(f, backend="npugraph_ex", options=options, dynamic=True)
         result = model(x)
@@ -2100,10 +2102,10 @@ class NpugraphExSt(unittest.TestCase):
             return result
 
         x = torch.randn(8, dtype=torch.float32)
-        
+
         from npugraph_ex._acl_concrete_graph import cat_optimization
         cat_optimization.optimize_cat_with_out_tensor = create_cat_optimization_pass_wrapper(self.assert_optimization_skipped)
-        
+
         options = {}
         model = torch.compile(f, backend="npugraph_ex", options=options, dynamic=True)
         result = model(x)
@@ -2117,10 +2119,10 @@ class NpugraphExSt(unittest.TestCase):
             output3.add_(y)
             result = torch.cat([output1, output2, output3], dim=0)
             return result
-        
+
         from npugraph_ex._acl_concrete_graph import cat_optimization
         cat_optimization.optimize_cat_with_out_tensor = create_cat_optimization_pass_wrapper(self.assert_cat_optimization_success)
-        
+
         options = {}
         model = torch.compile(f, backend="npugraph_ex", options=options, dynamic=True)
         x = torch.randn(8, 3, dtype=torch.float32)
@@ -2129,7 +2131,7 @@ class NpugraphExSt(unittest.TestCase):
 
         expected = torch.cat([x.exp(), x.sin(), x + y], dim=0)
         self.assertTrue(torch.allclose(result, expected, atol=1e-5))
-        
+
 
     def test_npugraph_ex_process_kwargs_options_invalid_option(self):
         config = CompilerConfig()
@@ -2151,7 +2153,7 @@ class NpugraphExSt(unittest.TestCase):
 
     def test_compile_fx(self):
         """Test compile_fx with torch.compile and custom_backend."""
-        
+
         from npugraph_ex import npu_fx_compiler
 
         class DsModel(torch.nn.Module):
@@ -2161,7 +2163,7 @@ class NpugraphExSt(unittest.TestCase):
             def forward(self, x1, x2):
                 output = torch.matmul(x1.transpose(0, 1), x2).transpose(0, 1)
                 return output
-        
+
         captured_config = None
         original_get_compiler = npu_fx_compiler.get_compiler
 
@@ -2203,7 +2205,7 @@ class NpugraphExSt(unittest.TestCase):
 
         def custom_backend(gm: torch.fx.GraphModule, example_inputs):
             return aot_module_simplified(gm, example_inputs, fw_compiler=custom_compiler)
-        
+
         # 准备数据
         x1 = torch.randn(4, 64, 512, dtype=torch.float16)
         x2 = torch.randn(64, 512, 128, dtype=torch.float16)
@@ -2233,7 +2235,7 @@ class NpugraphExSt(unittest.TestCase):
     def test_capture_error_mode_option(self):
         def f(x):
             return x + 1
-        
+
         input = torch.randn([2, 2])
 
         def test_mode(mode = None):
@@ -2247,7 +2249,7 @@ class NpugraphExSt(unittest.TestCase):
                 mode = "global"
             match_log = f"capture_error_mode=\"{mode}\""
             return any(match_log in log for log in cm.output)
-        
+
         # 测试capture_error_mode不配置和分别为global, thread_local, relaxed
         self.assertTrue(test_mode())
         self.assertTrue(test_mode("global"))

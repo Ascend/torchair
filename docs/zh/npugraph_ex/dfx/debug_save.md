@@ -4,7 +4,7 @@
 
 为方便问题定位过程中的信息收集，npugraph\_ex通过复用PyTorch**原生DEBUG环境变量TORCH_COMPILE_DEBUG**，当其设置为1时，将自动开启所有必要的日志打印与文件Dump。
 
-**图 1**  图编译示意图  
+**图 1**  图编译示意图
 ![](../../figures/graph_compile_1.png "图编译示意图")
 
 开启本功能后，图编译过程中能自动收集的关键调试信息如上图所示 ，详细说明参见下表。
@@ -19,6 +19,7 @@
 ## 使用约束
 
 - 使用[compile_fx](../api/npugraph_ex//compile_fx.md)开启该功能时，仅收集编译流程中的部分调试产物。
+- 分布式场景下，需在脚本开头`import npugraph_ex`，确保debug目录能正确创建。
 - 本功能支持的产品型号参见[使用说明](../../overview.md#使用说明)。
 
 ## 使用方法
@@ -40,16 +41,16 @@ python main.py
     import logging
     import torch
     import torch_npu
-    
+
     # 开启Dynamo日志
-    torch._logging.set_logs(dynamo=logging.DEBUG, aot=logging.DEBUG, output_code=True, graph_code=True) 
+    torch._logging.set_logs(dynamo=logging.DEBUG, aot=logging.DEBUG, output_code=True, graph_code=True)
     class Model(torch.nn.Module):
         def forward(self, x):
             return 2 * x
-    
+
     model = Model().npu()
     model = torch.compile(model, backend="npugraph_ex", dynamic=False, fullgraph=True)
-    x = torch.randn(20, 20, requires_grad=False).npu()  
+    x = torch.randn(20, 20, requires_grad=False).npu()
     out = model(x)
     ```
 
@@ -66,7 +67,7 @@ python main.py
     │   │   │   ├── 001_aot_forward_graph_after_${pass1_name}.txt     # 公共图优化过程中每个Pass的输出FX图
     │   │   │   ├── 002_aot_forward_graph_after_${pass2_name}.txt
     │   │   │   ├── 003_aot_forward_graph_after_${pass5_name}.txt     # aclgraph优化中不同pass处理后的FX图
-    │   │   │   ├── 004_aot_forward_graph_after_${pass6_name}.txt  
+    │   │   │   ├── 004_aot_forward_graph_after_${pass6_name}.txt
     │   │   │   ├── ......                                            # 其他Pass优化
     │   │   ├── dynamo_out_graph.txt                                  # AOT前的GraphModule
     │   │   ├── graph_1_id_${aclgraph_id}_rank_${rank_id}_pid_${pid}_ts_${timestamp}.json      # 捕获的算子执行图信息

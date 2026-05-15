@@ -428,7 +428,7 @@ def _valid_graph(graph_module):
                         matched_begin_node = begin_node
                         matched_index = i
                         break
-                
+
                 if matched_begin_node is None:
                     raise RuntimeError(
                         f"No matching torch.npu.super_kernel_scope_begin found for torch.npu.super_kernel_scope_end "
@@ -453,7 +453,7 @@ def _valid_graph(graph_module):
                                f"there is no paired call to the torch.npu.super_kernel_scope_end operator. "
                                f"The parameters for these torch.npu.super_kernel_scope_begin calls are:{args_list}. "
                                f"Please check your code or your post_grad_custom_pre_pass post_grad_custom_post_pass!"
-                               f"This error may also occur in a Dynamo graph break scenario.") 
+                               f"This error may also occur in a Dynamo graph break scenario.")
 
     _check_scope_enter_exit(graph_module)
 
@@ -483,9 +483,9 @@ class _CompiledFxGraph:
         if self.run_kernel is None:
             if self.config is not None:
                 py_code = self.get_code()
-                if not isinstance(py_code, str):	 
-                    self.run_kernel = py_code	 
-                else:	 
+                if not isinstance(py_code, str):
+                    self.run_kernel = py_code
+                else:
                     ge_mod = _compile_py_code(py_code)
                     kernel = getattr(ge_mod, 'kernel')
                     if hasattr(self.runner, 'execution_kernel'):
@@ -529,8 +529,8 @@ class _CompiledFxGraph:
 
     @pretty_error_msg
     def get_code(self, extend_config=None):
-        if not hasattr(self.runner, 'codegen'): 
-            logger.warning(f'When enable FX Graph summarizing or dumping, codegen is unsupported.') 
+        if not hasattr(self.runner, 'codegen'):
+            logger.warning(f'When enable FX Graph summarizing or dumping, codegen is unsupported.')
             return self.runner
         py_code = self.runner.codegen(extend_config=extend_config, enable_cache=True)
         if py_code is None:
@@ -667,6 +667,7 @@ def compile_fx(gm, example_inputs=None, options=None):
     Returns:
         _CompiledFxGraph: The compiled graph.
     """
+    _init_debug_logging()
     compiler_config = CompilerConfig()
     _process_kwargs_options(compiler_config, {"options": {} if options is None else options})
 
