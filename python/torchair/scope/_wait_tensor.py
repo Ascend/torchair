@@ -18,9 +18,8 @@ def kernel_meta(self: torch.Tensor, dependency: torch.Tensor):
 
 def kernel_impl(self: torch.Tensor, dependency: torch.Tensor):
     raise NotImplementedError(
-        "torch.ops.air.wait_tensor kernel_impl is not implemented! if you are using torch.compile"
-        "(mode=\"reduce-overhead\"), npu_wait_tensor is not support in this mode, please use "
-        "npu_create_tagged_event/npu_tagged_event_record/npu_tagged_event_wait instead!")
+        "torch.ops.air.wait_tensor kernel_impl is not implemented! npu_wait_tensor is not support in this mode."
+    )
 
 
 torch.library.impl(lib, "wait_tensor", "CPU")(kernel_impl)
@@ -32,10 +31,7 @@ def _npu_wait_tensor(self: torch.Tensor, dependency: torch.Tensor):
 
 
 @register_fx_node_ge_converter(torch.ops.air.wait_tensor.default)
-def convert_wait_tensor(self: Tensor,
-                        dependency: Tensor,
-                        meta_outputs: TensorSpec = None
-):
+def convert_wait_tensor(self: Tensor, dependency: Tensor, meta_outputs: TensorSpec = None):
     control = ControlTensor(dependency.node).controller
     identity = ge.Identity(self)
     identity.node.input.append(control)

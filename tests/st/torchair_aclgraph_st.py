@@ -756,8 +756,7 @@ class AclGraphSt(unittest.TestCase):
         try:
             model(in1, in2, in3, in4)
         except Exception as e:
-            assert str(e).__contains__("torch.ops.air.wait_tensor kernel_impl is not implemented! "
-                                       "if you are using torch.compile")
+            assert str(e).__contains__("torch.ops.air.wait_tensor kernel_impl is not implemented! ")
 
     def test_record_stream_with_reduce_over_head(self):
 
@@ -2226,7 +2225,7 @@ class AclGraphSt(unittest.TestCase):
             any("torch.ops.air.tagged_event_wait.default("
                 in log for log in cm.output),
             f"Expected DEBUG log 'Wait successfully,stream:' in logs: {cm.output}")
-    
+
     def test_npu_stream_record_wait_with_record(self):
         class Model(torch.nn.Module):
             def __init__(self):
@@ -2915,7 +2914,7 @@ class AclGraphSt(unittest.TestCase):
                 pass
         self.assertTrue("current_stream = torchair_st_stub_aclgraph_utils_current_stream()" in stdout.getvalue())
         self.assertTrue("Codegen for graph" in stdout.getvalue())
-        
+
         model2 = Model2()
         model2 = torch.compile(model2, backend=aclgraph_backend, fullgraph=True, dynamic=False)
         with capture_logger() as stdout:
@@ -2925,7 +2924,7 @@ class AclGraphSt(unittest.TestCase):
                 pass
         self.assertTrue("current_stream = torchair_st_stub_aclgraph_utils_current_stream()" in stdout.getvalue())
         self.assertTrue("Codegen for graph" in stdout.getvalue())
-        
+
         model3 = Model3()
         model3 = torch.compile(model3, backend=aclgraph_backend, fullgraph=True, dynamic=False)
         with capture_logger() as stdout:
@@ -3553,7 +3552,7 @@ class AclGraphSt(unittest.TestCase):
 
         class StubTensor:
             def record_stream(self, stream):
-                return 
+                return
 
         origin = torch.Tensor.record_stream
         torch.Tensor.record_stream = StubTensor.record_stream
@@ -3561,7 +3560,7 @@ class AclGraphSt(unittest.TestCase):
         class Model(torch.nn.Module):
             def __init__(self):
                 super().__init__()
-            
+
             def forward(self, in1, in2, in3, in4):
                 add_result = torch.add(in1, in2)
                 torchair.ops.npu_tagged_event_record(tagged_event1)
@@ -3579,7 +3578,7 @@ class AclGraphSt(unittest.TestCase):
                     torchair.ops.npu_tagged_event_wait(tagged_event2)
                     add2 = torch.add(in3, in4)
                 return add_result, mm_result, mm1, add2, C
-        
+
         model = Model()
         config = CompilerConfig()
         config.mode = "npugraph_ex"
@@ -3596,7 +3595,7 @@ class AclGraphSt(unittest.TestCase):
                 result = model(in1, in2, in3, in4)
             except Exception:
                 pass
-        
+
         expected_pattern = re.compile(
             r'def forward\(\*args,\s*node_info=\[\],\s*is_capturing:\s*bool\s*=\s*False\):'
             r'.*?'
@@ -3614,13 +3613,13 @@ class AclGraphSt(unittest.TestCase):
             re.DOTALL
         )
         self.assertIsNotNone(expected_pattern.search(stdout.getvalue()))
-    
+
     def test_force_eager_with_multi_stream(self):
 
         class Model(torch.nn.Module):
             def __init__(self):
                 super().__init__()
-            
+
             def forward(self, in1, in2, in3, in4):
                 add_result = torch.add(in1, in2)
                 with torchair.scope.npu_stream_switch('2', 3):
@@ -3630,7 +3629,7 @@ class AclGraphSt(unittest.TestCase):
                         torchair.scope.npu_wait_tensor(in3, add_result)
                         mm_result2 = torch.mm(in3, in4)
                 return add_result, mm_result1, mm_result2
-        
+
         model = Model()
         config = CompilerConfig()
         config.mode = "npugraph_ex"
@@ -3646,7 +3645,7 @@ class AclGraphSt(unittest.TestCase):
                 result = model(in1, in2, in3, in4)
             except Exception:
                 pass
-        
+
         expected_pattern = re.compile(
             r'def forward\(\*args,\s*node_info=\[\],\s*is_capturing:\s*bool\s*=\s*False\):'
             r'.*?'
@@ -3662,7 +3661,7 @@ class AclGraphSt(unittest.TestCase):
             re.DOTALL
         )
         self.assertIsNotNone(expected_pattern.search(stdout.getvalue()))
-    
+
     def test_aclgraph_cache_compile_static_kernel_run_eagerly(self):
         class Model(torch.nn.Module):
             def __init__(self):
@@ -3712,7 +3711,7 @@ class AclGraphSt(unittest.TestCase):
         empty_found_after = False
         slice_found_after = False
         out_ops_found_after = False
-        
+
         # Check graph after optimization
         for node in graph_after.graph.nodes:
             if node.op == "call_function":
@@ -3725,7 +3724,7 @@ class AclGraphSt(unittest.TestCase):
                 # Check for operations with 'out' in kwargs
                 if node.kwargs and 'out' in node.kwargs:
                     out_ops_found_after = True
-        
+
         # Cat optimization should succeed: cat removed, empty+slice+out ops added
         self.assertFalse(
             cat_found_after,
@@ -3746,11 +3745,11 @@ class AclGraphSt(unittest.TestCase):
 
     def assert_optimization_skipped(self, graph_before, graph_after):
         """Verify that optimization was skipped."""
-        cat_nodes_before = [n for n in graph_before.graph.nodes 
+        cat_nodes_before = [n for n in graph_before.graph.nodes
                             if n.op == "call_function" and n.target == torch.ops.aten.cat.default]
-        cat_nodes_after = [n for n in graph_after.graph.nodes 
+        cat_nodes_after = [n for n in graph_after.graph.nodes
                             if n.op == "call_function" and n.target == torch.ops.aten.cat.default]
-        
+
         # Cat node should still exist (optimization skipped)
         self.assertEqual(len(cat_nodes_before), len(cat_nodes_after),
                            "Cat node should still exist when optimization is skipped")
@@ -3764,10 +3763,10 @@ class AclGraphSt(unittest.TestCase):
             return result
 
         x = torch.randn(8, dtype=torch.float32)
-        
+
         from torchair._acl_concrete_graph import cat_optimization
         cat_optimization.optimize_cat_with_out_tensor = create_cat_optimization_pass_wrapper(self.assert_cat_optimization_success)
-        
+
         config = CompilerConfig()
         config.mode = "reduce-overhead"
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
@@ -3775,7 +3774,7 @@ class AclGraphSt(unittest.TestCase):
         model = torch.compile(f, backend=aclgraph_backend, dynamic=True)
         x = torch.randn(8, dtype=torch.float32)
         result = model(x)
-        
+
         expected = torch.cat([x.exp(), x.exp()], dim=0)
         self.assertTrue(torch.allclose(result, expected, atol=1e-5))
 
@@ -3810,10 +3809,10 @@ class AclGraphSt(unittest.TestCase):
             return result
 
         x = torch.randn(2, 8, dtype=torch.float32)
-        
+
         from torchair._acl_concrete_graph import cat_optimization
         cat_optimization.optimize_cat_with_out_tensor = create_cat_optimization_pass_wrapper(self.assert_optimization_skipped)
-        
+
         config = CompilerConfig()
         config.mode = "reduce-overhead"
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
@@ -3831,10 +3830,10 @@ class AclGraphSt(unittest.TestCase):
             return result
 
         x = torch.randn(8, dtype=torch.float32)
-        
+
         from torchair._acl_concrete_graph import cat_optimization
         cat_optimization.optimize_cat_with_out_tensor = create_cat_optimization_pass_wrapper(self.assert_optimization_skipped)
-        
+
         config = CompilerConfig()
         config.mode = "reduce-overhead"
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
@@ -3851,10 +3850,10 @@ class AclGraphSt(unittest.TestCase):
             output3.add_(y)
             result = torch.cat([output1, output2, output3], dim=0)
             return result
-        
+
         from torchair._acl_concrete_graph import cat_optimization
         cat_optimization.optimize_cat_with_out_tensor = create_cat_optimization_pass_wrapper(self.assert_cat_optimization_success)
-        
+
         config = CompilerConfig()
         config.mode = "reduce-overhead"
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
@@ -3890,7 +3889,7 @@ class AclGraphSt(unittest.TestCase):
 
         expected = f(x, y)
         self.assertTrue(torch.allclose(result, expected, atol=1e-5))
-   
+
     def test_pattern_pass_transpose_batchmatmul_logger(self):
         """Test npu_transpose_batchmatmul pattern pass logger."""
         def f(input1, input2):
