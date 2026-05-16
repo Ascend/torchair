@@ -398,13 +398,13 @@ def verify_cross_stream_event_protected(inplace_node: Node, users: List[Node]) -
     event_waits = {}    # tag -> [(stream_label, position)]
 
     event_record_targets = {
-        "air.tagged_event_record.default",
-        "air.tagged_event_record_on_stream.default",
+        "npugraph_ex.tagged_event_record.default",
+        "npugraph_ex.tagged_event_record_on_stream.default",
     }
 
     event_wait_targets = {
-        "air.tagged_event_wait.default",
-        "air.tagged_event_wait_on_stream.default",
+        "npugraph_ex.tagged_event_wait.default",
+        "npugraph_ex.tagged_event_wait_on_stream.default",
     }
 
     for pos, node in enumerate(graph.nodes):
