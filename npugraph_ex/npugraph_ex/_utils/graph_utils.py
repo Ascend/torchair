@@ -34,14 +34,14 @@ def add_stream_label_to_node_meta(graph_module: torch.fx.GraphModule) -> None:
             # Some node may not have 'meta' attr, such as int placeholder
             node.meta = {}
 
-        if str(node.target) == "air.scope_enter.default":
+        if str(node.target) == "npugraph_ex.scope_enter.default":
             scope_enter_nodes_stack.append(current_stream)
             is_user_stream = len(node.args) > 0 and '_user_stream_label' in node.args[0]
             if is_user_stream:
                 current_stream = node.args[1][0] if len(node.args) > 1 else None
             node.meta["stream_label"] = current_stream
 
-        elif str(node.target) == "air.scope_exit.default":
+        elif str(node.target) == "npugraph_ex.scope_exit.default":
             node.meta["stream_label"] = current_stream
             if scope_enter_nodes_stack:
                 current_stream = scope_enter_nodes_stack.pop()
