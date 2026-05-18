@@ -193,7 +193,7 @@ def torch_type_to_ge_type(dtype, m=DataType):
     if dtype == torch.float8_e5m2:
         return m.DT_FLOAT8_E5M2
     if dtype == torch.float8_e4m3fn:
-        return m.DT_FLOAT8_E4M3FN    
+        return m.DT_FLOAT8_E4M3FN
 
     for type_name, ge_type in [
         ("uint16", m.DT_UINT16),
@@ -934,7 +934,7 @@ class GeGraph(object):
 
     def dont_prune_me(self, op):
         self._dont_prune_me_ops.append(op)
-        
+
     def next_unique_name(self, name, op):
         def name_is_unique(op_name, counter):
             if counter:
@@ -943,11 +943,11 @@ class GeGraph(object):
                 return False
             self.op_name_list.append(op_name)
             return True
-        
+
         if not self.op_name_list:
             for node in self._proto.op:
                 self.op_name_list.append(node.name)
-                    
+
         if name is not None:
             if name.strip() == "":
                 raise AssertionError(f"empty node name '{name}' is not allowed, "
@@ -1669,7 +1669,7 @@ def torch_args_to_ge_args(*args, ge_support_info, op_type):
             ge_type = torch_type_to_ge_type(val)
             attrs[name] = constructor(ge_type)
             continue
-        
+
         attrs[name] = constructor(val)
 
     outputs = list(ge_outputs.keys())

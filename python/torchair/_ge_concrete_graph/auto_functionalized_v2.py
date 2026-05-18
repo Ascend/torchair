@@ -1,6 +1,7 @@
 from torch._dynamo.utils import detect_fake_mode
 from torchair.ge._ge_graph import get_default_ge_graph
 from torchair.ge._ge_graph import ControlTensor
+from torchair._ge_concrete_graph.compat_ir import Tensor, ge_op
 from torchair._ge_concrete_graph.ge_converter.converter_utils import *
 from torchair._ge_concrete_graph.infer_symbol_calculate import infer_ge_output_by_symbol_calculate
 from torchair._ge_concrete_graph.utils import is_host_data_tensor
@@ -9,7 +10,7 @@ from torchair._ge_concrete_graph.infer_symbol_shape import infer_and_gen_sym_sha
 
 def _view_copy(self, bases_list, *, dependencies = [], out_op = None):
     if hasattr(self, '_layout_equal') and self._layout_equal:
-        return _not_view_copy(self, bases_list, dependencies=dependencies, out_op=out_op)    
+        return _not_view_copy(self, bases_list, dependencies=dependencies, out_op=out_op)
     dst = bases_list[self.base_index]
     src = self._as_strided
     size = self.size
@@ -29,7 +30,7 @@ def _view_copy(self, bases_list, *, dependencies = [], out_op = None):
         while(index >= 0):
             src_stride[index] = ge.Mul(src_stride[index + 1], ge.Gather(size, index + 1))
             index = index - 1
-        src_stride = ge.Pack(src_stride, N=src_dim, axis=0)    
+        src_stride = ge.Pack(src_stride, N=src_dim, axis=0)
     return ge.ViewCopy(dst, size, stride, storage_offset, src, size, src_stride, 0, dependencies=dependencies)
 
 
@@ -40,16 +41,16 @@ def _not_view_copy(self, bases_list, *, dependencies = [], out_op = None):
     从而使后续pass能够消除TensorMove
 
     * ******************************************
-    *        Data                     Data     
-    *          |                        |       
-    *      TensorMove ---|          TensorMove  
-    *          |         |              |       
-    *     in-place op    |   --->   in-place op 
-    *                   /               |          
-    *                  /                |       
-    *              output             output    
-    * ******************************************   
-    """    
+    *        Data                     Data
+    *          |                        |
+    *      TensorMove ---|          TensorMove
+    *          |         |              |
+    *     in-place op    |   --->   in-place op
+    *                   /               |
+    *                  /                |
+    *              output             output
+    * ******************************************
+    """
     for i, input_tensor in enumerate(out_op.input):
         if (input_tensor == bases_list[self.base_index].tensor):
             input_name = out_op.input_desc[i].name
@@ -80,7 +81,7 @@ def _regenerate_slice_view(self, bases_list, symbol_input_map):
                      f"size={meta_out.size()}, stride={meta_out.stride()}, storage_offset={meta_out.storage_offset()}, "
                      f"it is no need to call torch.slice")
         self._layout_equal = True
-        return _regenerate_not_view(self, bases_list)        
+        return _regenerate_not_view(self, bases_list)
     self.size = _sym_list_to_ge_tensor(list(meta_out.size()), symbol_input_map)
     self.stride = _sym_list_to_ge_tensor(list(meta_out.stride()), symbol_input_map)
     self.storage_offset = infer_ge_output_by_symbol_calculate(symbol_input_map, meta_out.storage_offset())
@@ -107,7 +108,7 @@ def _regenerate_as_strided_view(self, bases_list, symbol_input_map=None):
                         f"size={meta_out.size()}, stride={meta_out.stride()}, storage_offset={meta_out.storage_offset()}, "
                         f"it is no need to call torch.as_strided")
         self._layout_equal = True
-        return _regenerate_not_view(self, bases_list)        
+        return _regenerate_not_view(self, bases_list)
     as_strided = ge.AsStrided(bases_list[self.base_index],
                               self.size,
                               self.stride,
@@ -126,7 +127,7 @@ def _regenerate_alias_view(self, bases_list, symbol_input_map=None):
                      f"size={meta_out.size()}, stride={meta_out.stride()}, storage_offset={meta_out.storage_offset()}, "
                      f"it is no need to call torch.alias")
         self._layout_equal = True
-        return _regenerate_not_view(self, bases_list)          
+        return _regenerate_not_view(self, bases_list)
     self.size = _sym_list_to_ge_tensor(list(meta_out.size()), symbol_input_map)
     self.stride = _sym_list_to_ge_tensor(list(meta_out.stride()), symbol_input_map)
     self.storage_offset = infer_ge_output_by_symbol_calculate(symbol_input_map, meta_out.storage_offset())
@@ -165,7 +166,7 @@ def _regenerate_not_view(self, bases_list, symbol_input_map=None):
     return bases_list[self.base_index]
 
 
-def conveter_auto_functionalize_v2(*args, **kwargs):
+def conveter_auto_functionalize_v2(*args, _conveter_auto_functionalize_v2_internal_mock=False, **kwargs):
     from torch._higher_order_ops.auto_functionalize import get_mutable_args, read_view_information_from_args
     all_bases = kwargs.pop("_all_bases", [])
     symbol_input_map = kwargs.pop("symbol_input_map", {})
@@ -212,15 +213,26 @@ def conveter_auto_functionalize_v2(*args, **kwargs):
                 all_bases_new, symbol_input_map
             )
 
-    from .fx2ge_converter import get_or_auto_gen_converter 
-    _mutable_op_converter = get_or_auto_gen_converter(_mutable_op)
+    from .fx2ge_converter import get_or_auto_gen_converter
 
     graph = get_default_ge_graph()
     num_ops = len(graph.op)
 
-    out = _mutable_op_converter(**new_kwargs)
-    
-    infer_and_gen_sym_shape_silent(_mutable_op, [], new_kwargs, out, graph.op[num_ops:])  
+    if not _conveter_auto_functionalize_v2_internal_mock:
+        _mutable_op_converter = get_or_auto_gen_converter(_mutable_op)
+        out = _mutable_op_converter(**new_kwargs)
+        infer_and_gen_sym_shape_silent(_mutable_op, [], new_kwargs, out, graph.op[num_ops:])
+    else:
+        tensor_inputs, outputs_info = _extract_schema_info(_mutable_op)
+        out = ge_op(
+            op_type=str(_mutable_op),
+            inputs={},
+            outputs=outputs_info,
+            node_name=str(_mutable_op)
+        )
+
+        fake_kwargs = {k: recursive_to_fake(v) for k, v in new_kwargs.items()}
+        infer_and_gen_sym_shape_silent(_mutable_op, [], fake_kwargs, out, graph.op[num_ops:])
 
     control_node = graph.op[-1]
     control_tensor_list = [ControlTensor(control_node)]
@@ -235,3 +247,36 @@ def conveter_auto_functionalize_v2(*args, **kwargs):
         return (*out, *all_bases_new_update)
     else:
         return (out, *all_bases_new_update)
+
+
+def _extract_schema_info(target):
+    """提取算子 schema 信息（用于创建 mock node）"""
+    tensor_inputs = []
+    outputs_info = []
+
+    if hasattr(target, '_schema'):
+        schema = target._schema
+        if hasattr(schema, 'returns'):
+            for i, output in enumerate(schema.returns):
+                if len(output.name) == 0:
+                    outputs_info.append(f'output_{i}')
+                else:
+                    outputs_info.append(output.name)
+        if hasattr(schema, 'arguments'):
+            for arg in schema.arguments:
+                if hasattr(arg, 'type') and 'Tensor' in str(arg.type):
+                    tensor_inputs.append(arg.name)
+
+    return tensor_inputs, outputs_info
+
+
+def recursive_to_fake(obj):
+    """转换为 fake tensor（用于推断符号形状）"""
+    if isinstance(obj, Tensor):
+        return torch.empty(obj.symsize, dtype=obj._torch_dtype, device="meta")
+    elif isinstance(obj, (list, tuple)):
+        return type(obj)(recursive_to_fake(x) for x in obj)
+    elif isinstance(obj, dict):
+        return {k: recursive_to_fake(v) for k, v in obj.items()}
+    else:
+        return obj

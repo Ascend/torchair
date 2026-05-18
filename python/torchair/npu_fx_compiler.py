@@ -15,7 +15,7 @@ from types import ModuleType
 from packaging import version
 
 import torch
-from torch._subclasses.fake_tensor import is_fake
+from torch._subclasses.fake_tensor import is_fake, FakeTensorMode
 import torch.utils._pytree as pytree
 from torch.fx import Interpreter
 from torch.fx.node import Argument, Target
@@ -56,7 +56,6 @@ from torchair._utils.graph_utils import debug_compare_fx_graphs
 from torchair.inference._gear_utils import get_dim_gears, set_dim_gears, guard_gears_shape
 from torchair.patterns.pattern_util import _apply_pattern_passes
 from torchair._acl_concrete_graph.replace_stream_event import replace_stream_event_pass
-
 aten = torch.ops.aten
 
 
@@ -198,6 +197,9 @@ class _NpuGraphConverter(Interpreter):
                 return func(target, args, kwargs)
             args_meta, kwargs_meta = _unpack_meta(args, kwargs)
             fake_mode = detect_fake_mode(None)
+            if fake_mode is None:
+                fake_mode = FakeTensorMode(allow_non_fake_inputs=True)
+                logger.debug("detect_fake_mode returns None, using FakeTensorMode.")
             with fake_mode:
                 meta_outputs = func(target, args_meta, kwargs_meta)
             args_npu, kwargs_npu = self._unpack_npu(args, kwargs)
@@ -299,7 +301,7 @@ def _summary(v):
     return f'{type(v)}({v})'
 
 
-@debug_compare_fx_graphs(pass_name="view_to_reshape")
+@debug_compare_fx_graphs(pass_name="view_to_reshape")  # nosec B106
 def _view_to_reshape(graph_module: torch.fx.GraphModule, example_inputs=None, config=None):
     # Replace view ops in the GraphModule to reshape ops.
     for node in graph_module.graph.nodes:
@@ -312,7 +314,7 @@ def _optimize_fx(graph_module: torch.fx.GraphModule, config: CompilerConfig, obs
     observer.gm = graph_module
     pre_func = config.post_grad_custom_pre_pass.value
     if pre_func is not None:
-        observer.apply_gm_pass(debug_compare_fx_graphs(pre_func, pass_name="post_grad_custom_pre_pass"),
+        observer.apply_gm_pass(debug_compare_fx_graphs(pre_func, pass_name="post_grad_custom_pre_pass"),  # nosec B106
                      "post_grad_custom_pre_pass",
                                enable_log=True)
 
@@ -320,7 +322,7 @@ def _optimize_fx(graph_module: torch.fx.GraphModule, config: CompilerConfig, obs
         observer.apply_gm_pass(_optimize_noop_ops, "optimize_noop_ops")
 
     from torchair.patterns._recover_view_inplace_pattern import recover_view_inplace_pattern
-    observer.apply_gm_pass(debug_compare_fx_graphs(recover_view_inplace_pattern, pass_name="recover_view_inplace_pattern"),
+    observer.apply_gm_pass(debug_compare_fx_graphs(recover_view_inplace_pattern, pass_name="recover_view_inplace_pattern"),  # nosec B106
                  "recover_view_inplace_pattern")
 
     if config.mode.value == "max-autotune":
@@ -339,13 +341,13 @@ def _optimize_fx(graph_module: torch.fx.GraphModule, config: CompilerConfig, obs
 
     post_func = config.post_grad_custom_post_pass.value
     if post_func is not None:
-        observer.apply_gm_pass(debug_compare_fx_graphs(post_func, pass_name="post_grad_custom_post_pass"),
+        observer.apply_gm_pass(debug_compare_fx_graphs(post_func, pass_name="post_grad_custom_post_pass"),  # nosec B106
                                "post_grad_custom_post_pass", enable_log=True)
     logger.debug('after fx graph optimization, graph is %s', graph_module.graph)
     return graph_module
 
 
-@debug_compare_fx_graphs(pass_name="optimize_noop_ops")
+@debug_compare_fx_graphs(pass_name="optimize_noop_ops")  # nosec B106
 def _optimize_noop_ops(graph_module: torch.fx.GraphModule, example_inputs=None, config=None):
     if remove_noop_ops is None:
         logger.warning("Skip removing noop ops; check if your PyTorch version is above 2.2.0 and ensure"
@@ -354,7 +356,7 @@ def _optimize_noop_ops(graph_module: torch.fx.GraphModule, example_inputs=None, 
         remove_noop_ops(graph_module.graph)
 
 
-@debug_compare_fx_graphs(pass_name="optimize_sym_input")
+@debug_compare_fx_graphs(pass_name="optimize_sym_input")  # nosec B106
 def _optimize_sym_input(graph_module: torch.fx.GraphModule, example_inputs=None, config=None):
     logger.debug('begin sym input optimization for graph: %s', id(graph_module.graph))
     sym_input_list = []
@@ -434,7 +436,7 @@ def _valid_graph(graph_module):
                     raise RuntimeError(f"When you call the torch.npu.super_kernel_scope_end operator: {node.name}, "
                                        f"you must first call the torch.npu.super_kernel_scope_begin, as they must be called in pairs. "
                                        f"Please check your code or your post_grad_custom_pre_pass post_grad_custom_post_pass!"
-                                       f"This error may also occur in a Dynamo graph break scenario.")         
+                                       f"This error may also occur in a Dynamo graph break scenario.")
                 # Find matching begin node by scope_name (allow any order pairing)
                 end_scope_name = node.args[0] if len(node.args) > 0 else None
                 matched_begin_node = None
@@ -445,7 +447,7 @@ def _valid_graph(graph_module):
                         matched_begin_node = begin_node
                         matched_index = i
                         break
-                
+
                 if matched_begin_node is None:
                     raise RuntimeError(
                         f"No matching torch.npu.super_kernel_scope_begin found for torch.npu.super_kernel_scope_end "
@@ -454,7 +456,7 @@ def _valid_graph(graph_module):
                         f"Please ensure that each super_kernel_scope_end has a corresponding super_kernel_scope_begin "
                         f"with the same scope_name parameter."
                     )
-                
+
                 # Remove the matched begin node from the list
                 super_kernel_scope_nodes.pop(matched_index)
         if scope_enter_stack:
@@ -471,7 +473,7 @@ def _valid_graph(graph_module):
                                f"there is no paired call to the torch.npu.super_kernel_scope_end operator. "
                                f"The parameters for these torch.npu.super_kernel_scope_begin calls are:{args_list}. "
                                f"Please check your code or your post_grad_custom_pre_pass post_grad_custom_post_pass!"
-                               f"This error may also occur in a Dynamo graph break scenario.")    
+                               f"This error may also occur in a Dynamo graph break scenario.")
 
     _check_scope_enter_exit(graph_module)
 
@@ -501,9 +503,9 @@ class _CompiledFxGraph:
         if self.run_kernel is None:
             if self.config is not None and self.config.mode.value in ["reduce-overhead", "npugraph_ex"]:
                 py_code = self.get_code()
-                if not isinstance(py_code, str):	 
-                    self.run_kernel = py_code	 
-                else:	 
+                if not isinstance(py_code, str):
+                    self.run_kernel = py_code
+                else:
                     ge_mod = _compile_py_code(py_code)
                     kernel = getattr(ge_mod, 'kernel')
                     if hasattr(self.runner, 'execution_kernel'):
@@ -547,8 +549,8 @@ class _CompiledFxGraph:
 
     @pretty_error_msg
     def get_code(self, extend_config=None):
-        if not hasattr(self.runner, 'codegen'): 
-            logger.warning(f'When enable FX Graph summarizing or dumping, codegen is unsupported.') 
+        if not hasattr(self.runner, 'codegen'):
+            logger.warning(f'When enable FX Graph summarizing or dumping, codegen is unsupported.')
             return self.runner
         py_code = self.runner.codegen(extend_config=extend_config, enable_cache=True)
         if py_code is None:
@@ -838,7 +840,7 @@ def _process_send_recv(gm, compiler_config):
         if node.target == torch.ops.npu_define._send or node.target == torch.ops.npu_define._recv)
     if count == 0:
         return
-    
+
     from torch_npu.npu.utils import _is_gte_cann_version
     # depends on hccl version
     is_supported_version = _is_gte_cann_version("8.6.0", module="CANN")
@@ -846,7 +848,7 @@ def _process_send_recv(gm, compiler_config):
         # current only logs
         logger.error("torch.distributed.send and torch.distributed.recv are not supported in graph,"
                     " you need upgrade cann version.")
-    
+
     if compiler_config.mode.value != "max-autotune":
         return
     if count > 1 and compiler_config.experimental_config.topology_sorting_strategy.value != "StableRDFS":

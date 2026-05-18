@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Tuple, Union, Callable
 import torch
 from torch.fx.node import Argument, Target
 from torch._dynamo.utils import detect_fake_mode
-from torch._subclasses.fake_tensor import FakeTensor
+from torch._subclasses.fake_tensor import FakeTensor, FakeTensorMode
 
 from torchair.core.utils import logger
 from torchair.ge._ge_graph import is_sym, Tensor, get_default_ge_graph
@@ -17,7 +17,7 @@ from torchair.scope._scope_attr import (
     local as scope_local
 )
 
-view_white_list = {'aten.permute.default': 0, 'aten.view.default': 0, 'aten.transpose.int': 0, 'aten.t.default': 0, 
+view_white_list = {'aten.permute.default': 0, 'aten.view.default': 0, 'aten.transpose.int': 0, 'aten.t.default': 0,
                    'aten.reshape.default': 0}
 
 
@@ -26,7 +26,7 @@ class ViewFakeTensor:
         self._meta = meta
         self._srcshape = srcshape
         self._mapsym = {}
-    
+
     @property
     def meta(self):
         return self._meta
@@ -38,7 +38,7 @@ class ViewFakeTensor:
     @property
     def mapsym(self):
         return self._mapsym
-    
+
     def set_mapsym(self, mapsym):
         if not isinstance(mapsym, dict):
             raise AssertionError("mapsym must be a dict.")
@@ -74,7 +74,7 @@ def set_meta_tensor_info(arg):
         args_meta = arg.meta.as_strided(view_shape, view_stride, 0)
     else:
         args_meta = arg.meta
-        
+
     return args_meta
 
 
@@ -122,6 +122,10 @@ def _get_npu_outputs_of_view_ops(target, args, kwargs, meta_outputs):
             args_meta[idx] = arg
 
     fake_mode = detect_fake_mode(None)
+    if fake_mode is None:
+        fake_mode = FakeTensorMode(allow_non_fake_inputs=True)
+        logger.debug("detect_fake_mode returns None, using FakeTensorMode.")
+
     with fake_mode:
         meta_outputs_contiguous = target(*args_meta, **kwargs)
 
@@ -136,7 +140,7 @@ def _get_npu_outputs_of_view_ops(target, args, kwargs, meta_outputs):
         setattr(view_npu_outputs, "view_faketensor", fake)
     else:
         raise AssertionError("Other output types are not supported for view ops, except for tensor and tensor list.")
-    
+
     set_ge_outputs(view_npu_outputs, meta_outputs)
     return view_npu_outputs
 
@@ -169,7 +173,7 @@ def guard_view_input(func):
             if is_view_case(target, args, meta_outputs) and (not has_scope_attr() or has_only_super_kernel_scope_attr()):
                 logger.debug(f"Do view optimize, skip the operator {str(target)}")
                 ge_outputs = _get_npu_outputs_of_view_ops(target, args, kwargs, meta_outputs)
-                return ge_outputs                     
+                return ge_outputs
             else:
                 args_new, kwargs_new = optimize_view_args_and_kwargs(self, args, kwargs)
             return func(self, target, args_new, kwargs_new, meta_outputs)

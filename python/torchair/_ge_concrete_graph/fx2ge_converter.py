@@ -71,7 +71,7 @@ def _mapping_assign_op_to_graph_output(graph: GraphDef):
     """
     Maps Assign operations to graph outputs by updating input references.
 
-    This function identifies Assign nodes in the graph and redirects their 
+    This function identifies Assign nodes in the graph and redirects their
     outputs to existing graph inputs or existing Assign outputs.
 
     Args:
@@ -79,7 +79,7 @@ def _mapping_assign_op_to_graph_output(graph: GraphDef):
 
     Returns:
         Dict[int, int]: Mapping from output reference indices to input indices.
-    """    
+    """
     net_output: OpDef = None  # 输出节点
     net_inputs: Dict[str, int] = {}  # 输入tensor名称到索引的映射
     intput_ops: Dict[int, OpDef] = {}
@@ -227,7 +227,7 @@ def _get_converter(name: Callable):
 
     Returns:
         Callable: The associated converter function or None if not found.
-    """    
+    """
     if name not in _CONVERTERS:
         from torchair._ge_concrete_graph.ge_converter import custom
         if hasattr(name, "_ge_converter"):
@@ -244,7 +244,7 @@ def get_meta_outputs(meta_outputs):
 
     Returns:
         List[Any]: List of tensor specifications.
-    """    
+    """
     if isinstance(meta_outputs, (list, tuple)):
         return [get_meta_outputs(meta_output) for meta_output in meta_outputs]
     return TensorSpec(meta_outputs)
@@ -257,7 +257,7 @@ def set_ge_outputs(ge_outputs, meta_outputs):
     Args:
         ge_outputs: The GE output(s) to update.
         meta_outputs: The meta outputs providing metadata.
-    """    
+    """
     if isinstance(ge_outputs, ge.Tensor):
         ge_outputs.set_meta(meta_outputs, ge_outputs)
     elif isinstance(ge_outputs, int):
@@ -285,7 +285,7 @@ def _wrap_converter(converter: Callable):
 
     Returns:
         Callable: The wrapped converter function.
-    """    
+    """
     @functools.wraps(converter)
     def wrapped_converter(*args, **kwargs):
         meta_outputs = None
@@ -327,7 +327,7 @@ class ExportSuccess(Exception):
 class Converter:
     """
     Base class for converting PyTorch operations to GE operations.
-    """    
+    """
     compile_backend = None
     result_checker = None
 
@@ -346,13 +346,13 @@ class Converter:
 
         Returns:
             Any: The registered converter.
-        """        
+        """
         wrapped_converter = _wrap_converter(converter)
         if 'meta_outputs' in inspect.signature(converter).parameters:
             wrapped_converter.require_meta = True
         else:
             wrapped_converter.require_meta = False
-        
+
         if self._aten_op in _LITE_CONVERTER_OPS:
             logger.debug(f"Skip register converter for {self._aten_op}, already registered in lite mode")
             return self
@@ -407,7 +407,7 @@ def register_fx_node_ge_converter(aten_op):
 
     Returns:
         Callable: Empty function if aten_op is None, else the Converter instance.
-    """    
+    """
     if aten_op is None:
         return empty_function
     is_lite = _is_lite_converter_mode()
@@ -956,12 +956,12 @@ class GeConcreteGraph(ConcreteGraphBase):
     """
     GeConcreteGraph represents a concrete computation graph optimized for Ascend NPU devices.
     It extends the base ConcreteGraphBase to provide GE-specific compilation and execution capabilities.
-    
+
     Args:
         config (CompilerConfig): Configuration object for compiler settings.
         name (str, optional): Name of the graph. Defaults to "graph".
-    """       
-    def __init__(self, config: CompilerConfig, name=None):
+    """
+    def __init__(self, config: CompilerConfig, name=None, record_ascend_ir: bool = False):
         self._graph = GeGraph(name=name)
         self._fx_outputs = []
         self._fx_outputs_mapping = dict()
@@ -981,29 +981,31 @@ class GeConcreteGraph(ConcreteGraphBase):
         self._all_meta_tensor_input = {}
         self._fx_graph = None
         self._has_empty_tensor = False
-        self._scope_attr_ctx = threading.local()        
+        self._scope_attr_ctx = threading.local()
         self._muti_stream_op_order = defaultdict(list)
-        self._wait_control_edges = defaultdict(list)         
+        self._wait_control_edges = defaultdict(list)
+        self._record_asc_ir = record_ascend_ir
+        self._ascend_ir_map = {} if record_ascend_ir else None
         _, global_compile_options = self._normalize_ge_option()
         initialize_graph_engine(global_compile_options)
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         """
         Executes the graph with the provided inputs.
-        
+
         This method handles input processing, graph execution, and output retrieval.
         It supports dynamic shape handling, reference data management, and automatic tuning.
-        
+
         Args:
             *args: Variable length argument list for graph inputs.
             **kwargs: Arbitrary keyword arguments for graph inputs.
-        
+
         Returns:
             Any: Output tensors from the executed graph.
-        
+
         Raises:
             ExportSuccess: If graph export is triggered during execution.
-        """        
+        """
         enable_event_log = logger.getEffectiveLevel() <= EVENT_LEVEL
         t_begin = time.time() if enable_event_log else 0
         if not self._is_compiled:
@@ -1073,10 +1075,10 @@ class GeConcreteGraph(ConcreteGraphBase):
         Optimizes the computation graph without relying on runtime information.
         This includes passes like dead data removal, explicit ordering for side-effect nodes,
         and reference data optimization.
-        
+
         Args:
             *sample_args: Sample input arguments for tracing and optimization.
-        """        
+        """
         from torchair._ge_concrete_graph.graph_pass import remove_dead_data_and_reorder_data_index
         from torchair._ge_concrete_graph.graph_pass import explicit_order_for_side_effect_nodes
         from torchair._ge_concrete_graph.graph_pass import explicit_order_for_cmo
@@ -1155,17 +1157,17 @@ class GeConcreteGraph(ConcreteGraphBase):
     def codegen(self, extend_config, enable_cache=False):
         """
         Generates executable code from the optimized graph.
-        
+
         This method is used for code generation in JIT compilation scenarios.
         It supports caching mechanisms to improve subsequent compilation speed.
-        
+
         Args:
             extend_config (Dict[str, Any]): Additional configuration for code generation.
             enable_cache (bool, optional): Flag to enable caching. Defaults to False.
-        
+
         Returns:
             Optional[str]: Generated code as a string if successful, otherwise None.
-        """        
+        """
         from torch._inductor.utils import IndentedBuffer
         if self._config.experimental_config.enable_ref_data or self.config.export.export_mode \
                 or self.config.aoe_config.aoe_mode.value is not None:
@@ -1301,18 +1303,18 @@ class GeConcreteGraph(ConcreteGraphBase):
     def parse_input(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
         """
         Parses input metadata during graph construction.
-        
+
         This method processes input tensors and their associated metadata to configure graph inputs.
-        
+
         Args:
             target (Target): The target operation being parsed.
             args (Tuple[Argument, ...]): Input arguments for the target operation.
             kwargs (Dict[str, Any]): Keyword arguments for the target operation.
             meta_outputs (Any): Metadata associated with the operation's outputs.
-        
+
         Returns:
             Any: Processed input data for the graph.
-        """        
+        """
         data_index = self.graph.num_inputs
         self._fx_input_names.append(target)
         if is_sym(meta_outputs):
@@ -1349,7 +1351,7 @@ class GeConcreteGraph(ConcreteGraphBase):
                     data_index),
                 shape=shape, dim_gears=get_dim_gears(meta_outputs) or {}, device_type=placement,
                 real_shape=real_shape)
-       
+
         self.graph.record_input_info(data.node.name, input_info)
         return data
 
@@ -1357,18 +1359,18 @@ class GeConcreteGraph(ConcreteGraphBase):
     def parse_output(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
         """
         Parses output metadata during graph construction.
-        
+
         This method processes output tensors and their associated metadata to configure graph outputs.
-        
+
         Args:
             target (Target): The target operation being parsed.
             args (Tuple[Argument, ...]): Input arguments for the target operation.
             kwargs (Dict[str, Any]): Keyword arguments for the target operation.
             meta_outputs (Any): Metadata associated with the operation's outputs.
-        
+
         Returns:
             Any: Processed output data for the graph.
-        """        
+        """
         if not (isinstance(args, (list, tuple)) and len(args) == 1):
             raise AssertionError("The input args must be list or a tuple, and the length of args must be equal to 1")
         args = args[0]
@@ -1412,13 +1414,13 @@ class GeConcreteGraph(ConcreteGraphBase):
     def parse_symlist(self, syms):
         """
         Parses a list of symbols (either integers or ValuePack objects) into a list of NPU-compatible symbols.
-        
+
         Args:
             syms (List[Union[int, ValuePack]]): List containing symbols to parse.
-        
+
         Returns:
             List[int]: Parsed list of integer symbols.
-        """        
+        """
         npu_syms = []
         for sym in syms:
             if isinstance(sym, ValuePack):
@@ -1438,20 +1440,57 @@ class GeConcreteGraph(ConcreteGraphBase):
         # force unknown shape with ge.Pack when parse symlist
         return force_op_unknown_shape(pack_tensor)
 
+    def _can_use_converter(self, target: 'Target', args: Tuple[Argument, ...], meta_outputs: Any) -> bool:
+        """
+        判断是否能使用 converter 成功转换
+
+        Args:
+            target: The target operation
+            meta_outputs: Metadata associated with outputs
+
+        Returns:
+            True: 可以成功转换
+            False: 无法转换（需要创建 mock node）
+        """
+        # 1. 特殊 target（air.scope_enter/exit/record/wait）
+        if str(target) in ['air.scope_enter.default', 'air.scope_exit.default',
+                           'air.record.default', 'air.wait.default']:
+            return True
+
+        # 2. zero element tensor + nosym（不需要实际转换）
+        all_zero_and_nosym = all([is_zero_element_tensor(t) and not get_used_syms_in_meta(t)
+            for t in flatten_meta_outputs(meta_outputs)])
+        if all_zero_and_nosym and (str(target) not in _DONT_EMPTY_TENSOR_OPT_OPS):
+            return True
+
+        # 3. 特殊算子（sym_stride/sym_storage_offset/auto_functionalized_v2）
+        if str(target) in ('aten.sym_stride.int', 'aten.sym_storage_offset.default'):
+            return True
+        if str(target) == 'auto_functionalized_v2':
+            return self._can_use_converter(args[0], args, meta_outputs)
+
+        # 4. 检查 converter 可用性
+        try:
+            converter = get_or_auto_gen_converter(target)
+            return converter is not None
+        except RuntimeError as e:
+            logger.warning(f"Cannot use converter:{str(target)}, reason:{e}")
+            return False
+
     @guard_view_input
     @guard_scope_attr
-    def parse_node(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
+    def _parse_node_internal(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
         """
         Parses individual nodes within the graph during compilation.
-        
+
         This method handles custom operation conversion and optimization passes.
-        
+
         Args:
             target (Target): The target operation being parsed.
             args (Tuple[Argument, ...]): Input arguments for the target operation.
             kwargs (Dict[str, Any]): Keyword arguments for the target operation.
             meta_outputs (Any): Metadata associated with the operation's outputs.
-        
+
         Returns:
             Any: Processed result of the parsed node.
         """
@@ -1462,7 +1501,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         if str(target) == 'air.wait.default':
             self._build_wait_control_edge(args)
             return None
-                
+
         all_zero_and_nosym = all([is_zero_element_tensor(t) and not get_used_syms_in_meta(t)
             for t in flatten_meta_outputs(meta_outputs)])
         if all_zero_and_nosym and (str(target) not in _DONT_EMPTY_TENSOR_OPT_OPS):
@@ -1486,9 +1525,9 @@ class GeConcreteGraph(ConcreteGraphBase):
             if converter.require_meta:
                 kwargs['meta_outputs'] = meta_outputs
             ge_outputs = converter(*args, **kwargs)
-            infer_and_gen_sym_shape_silent(target, args, kwargs, ge_outputs, graph.op[num_ops:])        
+            infer_and_gen_sym_shape_silent(target, args, kwargs, ge_outputs, graph.op[num_ops:])
 
-        self._handle_wait_control_edge(graph.op[num_ops:])        
+        self._handle_wait_control_edge(graph.op[num_ops:])
         if meta_outputs is not None:
             set_ge_outputs(ge_outputs, meta_outputs)
             if hasattr(self._converter_ctx, 'node') and self._converter_ctx.node:
@@ -1498,6 +1537,50 @@ class GeConcreteGraph(ConcreteGraphBase):
                 elif isinstance(ge_outputs, (list, tuple)) and all([isinstance(v, ge.Tensor) for v in ge_outputs]):
                     for i, ge_output in enumerate(ge_outputs):
                         ge_output.desc.attr["_fx_tensor_name"].s = compat_as_bytes(f'{fx_tensor_prefix}.{i}')
+        return ge_outputs
+
+    def parse_node(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
+        """
+        包装器：处理 ascend_ir 记录
+
+        核心逻辑：
+        - record_ascend_ir=False：直接调用 _parse_node_internal（零额外开销）
+        - record_ascend_ir=True：预先判断 + ascend_ir 记录
+        """
+        if not self._record_asc_ir:
+            return self._parse_node_internal(target, args, kwargs, meta_outputs)
+
+        fx_node_key = self._converter_ctx.node.name
+        graph = get_default_ge_graph()
+        op_count_before = len(graph.op)
+
+        if self._can_use_converter(target, args, meta_outputs):
+            ge_outputs = self._parse_node_internal(target, args, kwargs, meta_outputs)
+
+            op_count_after = len(graph.op)
+            new_opdefs = graph.op[op_count_before:op_count_after]
+            self._record_ascend_ir(fx_node_key, ge_outputs, new_opdefs, is_mock=False)
+        else:
+            logger.warning(f"Cannot convert {fx_node_key}:{str(target)}, creating mock node")
+            from torchair._ge_concrete_graph.auto_functionalized_v2 import recursive_to_fake, conveter_auto_functionalize_v2
+            if str(target) == "auto_functionalized_v2":
+                ge_outputs = conveter_auto_functionalize_v2(*args, _conveter_auto_functionalize_v2_internal_mock=True, **kwargs)
+            else:
+                ge_outputs = self._create_mock_node_for_op(target, args, kwargs)
+                fake_args = tuple(recursive_to_fake(a) for a in args)
+                fake_kwargs = {k: recursive_to_fake(v) for k, v in kwargs.items()}
+                infer_and_gen_sym_shape_silent(target, fake_args, fake_kwargs, ge_outputs, graph.op[op_count_before:])
+
+            if meta_outputs is not None:
+                set_ge_outputs(ge_outputs, meta_outputs)
+
+            op_count_after = len(graph.op)
+            new_opdefs = graph.op[op_count_before:op_count_after]
+            self._record_ascend_ir(fx_node_key, ge_outputs, new_opdefs, is_mock=True)
+
+        torch_fn = self._converter_ctx.node.meta.get("torch_fn", ())
+        new_torch_fn = torch_fn + (fx_node_key, )
+        self._converter_ctx.node.meta["torch_fn"] = new_torch_fn
         return ge_outputs
 
     def dump(self, path: str):
@@ -1568,7 +1651,7 @@ class GeConcreteGraph(ConcreteGraphBase):
                 node_shape = stringify_shape(meta_val.shape)
                 return f'{node.name}: {node_dtype}{node_shape}'
             else:
-                return node.name           
+                return node.name
 
         if node.stack_trace is not None:
             file_line = node.stack_trace.split(' File ')[-1].replace('\n', '')
@@ -1599,12 +1682,12 @@ class GeConcreteGraph(ConcreteGraphBase):
             self._converter_ctx.node = None
 
     @contextmanager
-    def scope_attr_ctx(self, scope_attr_info):        
+    def scope_attr_ctx(self, scope_attr_info):
         try:
             self._scope_attr_ctx.scope_attr = scope_attr_info
             yield
         finally:
-            self._scope_attr_ctx.scope_attr = None              
+            self._scope_attr_ctx.scope_attr = None
 
     def auto_tune(self, inputs: List[Tensor]) -> Any:
         logger.info(f"Start auto tune for round {self._auto_tune_times}")
@@ -1762,7 +1845,7 @@ class GeConcreteGraph(ConcreteGraphBase):
             input_code.writelines([f'assert_size_stride(args[{idx}], {tuple(meta.shape)}, {meta.stride()})'])
 
         return input_code.getvalue()
-    
+
 
     def _get_current_stream(self):
         if hasattr(self._scope_attr_ctx, 'scope_attr'):
@@ -1778,7 +1861,7 @@ class GeConcreteGraph(ConcreteGraphBase):
             last_op = self._muti_stream_op_order[current_stream][-1]
             return ControlTensor(last_op).controller
         return 'no_op_before_record'
-   
+
     def _build_wait_control_edge(self, args):
         control_edges = []
         for wait_op_arg in args[0]:
@@ -1786,7 +1869,7 @@ class GeConcreteGraph(ConcreteGraphBase):
                 control_edges.append(wait_op_arg)
             if isinstance(wait_op_arg, GeTensor):
                 control_edges.append(ControlTensor(wait_op_arg.node).controller)
-        # push all control edges generated by 'air.wait.default' to stack on current stream        
+        # push all control edges generated by 'air.wait.default' to stack on current stream
         current_stream = self._get_current_stream()
         self._wait_control_edges[current_stream].extend(control_edges)
         logger.debug(f"push control edges : {control_edges} generated by 'air.wait.default' to stream: {current_stream}")
@@ -1804,7 +1887,108 @@ class GeConcreteGraph(ConcreteGraphBase):
             op = ops[0]
             op.input.extend(control_edges)
             logger.info(f"Add record-wait generated control edges: {control_edges} to op: {op.name}")
-            self._wait_control_edges[stream] = []     
+            self._wait_control_edges[stream] = []
+
+
+    def _build_inputs_dict(self, tensor_inputs, args):
+        """构建输入字典"""
+        inputs_dict = {}
+        for i, input_name in enumerate(tensor_inputs):
+            if i < len(args):
+                inputs_dict[input_name] = args[i]
+        return inputs_dict
+
+    def _create_mock_node_for_op(self, target, args, kwargs):
+        """创建 mock GE node"""
+        from torchair._ge_concrete_graph.compat_ir import ge_op
+        from torchair._ge_concrete_graph.auto_functionalized_v2 import _extract_schema_info
+
+        tensor_inputs, outputs_info = _extract_schema_info(target)
+
+        return ge_op(
+            op_type=str(target),
+            inputs={},
+            outputs=outputs_info
+        )
+
+    def _record_ascend_ir(self, fx_node_key, ge_outputs, new_opdefs, is_mock=False):
+        """记录 ascend_ir"""
+        logger.debug(f"Try to record key: {fx_node_key}, {len(new_opdefs)} ops")
+
+        if fx_node_key is None:
+            return
+
+        source = "" if is_mock else "converter"
+
+        if not new_opdefs:
+            from torchair.ge.ge_graph_ascend import _NodeIR
+            self._ascend_ir_map[fx_node_key] = _NodeIR(
+                source=source,
+                ops=[]
+            )
+            return
+
+        ops_list = [self._opdef_to_dict(opdef) for opdef in new_opdefs]
+        mapping = self._extract_output_mapping(ge_outputs)
+
+        from torchair.ge.ge_graph_ascend import _NodeIR
+        self._ascend_ir_map[fx_node_key] = _NodeIR(
+            source=source,
+            ops=ops_list,
+            mapping=mapping
+        )
+
+    def _extract_output_mapping(self, ge_outputs):
+        """提取输出映射"""
+        output_list = []
+
+        if isinstance(ge_outputs, (list, tuple)):
+            for ge_output in ge_outputs:
+                if ge_output is None:
+                    output_list.append("None")
+                    continue
+                ge_output_name = self._extract_ge_tensor_name(ge_output)
+                if ge_output_name:
+                    output_list.append(f"{ge_output_name}:{ge_output.index}")
+        else:
+            ge_output_name = self._extract_ge_tensor_name(ge_outputs)
+            if ge_output_name:
+                output_list.append(f"{ge_output_name}:{ge_outputs.index}")
+
+        return {"outputs": output_list}
+
+    def _extract_ge_tensor_name(self, ge_obj):
+        """提取 GE tensor 名称"""
+        if ge_obj is None:
+            return None
+        if hasattr(ge_obj, 'node') and hasattr(ge_obj.node, 'name'):
+            return ge_obj.node.name
+        elif hasattr(ge_obj, 'desc') and hasattr(ge_obj.desc, 'name'):
+            return ge_obj.desc.name
+        elif isinstance(ge_obj, (list, tuple)) and len(ge_obj) > 0:
+            return self._extract_ge_tensor_name(ge_obj[0])
+        return None
+
+    def _opdef_to_dict(self, op_def):
+        """OpDef 转为 dict"""
+        from google.protobuf.json_format import MessageToDict
+
+        op_dict = MessageToDict(op_def)
+        return self._post_process_dict(op_dict)
+
+    def _post_process_dict(self, data):
+        """后处理字典（bytes 转 hex）"""
+        if isinstance(data, bytes):
+            return data.hex()
+        elif isinstance(data, dict):
+            return {k: self._post_process_dict(v) for k, v in data.items()}
+        elif isinstance(data, (list, tuple)):
+            return [self._post_process_dict(item) for item in data]
+        return data
+
+    def get_ascend_ir_map(self) -> dict:
+        """返回 ascend_ir_map"""
+        return self._ascend_ir_map or {}
 
 
 def _set_dump_options_json(ge_options: Dict[str, Any], ge_graph) -> None:
