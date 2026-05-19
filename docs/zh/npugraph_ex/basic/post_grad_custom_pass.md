@@ -46,29 +46,29 @@ class Model(torch.nn.Module):
     ```python
     def _custom_pre_pass(gm, example_inputs, config):
         fx_graph = gm.graph
-        for node in fx_graph.nodes:        
+        for node in fx_graph.nodes:
             if node.op == "call_function" and node.target == torch.ops.aten.mm.default:
                 with fx_graph.inserting_before(node):
-                    # 在torch.ops.aten.mm.default节点前加入torch.ops.air.scope_enter.default节点
-                    # torch.ops.air.scope_enter和torch.ops.air.scope_exit范围内的节点将在新的流stream_1上执行
-                    fx_graph.call_function(torch.ops.air.scope_enter.default, args=(
+                    # 在torch.ops.aten.mm.default节点前加入torch.ops.npugraph_ex.scope_enter.default节点
+                    # torch.ops.npugraph_ex.scope_enter和torch.ops.npugraph_ex.scope_exit范围内的节点将在新的流stream_1上执行
+                    fx_graph.call_function(torch.ops.npugraph_ex.scope_enter.default, args=(
                         ["_user_stream_label"], ["stream_1"]))
-    
+
             if node.op == "call_function" and node.target == torch.ops.aten.abs.default:
                 with fx_graph.inserting_after(node):
-                    # 在torch.ops.aten.abs.default节点(对应脚本中的torch.abs算子)后插入torch.ops.air.record.default节点
-                    record_node = fx_graph.call_function(torch.ops.air.record.default, args=())
+                    # 在torch.ops.aten.abs.default节点(对应脚本中的torch.abs算子)后插入torch.ops.npugraph_ex.record.default节点
+                    record_node = fx_graph.call_function(torch.ops.npugraph_ex.record.default, args=())
                 with fx_graph.inserting_after(record_node):
-                    fx_graph.call_function(torch.ops.air.scope_exit.default, args=())
-    
-            # 在torch.ops.aten.sub.Tensor节点(对应脚本中的torch.sub算子)前插入torch.ops.air.wait.default节点
-            # 表示需要等待torch.ops.air.record.default前的节点执行完，torch.ops.aten.sub.Tensor才能执行
+                    fx_graph.call_function(torch.ops.npugraph_ex.scope_exit.default, args=())
+
+            # 在torch.ops.aten.sub.Tensor节点(对应脚本中的torch.sub算子)前插入torch.ops.npugraph_ex.wait.default节点
+            # 表示需要等待torch.ops.npugraph_ex.record.default前的节点执行完，torch.ops.aten.sub.Tensor才能执行
             if node.op == "call_function" and node.target == torch.ops.aten.sub.Tensor:
                 with fx_graph.inserting_before(node):
-                    fx_graph.call_function(torch.ops.air.wait.default, args=([record_node],))
+                    fx_graph.call_function(torch.ops.npugraph_ex.wait.default, args=([record_node],))
     ```
 
-   该Pass的功能是在torch.ops.aten.mm.default和torch.ops.aten.abs.default节点前后分别插入torch.ops.air.scope_enter.default和torch.ops.air.scope_exit.default节点，使得指定范围内的节点在流“stream_1”上执行。并在torch.ops.aten.abs.default节点后插入torch.ops.air.record.default节点，在torch.ops.aten.sub.Tensor节点前插入torch.ops.air.wait.default节点，使得控制时序让sub算子在abs算子之后执行。
+   该Pass的功能是在torch.ops.aten.mm.default和torch.ops.aten.abs.default节点前后分别插入torch.ops.npugraph_ex.scope_enter.default和torch.ops.npugraph_ex.scope_exit.default节点，使得指定范围内的节点在流“stream_1”上执行。并在torch.ops.aten.abs.default节点后插入torch.ops.npugraph_ex.record.default节点，在torch.ops.aten.sub.Tensor节点前插入torch.ops.npugraph_ex.wait.default节点，使得控制时序让sub算子在abs算子之后执行。
 
 2. 将自定义Pass注册到npugraph_ex使其生效。
 
@@ -84,42 +84,42 @@ class Model(torch.nn.Module):
     ```python
     import torch
     import torch_npu
-    
+
     class Model(torch.nn.Module):
         def __init__(self):
             super().__init__()
-    
+
         def forward(self, x):
             mm = torch.mm(x, x)
             abs_res = torch.abs(mm)
             add = torch.add(abs_res, 1)
             sub = torch.sub(x, mm)
             return add, sub
-    
+
     # 自定义Pass修改FX图
     def _custom_pre_pass(gm, example_inputs, config):
         fx_graph = gm.graph
-        for node in fx_graph.nodes:        
+        for node in fx_graph.nodes:
             if node.op == "call_function" and node.target == torch.ops.aten.mm.default:
                 with fx_graph.inserting_before(node):
-                    # 在torch.ops.aten.mm.default节点前加入torch.ops.air.scope_enter.default节点
-                    # torch.ops.air.scope_enter和torch.ops.air.scope_exit范围内的节点将在新的流stream_1上执行
-                    fx_graph.call_function(torch.ops.air.scope_enter.default, args=(
+                    # 在torch.ops.aten.mm.default节点前加入torch.ops.npugraph_ex.scope_enter.default节点
+                    # torch.ops.npugraph_ex.scope_enter和torch.ops.npugraph_ex.scope_exit范围内的节点将在新的流stream_1上执行
+                    fx_graph.call_function(torch.ops.npugraph_ex.scope_enter.default, args=(
                         ["_user_stream_label"], ["stream_1"]))
-    
+
             if node.op == "call_function" and node.target == torch.ops.aten.abs.default:
                 with fx_graph.inserting_after(node):
-                    # 在torch.ops.aten.abs.default节点(对应脚本中的torch.abs算子)后插入torch.ops.air.record.default节点
-                    record_node = fx_graph.call_function(torch.ops.air.record.default, args=())
+                    # 在torch.ops.aten.abs.default节点(对应脚本中的torch.abs算子)后插入torch.ops.npugraph_ex.record.default节点
+                    record_node = fx_graph.call_function(torch.ops.npugraph_ex.record.default, args=())
                 with fx_graph.inserting_after(record_node):
-                    fx_graph.call_function(torch.ops.air.scope_exit.default, args=())
-    
-            # 在torch.ops.aten.sub.Tensor节点(对应脚本中的torch.sub算子)前插入torch.ops.air.wait.default节点
-            # 表示需要等待torch.ops.air.record.default前的节点执行完，torch.ops.aten.sub.Tensor才能执行
+                    fx_graph.call_function(torch.ops.npugraph_ex.scope_exit.default, args=())
+
+            # 在torch.ops.aten.sub.Tensor节点(对应脚本中的torch.sub算子)前插入torch.ops.npugraph_ex.wait.default节点
+            # 表示需要等待torch.ops.npugraph_ex.record.default前的节点执行完，torch.ops.aten.sub.Tensor才能执行
             if node.op == "call_function" and node.target == torch.ops.aten.sub.Tensor:
                 with fx_graph.inserting_before(node):
-                    fx_graph.call_function(torch.ops.air.wait.default, args=([record_node],))
-    
+                    fx_graph.call_function(torch.ops.npugraph_ex.wait.default, args=([record_node],))
+
     model = Model().npu()
     options={
         # 开启post_grad_custom_pre_pass
@@ -146,4 +146,4 @@ class Model(torch.nn.Module):
 
    参考[图编译Debug信息保存功能](../dfx/debug_save.md)，设置环境变量TORCH_COMPILE_DEBUG=1，自动开启所有必要的日志打印与文件dump。
 
-   查看Debug日志中修改后的FX图是否有插入torch.ops.air.scope_enter.default和torch.ops.air.scope_exit.default、torch.ops.air.record.default、torch.ops.air.wait.default新节点，以及插入的位置是否正确。
+   查看Debug日志中修改后的FX图是否有插入torch.ops.npugraph_ex.scope_enter.default和torch.ops.npugraph_ex.scope_exit.default、torch.ops.npugraph_ex.record.default、torch.ops.npugraph_ex.wait.default新节点，以及插入的位置是否正确。
