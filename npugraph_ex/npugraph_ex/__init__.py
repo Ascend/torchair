@@ -26,20 +26,6 @@ _core_utils._set_dynamo_run_dir_name()
 adjust_traceable_collective_remaps()
 
 
-def _initialize():
-    import os
-    skip_cleanup = os.environ.get("NPUGRAPH_EX_SKIP_CLEANUP", "0") == "1"
-    if not skip_cleanup:
-        from npugraph_ex._acl_concrete_graph import static_kernel
-        static_kernel.cleanup_old_run_packages()
-    else:
-        from npugraph_ex.core.utils import logger
-        logger.info("Skipping old run packages cleanup (NPUGRAPH_EX_SKIP_CLEANUP=1)")
-
-
-_initialize()
-
-
 def _finalize():
     import torch
     from npugraph_ex._acl_concrete_graph import static_kernel
