@@ -36,8 +36,10 @@ def codegen_cpp_source(kernel_spec: FusedKernelSpec, kernel_path: str, lib_dir: 
     #include <dlfcn.h>
     #include <cstdint>
     #include <mutex>
+    #include "torch_npu/csrc/framework/OpCommand.h"
     #include "torch_npu/csrc/core/npu/NPUStream.h"
     #include "torch_npu/csrc/core/npu/NPUCachingAllocator.h"
+    #include "torch_npu/csrc/core/npu/NPUWorkspaceAllocator.h"
     ''')
 
     wrapper.splice(kernel_spec.tiling_def)
@@ -46,15 +48,18 @@ def codegen_cpp_source(kernel_spec: FusedKernelSpec, kernel_path: str, lib_dir: 
     #undef DLOG
     #define DLOG() if (debug) std::cerr << "[WRAPPER] "
     namespace {
+    """)
+
+    wrapper.splice("""
     inline void *GetStream(void *stream) {
-        return (stream == nullptr) ? c10_npu::getCurrentNPUStream().stream() : stream;
+        return (stream == nullptr) ? c10_npu::getCurrentNPUStream().stream(false) : stream;
     }
-    inline void *MallocWorkspace(int64_t size, void *stream) {
-        return c10_npu::NPUCachingAllocator::raw_alloc_with_stream(size_t(size), stream);
+    inline at::Tensor AllocateWorkspaceTensor(int64_t size, void *stream) {
+        return at_npu::native::allocate_workspace(uint64_t(size), (aclrtStream)stream);
     }
-    inline void FreeWorkspace(void *ptr) {
-        c10_npu::NPUCachingAllocator::raw_delete(ptr);
-    }
+    """)
+
+    wrapper.splice("""
     } // namespace
     """)
     wrapper.splice(kernel_spec.cpp_wrapper)

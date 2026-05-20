@@ -5,6 +5,7 @@ from torch._inductor.codegen.common import IndentedBuffer
 from inductor_npu_ext.common.asc_graph import FusedASCGraph
 from inductor_npu_ext.common.debug import save_asserts
 from inductor_npu_ext.common.utils import load_autofuser
+from inductor_npu_ext import config as ext_config
 
 
 class KernelArg:
@@ -91,6 +92,11 @@ def codegen_cpp_wrapper(graph: FusedASCGraph):
     for in_arg, out_name in zip(inputs + outputs, graph.inputs_outer + graph.outputs_outer):
         buffer_assign += f'\n    auto *{in_arg.name} = {out_name};'
         buffer_assign += f'\n    DLOG() << "{in_arg.name}: " << {in_arg.name} << std::endl;'
+    # One more indent when buffer_assign is emitted inside the TaskQueue lambda
+    if ext_config._enable_taskqueue_mode != 2:
+        buffer_assign_in_taskqueue1 = buffer_assign.replace('\n    ', '\n    ')
+    else:
+        buffer_assign_in_taskqueue2 = buffer_assign.replace('\n    ', '\n        ')
 
     tiling_args = [v.name for v in symbol_args]
     tiling_signature = [v.signature for v in symbol_args]
@@ -184,57 +190,117 @@ extern "C" int init(const char *kernel_file) {{
     initialized = true;
     return 0;
 }}
+''')
 
+    # taskqueue=0:同步执行
+    # taskqueue=1:静态tiling+动态tiling+workspace 在queue外执行，kernel在queue内执行
+    if ext_config._enable_taskqueue_mode != 2:
+        wrapper.splice(f'''
 extern "C" int wrapper({signature}) {{
-    uint32_t workspace_size = default_workspace_size;
-    uint32_t block_dim = default_block_dim;
-    int64_t result = 0;
     if (tiling_fn == nullptr || launch_fn == nullptr) {{
-        if (tiling_fn == nullptr) std::cerr << "{graph.name} kernel tiling func not found" << std::endl;
-        if (launch_fn == nullptr) std::cerr << "{graph.name} kernel launch func not found" << std::endl;
+        if (tiling_fn == nullptr) std::cerr << "{graph.name} tiling func null" << std::endl;
+        if (launch_fn == nullptr) std::cerr << "{graph.name} launch func null" << std::endl;
         return -1;
-    }}
-
-    {tiling_dtype} tiling_data = default_tiling_data;
-    if (!static_tiling) {{
-        result = tiling_fn({', '.join(tiling_args + ["&tiling_data", "&workspace_size", "&block_dim", "nullptr"])});
-        if (result != 0) {{
-            std::cerr << "{graph.name} kernel tiling failed" << std::endl;
-            return -1;
-        }}
     }}
 
     void *current_stream = GetStream(stream);
     if (current_stream == nullptr) {{
-        std::cerr << "{graph.name} kernel get stream failed" << std::endl;
+        std::cerr << "{graph.name} GetStream failed in wrapper thread" << std::endl;
         return -1;
     }}
 
-    DLOG() << "Launch args for {graph.name}:" << std::endl;
-    DLOG() << "block_dim: " << block_dim << std::endl;
-    DLOG() << "stream: " << current_stream << std::endl;
-    DLOG() << "workspace_size: " << workspace_size << std::endl;
-
-    void *workspace = nullptr;
-    if (workspace_size > 0) {{
-        workspace = MallocWorkspace(workspace_size, current_stream);
-        if (workspace == nullptr) {{
-            std::cerr << "{graph.name} kernel malloc workspace failed" << std::endl;
+    uint32_t workspace_size = default_workspace_size;
+    uint32_t block_dim = default_block_dim;
+    {tiling_dtype} tiling_data = default_tiling_data;
+    if (!static_tiling) {{
+        int64_t tiling_result = tiling_fn({', '.join(tiling_args + ["&tiling_data", "&workspace_size", "&block_dim", "nullptr"])});
+        if (tiling_result != 0) {{
+            std::cerr << "{graph.name} tiling failed in lambda" << std::endl;
             return -1;
         }}
     }}
-    DLOG() << "workspace: " << workspace << std::endl;
 
-    {buffer_assign}
-
-    result = launch_fn({', '.join(["block_dim", "current_stream"] + launch_args + ["&tiling_data"])});
-    if (workspace != nullptr) {{
-        FreeWorkspace(workspace);
+    at::Tensor workspace_tensor;
+    void *workspace = nullptr;
+    if (workspace_size > 0) {{
+        workspace_tensor = AllocateWorkspaceTensor(workspace_size, current_stream);
+        workspace = const_cast<void *>(workspace_tensor.storage().data());
+        if (workspace == nullptr) {{
+            std::cerr << "{graph.name} allocate workspace failed" << std::endl;
+            return -1;
+        }}
     }}
-    if (result != 0) {{
-        std::cerr << "{graph.name} kernel launch failed" << std::endl;
+    DLOG() << "Launch args for {graph.name}: block_dim=" << block_dim << " stream=" << current_stream 
+            << " workspace_size=" << workspace_size << " workspace=" << workspace << std::endl;
+
+    {buffer_assign_in_taskqueue1}
+
+    auto launch_call = [=]() -> int {{
+        int64_t inner_result = launch_fn({', '.join(["block_dim", "current_stream"] + launch_args + ["const_cast<AutofuseTilingData*>(&tiling_data)"])});
+        if (inner_result != 0) {{
+            std::cerr << "{graph.name} launch failed" << std::endl;
+            return -1;
+        }}
+        return 0;
+    }};
+
+    at_npu::native::OpCommand::RunOpApiV2("{graph.name}", launch_call);
+    return 0;
+}}
+    ''')
+
+    # taskqueue=2:静态tiling在queue外执行，动态tiling+workspace+kernel在queue内执行
+    else:
+        wrapper.splice(f'''
+extern "C" int wrapper({signature}) {{
+    if (tiling_fn == nullptr || launch_fn == nullptr) {{
+        if (tiling_fn == nullptr) std::cerr << "{graph.name} tiling func null" << std::endl;
+        if (launch_fn == nullptr) std::cerr << "{graph.name} launch func null" << std::endl;
         return -1;
     }}
+
+    void *current_stream = GetStream(stream);
+    if (current_stream == nullptr) {{
+        std::cerr << "{graph.name} GetStream failed in wrapper thread" << std::endl;
+        return -1;
+    }}
+
+    auto launch_call = [=]() -> int {{
+        uint32_t workspace_size = default_workspace_size;
+        uint32_t block_dim = default_block_dim;
+        {tiling_dtype} tiling_data = default_tiling_data;
+        if (!static_tiling) {{
+            int64_t tiling_result = tiling_fn({', '.join(tiling_args + ["&tiling_data", "&workspace_size", "&block_dim", "nullptr"])});
+            if (tiling_result != 0) {{
+                std::cerr << "{graph.name} tiling failed in lambda" << std::endl;
+                return -1;
+            }}
+        }}
+
+        at::Tensor workspace_tensor;
+        void *workspace = nullptr;
+        if (workspace_size > 0) {{
+            workspace_tensor = AllocateWorkspaceTensor(workspace_size, current_stream);
+            workspace = const_cast<void *>(workspace_tensor.storage().data());
+            if (workspace == nullptr) {{
+                std::cerr << "{graph.name} allocate workspace failed" << std::endl;
+                return -1;
+            }}
+        }}
+        DLOG() << "Launch args for {graph.name}: block_dim=" << block_dim << " stream=" << current_stream 
+               << " workspace_size=" << workspace_size << " workspace=" << workspace << std::endl;
+
+        {buffer_assign_in_taskqueue2}
+
+        int64_t inner_result = launch_fn({', '.join(["block_dim", "current_stream"] + launch_args + ["&tiling_data"])});
+        if (inner_result != 0) {{
+            std::cerr << "{graph.name} launch failed" << std::endl;
+            return -1;
+        }}
+        return 0;
+    }};
+
+    at_npu::native::OpCommand::RunOpApiV2("{graph.name}", launch_call);
     return 0;
 }}
     ''')

@@ -99,6 +99,29 @@ export TORCHINDUCTOR_NPU_EXT_LAYOUT_CHECK=1
 **注意：**
 开启该环境变量可能会降低运行性能，建议首次运行无误后，关闭该环境变量。
 
+---
+
+### TASK_QUEUE_ENABLE
+
+**作用：** torch_npu原生环境变量，控制 task_queue 算子下发队列优化的等级，取值范围[0, 1, 2]，默认值为1。
+
+该环境变量在 inductor-npu-ext 中的行为如下：
+
+| 取值 | 说明 |
+| --- | --- |
+| 0 | 关闭优化，融合kernel同步执行 |
+| 1 | Level 1优化（推荐），融合kernel通过队列异步下发 |
+| 2 | Level 2优化，tiling计算、融合kernel通过队列异步下发 |
+
+**使用方法：**
+
+```bash
+export TASK_QUEUE_ENABLE=1
+```
+
+**注意：**
+当 ASCEND_LAUNCH_BLOCKING=1 时，TASK_QUEUE_ENABLE 强制为 0（同步执行）。
+
 ## 3. 调测输出说明
 
 本节结合具体示例，说明在启用 TORCH_COMPILE_DEBUG=1 后，相关的调试日志和编译产物。
