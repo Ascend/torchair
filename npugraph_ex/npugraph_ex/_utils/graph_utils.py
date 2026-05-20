@@ -471,7 +471,7 @@ def verify_cross_stream_event_protected(inplace_node: Node, users: List[Node]) -
         backward_ok = user_stream in happens_before and user_pos < happens_before[user_stream]
 
         if not forward_ok and not backward_ok:
-            logger.debug("[event_protected] Cross-stream user %s (stream=%s, pos=%d) is NOT protected "
+            logger.debug("[event_protected] Cross-stream user %s (stream=%s, pos=%d) is not protected "
                          "by events for inplace node %s.", user.name, user_stream, user_pos, inplace_node.name)
             return False
 

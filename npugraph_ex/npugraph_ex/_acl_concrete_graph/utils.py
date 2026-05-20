@@ -266,7 +266,7 @@ def is_op_input_base_format(tensor) -> bool:
 def _is_copy_node(node: Node) -> bool:
     """Check if a node is a copy_ node."""
     return (
-        node.op == "call_function" 
+        node.op == "call_function"
         and node.target == torch.ops.aten.copy_.default
     )
 
@@ -274,15 +274,15 @@ def _is_copy_node(node: Node) -> bool:
 def _get_getitem_users_for_output(node: Node, output_idx: int, min_node_idx: Optional[int] = None) -> List[Node]:
     """
     Get all users of getitem nodes that extract a specific output index from a node.
-    
+
     For multi-reinplace intermediate nodes, functionalized ops use getitem to access outputs.
     This function finds all getitem(node, output_idx) nodes and returns their users.
-    
+
     Args:
         node: The functionalized node whose outputs are accessed via getitem
         output_idx: The output index to find getitem nodes for
         min_node_idx: Optional minimum node index to filter users (only include users with node_idx > min_node_idx)
-    
+
     Returns:
         List of user nodes of the getitem nodes
     """
@@ -325,10 +325,10 @@ def get_inplace_op_mutated_input_users(
     # Handle single node case (for auto_functionalize)
     if isinstance(mutated_input_indices, Node):
         return _collect_single_node_users(mutated_input_indices)
-    
+
     # Handle multiple nodes case (for regular reinplace checks)
     all_inputs_users = []
-    
+
     # For multi-reinplace intermediate nodes, we need to find users of getitem nodes
     # because functionalized ops output getitem(functional_op, output_index) instead of using inputs directly
     # For intermediate nodes (not graph inputs), the actual usage is through getitem(functional_op, output_index)
@@ -343,12 +343,12 @@ def get_inplace_op_mutated_input_users(
     except Exception:
         # Fallback: use original logic if we can't calculate output indices
         input_output_map = {}
-    
+
     for idx in mutated_input_indices:
         if idx >= len(original_node.args):
             logger.warning("Input index %d out of range for node %s", idx, original_node.name)
             continue
-        
+
         input_node = original_node.args[idx]
         users = _collect_single_node_users(input_node)
 
@@ -359,9 +359,9 @@ def get_inplace_op_mutated_input_users(
             # Find getitem(original_node, output_idx) nodes and collect their users
             getitem_users = _get_getitem_users_for_output(original_node, output_idx)
             users.extend(getitem_users)
-        
+
         all_inputs_users.append(users)
-    
+
     return all_inputs_users
 
 
@@ -372,7 +372,7 @@ def _collect_single_node_users(input_node: Node) -> List[Node]:
     """
     users = []
     copy_node = None
-    
+
     # part 1: all users of input node
     # Collect non-copy users of the input node
     for user in input_node.users:
@@ -381,7 +381,7 @@ def _collect_single_node_users(input_node: Node) -> List[Node]:
             copy_node = user
             continue
         users.append(user)
-    
+
     # part 2: all users of functionalized op output
     # Only when multi reinplace is need,
     # because functionalized op output(get_item) will be replace by input only in multi reinplace case.
@@ -393,23 +393,23 @@ def _collect_single_node_users(input_node: Node) -> List[Node]:
                 if candidate != copy_node:
                     # user copy_ will be replace by input
                     users.append(candidate)
-        
+
         # part 3: all users of copy_. Collect users of the copy node itself
         users.extend(copy_node.users)
-    
+
     return users
 
 
 class ReinplaceStreamChecker:
     """Unified handler for reinplace operation stream checking."""
-    
+
     def __init__(self):
         pass
 
     def check_single_reinplace(self, node: torch.fx.Node) -> bool:
         """Check stream consistency for single-input reinplace operations."""
         return self._check_reinplace_streams(node, [0])
-    
+
     def check_multi_reinplace(self, node: torch.fx.Node) -> bool:
         """Check stream consistency for multi-input reinplace operations."""
         from npugraph_ex._acl_concrete_graph.graph_pass import inplaceable_npu_ops
@@ -417,13 +417,13 @@ class ReinplaceStreamChecker:
         if inplace_op is None:
             return False
         return self._check_reinplace_streams(node, inplace_op.mutated_arg)
-    
+
     def check_auto_functionalize(self, node: torch.fx.Node, mutated_arg: torch.fx.Node) -> bool:
         """Check stream consistency for auto_functionalize scenarios."""
         # Use unified user collection interface
         users = get_inplace_op_mutated_input_users(node, mutated_arg)
-        return self._verify_and_log(node, users, "multi_stream_auto_functionalize")
-    
+        return self._verify_and_log(node, users, "multi_stream_auto_functionalize", mutated_arg)
+
     def _check_reinplace_streams(self, node: torch.fx.Node, input_indices: List[int]) -> bool:
         """Internal method: Check stream consistency for specified input indices."""
         all_inputs_users = get_inplace_op_mutated_input_users(node, input_indices)
@@ -431,25 +431,38 @@ class ReinplaceStreamChecker:
         logger.debug(f"[Reinplace check_reinplace_streams]Check Node:{node.name} "
                      f"with inplace args indices:{input_indices}, which are {[node.args[i] for i in input_indices]} "
                      f"has all_inputs_users:{all_inputs_users} respectively.")
-        for users in all_inputs_users:
-            if not self._verify_and_log(node, users, check_name):
+        for idx, users in zip(input_indices, all_inputs_users):
+            if not self._verify_and_log(node, users, check_name, node.args[idx]):
                 return False
         return True
-    
-    def _verify_and_log(self, node: Node, users: List[Node], check_name: str) -> bool:
+
+    def _verify_and_log(self, node: Node, users: List[Node], check_name: str,
+                        mutated_arg) -> bool:
         """Verify if user nodes are on the same stream and log the result."""
         from npugraph_ex._utils.graph_utils import verify_cross_stream_event_protected
-        
+
+        arg_desc = self._format_potential_mutated_arg(mutated_arg)
         if verify_cross_stream_event_protected(node, users):
-            logger.debug("[%s]Current node: %s, type: %s check stream safety success for reinplace. "
-                     "The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events. All the users are %s.", check_name,
-                     node.name, node.target, users)
+            logger.debug("[%s]Current node: %s, type: %s, potential mutated arg: %s check stream safety success for reinplace. "
+                     "Between the potential inplace node and user nodes, there is either no cross-stream dependency, or any cross-stream dependency is protected by events. All the users are %s.", check_name,
+                     node.name, node.target, arg_desc, users)
             return True
         else:
-            logger.debug("[%s]Current node: %s, type: %s check no multi stream users failed for reinplace. "
-                     "The users of the mutated input node have multiple streams without event protection. All the users are %s.", check_name,
-                     node.name, node.target, users)
+            logger.debug("[%s]Current node: %s, type: %s, potential mutated arg: %s check stream safety failed for reinplace. "
+                     "Between the potential inplace node and user nodes, a cross-stream dependency exists without event protection. All the users are %s.", check_name,
+                     node.name, node.target, arg_desc, users)
             return False
+
+    def _format_potential_mutated_arg(self, mutated_arg) -> str:
+        """Format the potential mutated arg (with storage) for debug logs."""
+        from npugraph_ex._acl_concrete_graph.graph_pass import get_node_storage
+        if isinstance(mutated_arg, Node):
+            name = mutated_arg.name
+            storage = get_node_storage(mutated_arg)
+        else:
+            name = repr(mutated_arg)
+            storage = None
+        return f"{name}(storage={storage})"
 
 
 def insert_save_npugraph_tensor(gm: torch.fx.GraphModule, data_dump_path):

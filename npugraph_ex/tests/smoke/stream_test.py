@@ -427,8 +427,8 @@ class StreamTest(unittest.TestCase):
             res = opt_model(x, y)
 
         self.assertTrue(
-            any("The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events." in log for log in stdout.getvalue().splitlines()),
-            f"Expected DEBUG log 'The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events.' in logs: {stdout.getvalue()}"
+            any("Between the potential inplace node and user nodes, there is either no cross-stream dependency, or any cross-stream dependency is protected by events." in log for log in stdout.getvalue().splitlines()),
+            f"Expected DEBUG log 'Between the potential inplace node and user nodes, there is either no cross-stream dependency, or any cross-stream dependency is protected by events.' in logs: {stdout.getvalue()}"
         )
 
     def test_custom_mutated_arg_used_by_multi_stream_with_event_wait_on_stream(self):
@@ -456,8 +456,8 @@ class StreamTest(unittest.TestCase):
             res = opt_model(x, y)
 
         self.assertTrue(
-            any("The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events." in log for log in stdout.getvalue().splitlines()),
-            f"Expected DEBUG log 'The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events.' in logs: {stdout.getvalue()}"
+            any("Between the potential inplace node and user nodes, there is either no cross-stream dependency, or any cross-stream dependency is protected by events." in log for log in stdout.getvalue().splitlines()),
+            f"Expected DEBUG log 'Between the potential inplace node and user nodes, there is either no cross-stream dependency, or any cross-stream dependency is protected by events.' in logs: {stdout.getvalue()}"
         )
 
     def test_custom_mutated_arg_used_by_multi_stream_with_event_record_on_stream(self):
@@ -485,8 +485,8 @@ class StreamTest(unittest.TestCase):
             res = opt_model(x, y)
 
         self.assertTrue(
-            any("The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events." in log for log in stdout.getvalue().splitlines()),
-            f"Expected DEBUG log 'The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events.' in logs: {stdout.getvalue()}"
+            any("Between the potential inplace node and user nodes, there is either no cross-stream dependency, or any cross-stream dependency is protected by events." in log for log in stdout.getvalue().splitlines()),
+            f"Expected DEBUG log 'Between the potential inplace node and user nodes, there is either no cross-stream dependency, or any cross-stream dependency is protected by events.' in logs: {stdout.getvalue()}"
         )
 
     def test_custom_mutated_arg_used_by_chained_multi_stream_events(self):
@@ -520,8 +520,8 @@ class StreamTest(unittest.TestCase):
             res = opt_model(x, y)
 
         self.assertTrue(
-            any("The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events." in log for log in stdout.getvalue().splitlines()),
-            f"Expected DEBUG log 'The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events.' in logs: {stdout.getvalue()}"
+            any("Between the potential inplace node and user nodes, there is either no cross-stream dependency, or any cross-stream dependency is protected by events." in log for log in stdout.getvalue().splitlines()),
+            f"Expected DEBUG log 'Between the potential inplace node and user nodes, there is either no cross-stream dependency, or any cross-stream dependency is protected by events.' in logs: {stdout.getvalue()}"
         )
 
     def test_custom_mutated_arg_used_by_multi_stream_user_before_inplace(self):
@@ -548,8 +548,8 @@ class StreamTest(unittest.TestCase):
             res = opt_model(x, y)
 
         self.assertTrue(
-            any("The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events." in log for log in stdout.getvalue().splitlines()),
-            f"Expected DEBUG log 'The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events.' in logs: {stdout.getvalue()}"
+            any("Between the potential inplace node and user nodes, there is either no cross-stream dependency, or any cross-stream dependency is protected by events." in log for log in stdout.getvalue().splitlines()),
+            f"Expected DEBUG log 'Between the potential inplace node and user nodes, there is either no cross-stream dependency, or any cross-stream dependency is protected by events.' in logs: {stdout.getvalue()}"
         )
 
     def test_custom_mutated_arg_used_by_multi_stream_without_event_protection(self):
@@ -573,8 +573,8 @@ class StreamTest(unittest.TestCase):
             res = opt_model(x, y)
 
         self.assertTrue(
-            any("The users of the mutated input node have multiple streams without event protection." in log for log in stdout.getvalue().splitlines()),
-            f"Expected DEBUG log 'The users of the mutated input node have multiple streams without event protection.' in logs: {stdout.getvalue()}"
+            any("Between the potential inplace node and user nodes, a cross-stream dependency exists without event protection." in log for log in stdout.getvalue().splitlines()),
+            f"Expected DEBUG log 'Between the potential inplace node and user nodes, a cross-stream dependency exists without event protection.' in logs: {stdout.getvalue()}"
         )
 
     def test_builtin_inplace_arg_used_by_multi_stream_with_event_wait_on_stream(self):
@@ -602,8 +602,8 @@ class StreamTest(unittest.TestCase):
             res = opt_model(x, y)
 
         self.assertTrue(
-            any("The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events." in log for log in stdout.getvalue().splitlines()),
-            f"Expected DEBUG log 'The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events.' in logs: {stdout.getvalue()}"
+            any("Between the potential inplace node and user nodes, there is either no cross-stream dependency, or any cross-stream dependency is protected by events." in log for log in stdout.getvalue().splitlines()),
+            f"Expected DEBUG log 'Between the potential inplace node and user nodes, there is either no cross-stream dependency, or any cross-stream dependency is protected by events.' in logs: {stdout.getvalue()}"
         )
 
     def test_builtin_inplace_arg_used_by_chained_multi_stream_events(self):
@@ -637,8 +637,8 @@ class StreamTest(unittest.TestCase):
             res = opt_model(x, y)
 
         self.assertTrue(
-            any("The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events." in log for log in stdout.getvalue().splitlines()),
-            f"Expected DEBUG log 'The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events.' in logs: {stdout.getvalue()}"
+            any("Between the potential inplace node and user nodes, there is either no cross-stream dependency, or any cross-stream dependency is protected by events." in log for log in stdout.getvalue().splitlines()),
+            f"Expected DEBUG log 'Between the potential inplace node and user nodes, there is either no cross-stream dependency, or any cross-stream dependency is protected by events.' in logs: {stdout.getvalue()}"
         )
 
     def test_custom_and_builtin_inplace_ops_with_multi_stream_events(self):
@@ -687,7 +687,7 @@ class StreamTest(unittest.TestCase):
         log_lines = stdout.getvalue().splitlines()
         success_log = (
             "check stream safety success for reinplace. "
-            "The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events."
+            "Between the potential inplace node and user nodes, there is either no cross-stream dependency, or any cross-stream dependency is protected by events."
         )
 
         self.assertTrue(
@@ -720,8 +720,8 @@ class StreamTest(unittest.TestCase):
             res = opt_model(x, y)
 
         self.assertTrue(
-            any("The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events." in log for log in stdout.getvalue().splitlines()),
-            f"Expected DEBUG log 'The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events.' in logs: {stdout.getvalue()}"
+            any("Between the potential inplace node and user nodes, there is either no cross-stream dependency, or any cross-stream dependency is protected by events." in log for log in stdout.getvalue().splitlines()),
+            f"Expected DEBUG log 'Between the potential inplace node and user nodes, there is either no cross-stream dependency, or any cross-stream dependency is protected by events.' in logs: {stdout.getvalue()}"
         )
 
 
