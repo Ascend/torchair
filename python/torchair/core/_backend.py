@@ -10,7 +10,7 @@ from collections import defaultdict
 
 from typing import Dict, List
 import torch
-from torchair._acl_concrete_graph.static_kernel import uninstall_static_kernel, cleanup_old_run_packages
+from torchair._acl_concrete_graph.static_kernel import uninstall_static_kernel
 from torchair._utils.error_code import pretty_error_msg
 from torchair.core.utils import logger
 from torchair._ge_concrete_graph.utils import _get_input_shape
@@ -110,7 +110,6 @@ def _signal_handler(signum, frame):
     os.kill(os.getpid(), signum)
 
 
-cleanup_old_run_packages()
 atexit.register(finalize_graph_engine)
 if threading.current_thread() is threading.main_thread():
     signal.signal(signal.SIGTERM, _signal_handler)
