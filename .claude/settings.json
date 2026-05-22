@@ -1,0 +1,24 @@
+{
+  "enabledPlugins": {
+    "skill-creator@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": true
+  },
+  "sandbox": {
+    "enabled": false,
+    "autoAllowBashIfSandboxed": false
+  },
+  "includeCoAuthoredBy": false,
+  "gitAttribution": false,
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/skills/default-skills/scripts/install-default-skills.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
