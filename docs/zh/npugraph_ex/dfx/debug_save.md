@@ -14,11 +14,11 @@
 |信息类型|说明|
 |--|--|
 |日志信息|PyTorch原生Dynamo日志<br>npugraph\_ex 日志|
-|Debug信息|AOT前的GraphModule<br>AOT后的GraphModule<br>每个公共Pass处理后的FX图（txt文件）<br>aclgraph优化中不同Pass处理后的FX图（txt文件）<br>aclgraph编译后的FX图结构信息（output_code.py文件）<br>aclgraph在Capture阶段捕获的算子执行图信息（*.json文件）<br>注意：仅当配套的CANN版本是8.5.0及之后的版本，才会有该文件生成，否则不会生成。|
+|Debug信息|AOT前的GraphModule<br>AOT后的GraphModule<br>每个公共Pass处理后的FX图（txt文件）<br>aclgraph优化中不同Pass处理后的FX图（txt文件）<br>aclgraph编译后的FX图结构信息（output_code.py文件）<br>aclgraph在Capture阶段捕获的模型运行实例信息（*.json文件）<br>注意：仅当配套的CANN版本是8.5.0及之后的版本，才会有该文件生成，否则不会生成。|
 
 ## 使用约束
 
-- 使用[compile_fx](../api/npugraph_ex//compile_fx.md)开启该功能时，仅收集编译流程中的部分调试产物。
+- 使用[compile_fx](../api/npugraph_ex//compile_fx.md)开启该功能时，不会收集AOT前的GraphModule文件`dynamo_out_graph.txt`。
 - 分布式场景下，需在脚本开头`import npugraph_ex`，确保debug目录能正确创建。
 - 本功能支持的产品型号参见[使用说明](../../overview.md#使用说明)。
 
@@ -70,7 +70,10 @@ python main.py
     │   │   │   ├── 004_aot_forward_graph_after_${pass6_name}.txt
     │   │   │   ├── ......                                            # 其他Pass优化
     │   │   ├── dynamo_out_graph.txt                                  # AOT前的GraphModule
-    │   │   ├── graph_1_id_${aclgraph_id}_rank_${rank_id}_pid_${pid}_ts_${timestamp}.json      # 捕获的算子执行图信息
+    │   │   ├── graph_1_id_${aclgraph_id}_rank_${rank_id}_pid_${pid}_ts_${timestamp}.json      # 捕获的模型运行实例信息
     └── torchdynamo
         └── debug.log                                                 # Torch原生Dynamo日志
     ```
+
+    > [!NOTE]说明
+    > 模型运行实例信息通过Runtime提供的接口获取，使用方法和说明详见CANN社区[《Runtime运行时API》](https://hiascend.com/document/redirect/CannCommunityRuntimeApi)中“模型运行实例管理”章节的aclmdlRIDebugJsonPrint接口。
