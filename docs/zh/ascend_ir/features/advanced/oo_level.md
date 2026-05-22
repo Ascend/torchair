@@ -2,7 +2,7 @@
 
 ## 功能简介
 
-> [!NOTE]须知 
+> [!NOTE]须知
 >本功能为试验功能，后续版本可能存在变更，暂不支持应用于商用产品中。
 
 图编译阶段支持设置不同的图编译优化选项，包括子图优化、整图优化、静态shape模型下沉等，同时提供了两个次级编译优化选项，分别为常量折叠优化、死边消除优化。
@@ -22,7 +22,7 @@
 
 ```python
 import torch_npu
-import torchair 
+import torchair
 config = torchair.CompilerConfig()
 # 多级编译优化配置
 config.ge_config.oo_level = "O3"
@@ -46,5 +46,5 @@ opt_model = torch.compile(model, backend=npu_backend)
 >
 >- 支持用户手动将oo\_constant\_folding或oo\_dead\_code\_elimination置为True/False实现优化项的独立开启/关闭。
 >- oo\_level取值为O1时，会关闭所有图融合和UB融合Pass，只开启静态下沉的相关Pass。需要注意的是，如下路径文件中的图融合Pass系统仍会开启，因为一旦关闭可能会影响功能使用：
-> “$\{INSTALL\_DIR\}/x86\_64-linux/lib64/plugin/opskernel/fusion\_pass/config/fusion\_config.json”文件中"ExceptionalPassOfO1Level"字段下的所有图融合Pass。$\{INSTALL\_DIR\}请替换为CANN软件安装后文件存储路径，以root安装举例，安装后文件存储路径为/usr/local/Ascend/cann。
+> `${INSTALL_DIR}/x86_64-linux/lib64/plugin/opskernel/fusion_pass/config/fusion_config.json`文件中"ExceptionalPassOfO1Level"字段下的所有图融合Pass。`${INSTALL_DIR}`请替换为CANN软件安装后文件存储路径，以root安装举例，安装后文件存储路径为/usr/local/Ascend/cann。
 >- 更多融合规则相关介绍请参见《CANN 图融合和UB融合规则参考》。
