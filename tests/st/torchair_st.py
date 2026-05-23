@@ -289,7 +289,7 @@ class TorchairSt(unittest.TestCase):
         assert src != '# -*- coding: utf-8 -*-\nfrom torch import tensor\n' \
                       'from torchair._ge_concrete_graph import ge_apis as ge\n' \
                       'from torchair.ge._ge_graph import get_default_ge_graph\n\n'
-    
+
     def test_sym_pack(self):
         class Model(torch.nn.Module):
             def __init__(self):
@@ -745,7 +745,7 @@ class TorchairSt(unittest.TestCase):
         y = torch.ones([10, 2], dtype=torch.float)
         for i in range(2):
             result = executor2.run((x, y))
-    
+
     def test_npu_static_executor_fp8_e8m0(self):
         key = "ST_MXFPX_DTYPE_STUB"
         os.environ[key] = "DT_FLOAT8_E8M0"
@@ -2027,13 +2027,13 @@ class TorchairSt(unittest.TestCase):
 
         captured_output = stdout.getvalue()
         self.assertTrue("start to release graph" in captured_output)
-    
+
     def test_ge_output_hif8(self):
         key = "ST_MXFPX_DTYPE_STUB"
         os.environ[key] = "DT_HIFLOAT8"
         initialize_graph_engine()
         from torchair.core import _npu_graph_executor
-        
+
         torch.utils.rename_privateuse1_backend("npu")
 
         with GeGraph() as graph:
@@ -2054,7 +2054,7 @@ class TorchairSt(unittest.TestCase):
         os.environ[key] = "DT_FLOAT8_E8M0"
         initialize_graph_engine()
         from torchair.core import _npu_graph_executor
-        
+
         torch.utils.rename_privateuse1_backend("npu")
 
         with GeGraph() as graph:
@@ -2075,7 +2075,7 @@ class TorchairSt(unittest.TestCase):
         os.environ[key] = "DT_FLOAT4_E2M1"
         initialize_graph_engine()
         from torchair.core import _npu_graph_executor
-        
+
         torch.utils.rename_privateuse1_backend("npu")
 
         with GeGraph() as graph:
@@ -2096,7 +2096,7 @@ class TorchairSt(unittest.TestCase):
         os.environ[key] = "DT_FLOAT4_E1M2"
         initialize_graph_engine()
         from torchair.core import _npu_graph_executor
-        
+
         torch.utils.rename_privateuse1_backend("npu")
 
         with GeGraph() as graph:
@@ -2173,7 +2173,7 @@ class TorchairSt(unittest.TestCase):
         send_counts1[0] = 1
         send_displacements1 = [sum(send_counts1[:i]) for i in range(len(send_counts1))]
         self.assertEqual(send_displacements1, result)
-        
+
     def test_dump_node_info(self):
         class Model(torch.nn.Module):
             def __init__(self):
@@ -2181,7 +2181,7 @@ class TorchairSt(unittest.TestCase):
 
             def forward(self, x, y, z):
                 return torch.add(input=x, other=y, alpha=z)
-            
+
         model = Model()
         test_config = torchair.CompilerConfig()
         test_config.debug.graph_dump.type = "py"
@@ -2189,13 +2189,13 @@ class TorchairSt(unittest.TestCase):
         if os.path.exists(test_config.debug.graph_dump.path):
             shutil.rmtree(test_config.debug.graph_dump.path)
         os.makedirs("./test_dump_node_info/graphs")
-        
+
         test_npu_backend = torchair.get_npu_backend(compiler_config=test_config)
         test_model = torch.compile(model, backend=test_npu_backend, dynamic=True)
         x = torch.randn(4, 4)
         y = torch.randn(4, 4)
         test_model(x, y, 1)
-        
+
         dump_file_path = [f for f in os.listdir(test_config.debug.graph_dump.path)
                         if f.endswith(".py") and "original" in f][0]
         dump_line = ""
@@ -2266,7 +2266,7 @@ class TorchairSt(unittest.TestCase):
         y = torch.randn([4, 64, 256])
         with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
             model(x, y)
-        
+
         self.assertFalse(
             any("target: aten.view.default" in log for log in cm.output),
             f"Expected no DEBUG log 'target: aten.view.default' in logs: {cm.output}"
@@ -2315,11 +2315,11 @@ class TorchairSt(unittest.TestCase):
         @torch.library.impl(m, "custom_clone_tensor", "Meta")
         def custom_clone_tensor_meta(x):
             return torch.empty_like(x)
-        
+
         @torchair.register_fx_node_ge_converter(torch.ops.test.custom_clone_tensor.default)
         def converter_custom_clone_tensor(x):
             return torchair.ge.Clone(x)
-        
+
         @torch.compile(backend=torchair.get_npu_backend(), dynamic=True)
         def custom_clone(x):
             return torch.ops.test.custom_clone_tensor.default(x)
@@ -2328,14 +2328,14 @@ class TorchairSt(unittest.TestCase):
         y = custom_clone(x)
         self.assertEqual(y.dtype, x.dtype)
         self.assertEqual(y.shape, x.shape)
-        
+
     def test_fx_data_dump_data(self):
         config.dump_config.enable_dump = True
         config.dump_config.dump_data = "stats"
         config.dump_config.dump_data = "tensor"
         with self.assertRaises(ValueError):
             config.dump_config.dump_data = "csv"
-            
+
     def test_fx_dump_config_path(self):
         finalize_graph_engine()
         with open("./test_acl.json", "w") as file:
@@ -2374,12 +2374,12 @@ class TorchairSt(unittest.TestCase):
 
                     ret = func(*args, **kwargs)
                     return ret
-               
-                return wrapper      
+
+                return wrapper
             GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
 
         warp_concrete_graph()
-        torch.npu.Event = None  
+        torch.npu.Event = None
         compile_func = torch.compile(cus_func, backend=npu_backend, fullgraph=True)
         input1 = torch.ones((4, 4))
         input2 = torch.ones((4, 4))
@@ -2406,16 +2406,16 @@ class TorchairSt(unittest.TestCase):
 
                     ret = func(*args, **kwargs)
                     return ret
-               
-                return wrapper      
+
+                return wrapper
             GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
 
         warp_concrete_graph()
-        torch.npu.Event = None  
+        torch.npu.Event = None
         compile_func = torch.compile(cus_func, backend=npu_backend, fullgraph=True)
         input1 = torch.ones((4, 4))
         input2 = torch.ones((4, 4))
-        out = compile_func(input1, input2)  
+        out = compile_func(input1, input2)
 
     def test_ge_wait_and_record_pass_muti_pass(self):
         def cus_func(x, y):
@@ -2424,12 +2424,12 @@ class TorchairSt(unittest.TestCase):
                 record = torchair.ops.record()
                 mm1 = torch.mm(x, y)
                 mul = torch.mul(x, add)
-            with torchair.scope.npu_stream_switch('2'):            
+            with torchair.scope.npu_stream_switch('2'):
                 add2 = torch.add(x, mul)
                 torchair.ops.wait([record, mul])
             add3 = torch.add(x, mul)
             with torchair.scope.npu_stream_switch('2'):
-                mm2 = torch.mm(x, add2)    
+                mm2 = torch.mm(x, add2)
             return add3, mm2, mm1
 
         def warp_concrete_graph():
@@ -2444,16 +2444,16 @@ class TorchairSt(unittest.TestCase):
 
                     ret = func(*args, **kwargs)
                     return ret
-               
-                return wrapper      
+
+                return wrapper
             GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
 
         warp_concrete_graph()
-        torch.npu.Event = None  
+        torch.npu.Event = None
         compile_func = torch.compile(cus_func, backend=npu_backend, fullgraph=True)
         input1 = torch.ones((4, 4))
         input2 = torch.ones((4, 4))
-        out = compile_func(input1, input2)                
+        out = compile_func(input1, input2)
 
     def test_miss_scope_exit(self):
         def cus_func(x, y):
@@ -2469,7 +2469,7 @@ class TorchairSt(unittest.TestCase):
                     with fx_graph.inserting_before(node):
                         fx_graph.call_function(torch.ops.air.scope_enter.default, args=(
                             ["_user_stream_label"], ["stream_1"]))
-  
+
         config = CompilerConfig()
         config.post_grad_custom_pre_pass = custom_pass
         compile_func = torch.compile(cus_func, backend=torchair.get_npu_backend(compiler_config=config), fullgraph=True)
@@ -2478,7 +2478,7 @@ class TorchairSt(unittest.TestCase):
         with self.assertRaises(RuntimeError) as context:
             out = compile_func(input1, input2)
         self.assertTrue('there is no paired call to the torch.ops.air.scope_exit operator'
-                        in str(context.exception)) 
+                        in str(context.exception))
 
     def test_miss_scope_enter(self):
         def cus_func(x, y):
@@ -2493,7 +2493,7 @@ class TorchairSt(unittest.TestCase):
                 if node.op == "call_function" and node.target == torch.ops.aten.mm.default:
                     with fx_graph.inserting_before(node):
                         fx_graph.call_function(torch.ops.air.scope_exit.default, args=())
-  
+
         config = CompilerConfig()
         config.post_grad_custom_pre_pass = custom_pass
         compile_func = torch.compile(cus_func, backend=torchair.get_npu_backend(compiler_config=config), fullgraph=True)
@@ -2502,7 +2502,7 @@ class TorchairSt(unittest.TestCase):
         with self.assertRaises(RuntimeError) as context:
             out = compile_func(input1, input2)
         self.assertTrue('you must first call the torch.ops.air.scope_enter operator'
-                        in str(context.exception))                   
+                        in str(context.exception))
 
     def test_auto_converter(self):
         m = Library("custom_define", "DEF")
@@ -2543,7 +2543,7 @@ class TorchairSt(unittest.TestCase):
             return out1, out2
 
         from typing import Any
-        
+
         @torchair.register_fx_node_ge_converter(torch.ops.npu.my_op_infer.default)
         def conveter_custom_demo_add_out(
                 x,
@@ -2569,13 +2569,13 @@ class TorchairSt(unittest.TestCase):
                     import json
                     import ast
                     for op in geGraph.op:
-                        if op.name == "MyOpInfer":                    
+                        if op.name == "MyOpInfer":
                             inference_rule = json.loads(op.attr["_inference_rule"].s)
                             self.assertEqual(inference_rule["shape"]["inputs"][0][0], "s0")
                             self.assertEqual(inference_rule["shape"]["inputs"][0][1], "s1")
                             self.assertEqual(inference_rule["shape"]["inputs"][1][0], "s2")
                             self.assertEqual(inference_rule["shape"]["inputs"][1][1], "s3")
-                            
+
                             is_high_python_version = hasattr(ast, 'unparse')
                             s0_out = "s0 + 2" if is_high_python_version else "(s0+2)"
                             self.assertEqual(inference_rule["shape"]["outputs"][0][0], s0_out)
@@ -2587,22 +2587,22 @@ class TorchairSt(unittest.TestCase):
 
                             self.assertEqual(inference_rule["dtype"][0], 3)
                             self.assertEqual(inference_rule["dtype"][1], 0)
-                       
+
 
                     ret = func(*args, **kwargs)
                     return ret
-               
-                return wrapper    
+
+                return wrapper
 
 
             GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
 
         warp_concrete_graph()
-        compile_func = torch.compile(cus_func, backend=npu_backend, fullgraph=True, dynamic=True)  
+        compile_func = torch.compile(cus_func, backend=npu_backend, fullgraph=True, dynamic=True)
         input1 = torch.ones((4, 4), dtype=torch.int32)
         input2 = torch.ones((4, 4), dtype=torch.float)
 
-        out = compile_func(input1, input2)                
+        out = compile_func(input1, input2)
 
     def test_post_grad_no_custom_fn(self):
         class Model(torch.nn.Module):
@@ -2620,7 +2620,7 @@ class TorchairSt(unittest.TestCase):
         x = torch.randn(2, 2)
         with self.assertLogs(logger, level="DEBUG") as cm:
             opt_model(x)
-        
+
         self.assertFalse(
             any("before [post_grad_custom_pre_pass]" in log for log in cm.output),
             f"Expected no DEBUG log '[post_grad_custom_pre_pass] before' in logs: {cm.output}")
@@ -2628,7 +2628,7 @@ class TorchairSt(unittest.TestCase):
         self.assertFalse(
             any("after [post_grad_custom_pre_pass]" in log for log in cm.output),
             f"Expected no DEBUG log '[post_grad_custom_pre_pass] after' in logs: {cm.output}")
-        
+
         self.assertFalse(
             any("before [post_grad_custom_post_pass]" in log for log in cm.output),
             f"Expected no DEBUG log '[post_grad_custom_post_pass] before' in logs: {cm.output}")
@@ -2653,10 +2653,10 @@ class TorchairSt(unittest.TestCase):
         def _custom_pre_fn(gm, example_inputs, compile_config: torchair.CompilerConfig):
             return None
 
-        
+
         def _custom_post_fn(gm, example_inputs, compile_config: torchair.CompilerConfig):
             return None
-        
+
         custom_config = CompilerConfig()
         custom_config.post_grad_custom_pre_pass = _custom_pre_fn
         custom_config.post_grad_custom_post_pass = _custom_post_fn
@@ -2666,24 +2666,24 @@ class TorchairSt(unittest.TestCase):
         x = torch.randn(2, 2)
         with self.assertLogs(logger, level="DEBUG") as cm:
             opt_model(x)
-        
+
         self.assertTrue(
-            any("[forward] before [post_grad_custom_pre_pass] execution" 
+            any("[forward] before [post_grad_custom_pre_pass] execution"
                 in log for log in cm.output),
             f"Expected DEBUG log '[forward] before [post_grad_custom_pre_pass] execution' in logs: {cm.output}")
 
         self.assertTrue(
-            any("[forward] after [post_grad_custom_pre_pass] execution" 
+            any("[forward] after [post_grad_custom_pre_pass] execution"
                 in log for log in cm.output),
             f"Expected DEBUG log '[forward] after [post_grad_custom_pre_pass] execution' in logs: {cm.output}")
 
         self.assertTrue(
-            any("[forward] before [post_grad_custom_post_pass] execution" 
+            any("[forward] before [post_grad_custom_post_pass] execution"
                 in log for log in cm.output),
             f"Expected DEBUG log '[forward] before [post_grad_custom_post_pass] execution' in logs: {cm.output}")
 
         self.assertTrue(
-            any("[forward] after [post_grad_custom_post_pass] execution" 
+            any("[forward] after [post_grad_custom_post_pass] execution"
                 in log for log in cm.output),
             f"Expected DEBUG log '[forward] after [post_grad_custom_post_pass] execution' in logs: {cm.output}")
 
@@ -2691,7 +2691,7 @@ class TorchairSt(unittest.TestCase):
         class Model(torch.nn.Module):
             def __init__(self):
                 super().__init__()
-            
+
             def forward(self, in1, in2, in3):
                 s0_add1 = torch.add(in1, in2)
                 with torchair.scope.npu_stream_switch("1"):
@@ -2700,7 +2700,7 @@ class TorchairSt(unittest.TestCase):
                 with torchair.scope.npu_stream_switch("2"):
                     s2_add = torch.add(in3, s1_mm)
                 return s0_mm1, s2_add
-            
+
         _config = CompilerConfig()
         _npu_backend = torchair.get_npu_backend(compiler_config=_config)
         model = torch.compile(Model(), backend=_npu_backend, dynamic=False, fullgraph=True)
@@ -2789,7 +2789,7 @@ class TorchairSt(unittest.TestCase):
         (status, _, _, _) = _torchair.get_registered_ir_def("MyOpTestv5")
         self.assertTrue(status == "ERROR", f"Actual status: {status}")
 
-    def test_ge_tiling_optimize_failed(self):
+    def test_ge_tiling_optimize(self):
         class Model(torch.nn.Module):
             def __init__(self):
                 super().__init__()
@@ -2801,7 +2801,7 @@ class TorchairSt(unittest.TestCase):
                     # query = torch.ops.npu.npu_incre_flash_attention(matmul_01, k, div_01, num_heads=16, actual_seq_lengths=length)
                 # return query
                 return matmul_01
-            
+
         B = 3
         S = 256
         H = 1024
@@ -2823,53 +2823,8 @@ class TorchairSt(unittest.TestCase):
         model_1 = torch.compile(model, backend=npu_backend, dynamic=True, fullgraph=True)
         res_1 = model_1(q, k, v, length, data2)
 
-        with self.assertRaises(torch._dynamo.exc.BackendCompilerFailed) as context:
-            config = CompilerConfig()
-            config.experimental_config.tiling_schedule_optimize = False
-            npu_backend = torchair.get_npu_backend(compiler_config=config)
-            model = Model()
-            model_2 = torch.compile(model, backend=npu_backend, dynamic=True, fullgraph=True)
-            res_2 = model_2(q, k, v, length, data2)
-
-        finalize_graph_engine()
-        self.assertTrue("Unsupport twice initialtion with different options" in str(context.exception))
-        
-    def test_ge_tiling_optimize(self):
-        class Model(torch.nn.Module):
-            def __init__(self):
-                super().__init__()
-
-            def forward(self, q, k, v, length, data2):
-                div_01 = torch.div(k, v)
-                for i in range(5):
-                    matmul_01 = torch.bmm(q, data2)
-                    # query = torch.ops.npu.npu_incre_flash_attention(matmul_01, k, div_01, num_heads=16, actual_seq_lengths=length)
-                # return query
-                return matmul_01
-            
-        B = 3
-        S = 256
-        H = 1024
-        q = (1 + torch.rand(B, 1, H)).to(torch.float16)
-        k = (1 + 4 * torch.rand(B, S, H)).to(torch.float16)
-        v = (1 + 4 * torch.rand(B, S, H)).to(torch.float16)
-        length = [99, 199, 180]
-        data2 = torch.full((B, H, H), 0.002).to(torch.float16)
-
-        torch._dynamo.mark_static(q)
-        torch._dynamo.mark_static(k)
-        torch._dynamo.mark_static(v)
-        torch._dynamo.mark_static(data2)
-
         config = CompilerConfig()
-        config.experimental_config.tiling_schedule_optimize_graph = True
-        npu_backend = torchair.get_npu_backend(compiler_config=config)
-        model = Model()
-        model_1 = torch.compile(model, backend=npu_backend, dynamic=True, fullgraph=True)
-        res_1 = model_1(q, k, v, length, data2)
-
-        config = CompilerConfig()
-        config.experimental_config.tiling_schedule_optimize_graph = False
+        config.experimental_config.tiling_schedule_optimize = False
         npu_backend = torchair.get_npu_backend(compiler_config=config)
         model = Model()
         model_2 = torch.compile(model, backend=npu_backend, dynamic=True, fullgraph=True)
@@ -2884,13 +2839,13 @@ class TorchairSt(unittest.TestCase):
         from torchair.core import _npu_graph_executor
         from unittest.mock import patch, MagicMock
         import torch
-        
+
         if not hasattr(torch, 'npu'):
             torch.npu = MagicMock()
-        
+
         torch.npu.get_device_limit = MagicMock(return_value={'vector_core_num': 48})
         torch.npu.current_device = MagicMock(return_value=0)
-        
+
         with GeGraph() as graph1:
             a = ge.Data(index=0, shape=[128, 128], dtype=DataType.DT_FLOAT, placement='CPU')
             b = ge.Data(index=1, shape=[1, 2], dtype=DataType.DT_FLOAT, placement='CPU')
