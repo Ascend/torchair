@@ -2176,6 +2176,54 @@ class AclgraphTest(unittest.TestCase):
         self.assertTrue(torch.allclose(result2, expected, atol=1e-5))
 
 
+    @unittest.skipIf(not (hasattr(torch._dynamo, "graph_bytecode_inputs")
+                            and hasattr(torch._dynamo.graph_bytecode_inputs, "get_external_object_by_index")),
+                        "torch.ops.streams.record_stream is unsupported when torch < 2.12")
+    def test_record_stream_replace_with_record_tagged_on_stream(self):
+        import torch.fx
+
+        s = torch.npu.Stream()
+
+        class RecordStreamTestModule(torch.nn.Module):
+            def forward(self, x):
+                return torch.relu(x)
+
+        gm = torch.fx.GraphModule(RecordStreamTestModule(), torch.fx.Graph())
+
+        stream_idx = 0
+        with gm.graph.inserting_after():
+            placeholder = gm.graph.placeholder("x")
+            relu_node = gm.graph.call_function(torch.relu, (placeholder,))
+            record_stream_node = gm.graph.call_function(
+                torch.ops.streams.record_stream,
+                (relu_node, stream_idx),
+            )
+            output = gm.graph.output((relu_node,))
+        gm.recompile()
+
+        original_get_fn = torch._dynamo.graph_bytecode_inputs.get_external_object_by_index
+        torch._dynamo.graph_bytecode_inputs.get_external_object_by_index = lambda idx: s
+        try:
+            from npugraph_ex._acl_concrete_graph.replace_stream_event import replace_stream_event_pass
+            gm = replace_stream_event_pass(gm)
+        finally:
+            torch._dynamo.graph_bytecode_inputs.get_external_object_by_index = original_get_fn
+
+        found_record_tagged_on_stream = False
+        for node in gm.graph.nodes:
+            if node.op == "call_function" and node.target == torch.ops.npugraph_ex.record_tagged_on_stream_:
+                found_record_tagged_on_stream = True
+                self.assertEqual(node.args[1], str(s.stream_id))
+                self.assertEqual(node.args[2], str(s.device_index))
+                self.assertEqual(node.args[3], str(s.device_type))
+        self.assertTrue(
+            found_record_tagged_on_stream,
+            "Expected torch.ops.npugraph_ex.record_tagged_on_stream_ to exist in the fx graph after "
+            "replace_stream_event_pass, but it was not found. "
+            f"tensor.record_stream should have been replaced by record_tagged_on_stream_ in high version torch. graph is : {gm.graph}"
+        )
+
+
 def patch_dynamo():
     from torch._dynamo.variables.user_defined import UserDefinedClassVariable
 

@@ -24,9 +24,6 @@ class GraphCounter:
 
 
 def replace_stream_event_pass(gm: torch.fx.GraphModule):
-    if not hasattr(torch, "npu") or not hasattr(torch.npu, "fake_record_stream"):
-        logger.warning("torch has no attr npu or npu.fake_record_stream, skip replace_stream_event_pass")
-        return gm
 
     from npugraph_ex.ops._tagged_event import (_npu_create_tagged_event, _npu_tagged_event_record,
                           _npu_tagged_event_wait, _npu_record_tagged_stream)
@@ -69,9 +66,13 @@ def replace_stream_event_pass(gm: torch.fx.GraphModule):
                 else:
                     node.target = torch.ops.npugraph_ex.tagged_event_wait
                     node.args = (graph_id + event_index_to_node_name[node.args[0]], True)
-            elif node.target == torch.npu.fake_record_stream:
+            elif hasattr(torch.npu, "fake_record_stream") and node.target == torch.npu.fake_record_stream:
                 node.target = torch.ops.npugraph_ex.record_tagged_stream_
                 node.args = (node.args[0], node.args[1].name,)
+            elif is_high_version and hasattr(torch.ops.streams, "record_stream") and node.target == torch.ops.streams.record_stream:
+                stream_obj = torch._dynamo.graph_bytecode_inputs.get_external_object_by_index(node.args[1])
+                node.target = torch.ops.npugraph_ex.record_tagged_on_stream_
+                node.args = (node.args[0], str(stream_obj.stream_id), str(stream_obj.device_index), str(stream_obj.device_type))
             elif _is_stream(node):
                 new_stream_list.append(node)
                 # Get stream info and save to map

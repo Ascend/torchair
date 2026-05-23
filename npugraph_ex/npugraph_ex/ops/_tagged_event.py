@@ -73,6 +73,16 @@ def record_tagged_stream_impl(input: torch.Tensor, tagged_stream: str):
     input.record_stream(stream)
 
 
+def record_tagged_on_stream_impl(input, stream_id, device_index, device_type):
+    stream_id, device_index, device_type = _resolve_stream_markers(stream_id, device_index, device_type)
+    stream = torch.npu.Stream(stream_id=stream_id, device_index=device_index, device_type=device_type)
+    # The record_stream interface in PyTorch does not directly modify the input,
+    # it obtains the data_ptr of the input and increases the stream use count.
+    # Therefore, if we first add clone for input,
+    # this will cause the recorded data_ptr used for multi-stream usage to become the data_ptr of the cloned tensor.
+    input.record_stream(stream)
+
+
 if not hasattr(getattr(torch.ops, "npugraph_ex"), "tagged_event_record"):
     lib.define("tagged_event_record(str tag, bool created_inside=False) -> ()")
     has_side_effect(torch.ops.npugraph_ex.tagged_event_record.default)
@@ -255,3 +265,30 @@ if not hasattr(getattr(torch.ops, "npugraph_ex"), "tagged_stream_wait_stream"):
         return None
 
     torch.library.impl(lib, "tagged_stream_wait_stream", "CompositeExplicitAutograd")(stream_wait_stream_impl)
+
+
+# Register record_tagged_on_stream_ operator
+if not hasattr(getattr(torch.ops, "npugraph_ex"), "record_tagged_on_stream"):
+    lib.define("record_tagged_on_stream(Tensor input, str stream_id, str device_index, str device_type) -> ()")
+    lib.define("record_tagged_on_stream_(Tensor(a!) input, str stream_id, str device_index, str device_type) -> ()")
+
+    has_side_effect(torch.ops.npugraph_ex.record_tagged_on_stream.default)
+    has_side_effect(torch.ops.npugraph_ex.record_tagged_on_stream_.default)
+
+    @torch.library.impl(lib, "record_tagged_on_stream", "Meta")
+    def record_tagged_on_stream_meta(input, stream_id, device_index, device_type):
+        return None
+
+    @torch.library.impl(lib, "record_tagged_on_stream_", "Meta")
+    def record_tagged_on_stream_meta(input, stream_id, device_index, device_type):
+        return None
+
+
+    @torch.library.impl(lib, "record_tagged_on_stream_", "Functionalize")
+    def record_tagged_on_stream_inplace_func(input, stream_id, device_index, device_type):
+        # The record_stream interface does not involve input mutation,
+        # so there is no need to copy the output of out-of-place op to the original input.
+        torch.ops.npugraph_ex.record_tagged_on_stream(input, stream_id, device_index, device_type)
+
+    torch.library.impl(lib, "record_tagged_on_stream", "CompositeExplicitAutograd")(record_tagged_on_stream_impl)
+    torch.library.impl(lib, "record_tagged_on_stream_", "CompositeExplicitAutograd")(record_tagged_on_stream_impl)
