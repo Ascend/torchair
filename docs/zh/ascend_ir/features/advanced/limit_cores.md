@@ -58,9 +58,23 @@ GE图模式提供了两种限核方法，即**算子级核数**和**全局核数
 
     **表 1**  参数说明
 
-|参数名|说明|
-|--|--|
-|aicore_num|指定全局AI Core和Vector Core数，字符串类型，形如“${aicore_num}|${vectorcore_num}”，必须用“|”来分隔。${aicore_num}：表示全局AI Core数，整数类型，取值范围为[1, max_aicore]。${vectorcore_num}：表示全局Vector Core数，整数类型，取值范围为[1, max_vectorcore]。在如下产品中，AI处理器上仅存在AI Core不存在Vector Core，参数配置形如config.ge_config.aicore_num = "24|"或"24"，若配置了其它数值不会生效。Atlas 训练系列产品Atlas 推理系列产品[SoCInfo]# AI处理器仅存在10个AI Core**ai_core_cnt**=10vector_core_cnt=8|
+    |参数名|说明|
+    |--|--|
+    |aicore_num|指定全局AI Core和Vector Core数，字符串类型。|
+
+    说明：形如`{aicore_num}|${vectorcore_num}`，必须用`|`来分隔。`${aicore_num}`：表示全局AI Core数，整数类型，取值范围为[1, max_aicore]。`${vectorcore_num}`：表示全局Vector Core数，整数类型，取值范围为[1, max_vectorcore]。
+
+    在如下产品中，AI处理器上仅存在AI Core不存在Vector Core，参数配置形如config.ge_config.aicore_num = `24|`或`24`，若配置了其它数值不会生效。
+
+    - Atlas 训练系列产品
+    - Atlas 推理系列产品
+
+    ```txt
+    [SoCInfo]
+    # AI处理器仅存在10个AI Core
+    ai_core_cnt=10
+    vector_core_cnt=8
+    ```
 
     配置结果可通过开启Python侧日志获取，假设config.ge\_config.aicore\_num="24|100"，日志信息如下：
 
@@ -100,7 +114,7 @@ class Model(torch.nn.Module):
         super().__init__()
     def forward(self, in1, in2, in3, in4):
         # 指定算子级核数
-        with torchair.scope.limit_core_num(4, 5): 
+        with torchair.scope.limit_core_num(4, 5):
             mm_result = torch.mm(in3, in4)
             add_result = torch.add(in1, in2)
         mm1_result = torch.mm(in3, in4)
@@ -110,7 +124,7 @@ model = Model()
 config = CompilerConfig()
 config.debug.graph_dump.type = "pbtxt"
 # 指定全局核数
-config.ge_config.aicore_num = "24|48"     
+config.ge_config.aicore_num = "24|48"
 npu_backend = torchair.get_npu_backend(compiler_config=config)
 model = torch.compile(model, backend=npu_backend, dynamic=False, fullgraph=True)
 in1 = torch.randn(1000, 1000, dtype = torch.float16).npu()

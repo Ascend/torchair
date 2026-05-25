@@ -7,7 +7,7 @@
 > [!NOTE]说明
 >本功能与[图结构dump功能](../basic/graph_dump.md)是不同的功能，二者可以单独使用，也可共同用于用户定位精度问题。
 
-**图 1**  算子data dump示意图  
+**图 1**  算子data dump示意图
 ![](../../../figures/data_dump.png "算子data-dump示意图")
 
 ## 使用约束
@@ -15,7 +15,7 @@
 - 本功能仅适用于GE图模式场景。
 - 参数若涉及文件路径配置，请确保路径真实存在，并且具有读取和写入权限。
 
-## 使用方法 
+## 使用方法
 
 该功能通过[torchair.get\_npu\_backend](../../api/torchair/get_npu_backend.md)中compiler\_config配置，示例如下，仅供参考不支持直接拷贝运行，参数说明参见下表。
 
@@ -36,7 +36,7 @@ config.dump_config.dump_step = "0|1"
 config.dump_config.dump_layer = "Add_1Mul_1 Add2"
 # 指定算子dump类型：[可选]，stats表示dump输出csv文件
 config.dump_config.dump_data = "stats"
-# dump配置文件的路径：[可选]，通过配置文件使能data dump。不建议与其他options一起使用，否则此配置将失效。
+# dump配置文件的路径：[可选]，通过配置文件启用data dump。不建议与其他options一起使用，否则此配置将失效。
 config.dump_config.dump_config_path = "/home/dump_config.json"
 npu_backend= torchair.get_npu_backend(compiler_config=config)
 opt_model = torch.compile(model, backend=npu_backend)
@@ -50,7 +50,7 @@ opt_model = torch.compile(model, backend=npu_backend)
 |dump_mode|dump数据模式，用于指定dump算子的输入还是输出数据，字符串类型。<br>input：仅dump算子输入数据。<br>output：仅dump算子输出数据。<br>all（默认值）：同时dump算子输入和输出数据。|
 |dump_path|dump数据的存放路径，字符串类型，默认值为当前执行路径。支持配置绝对路径或相对路径（相对执行命令行时的当前路径）。<br>绝对路径配置以“/”开头，例如：/home/HwHiAiUser/output。<br>相对路径配置直接以目录名开始，例如：output。|
 |quant_dumpable|如果是量化后的网络，可通过此参数控制是否采集量化前的dump数据，bool类型。<br>False（默认值）：不采集量化前的dump数据。因为图编译过程中可能优化量化前的输入/输出，此时无法获取量化前的dump数据。<br>True：开启此配置后，可确保能够采集量化前的dump数据。|
-|dump_step|指定采集哪些迭代的dump数据。字符串类型，默认值None，表示所有迭代都会产生dump数据。<br>多个迭代用"\|"分割，例如："0|5|10"；也可以用"-"指定迭代范围，例如："0|3-5|10"。|
+|dump_step|指定采集哪些迭代的dump数据。字符串类型，默认值None，表示所有迭代都会产生dump数据。<br>多个迭代用`\|`分割，例如：`0\|5\|10`；也可以用"-"指定迭代范围，例如：`0\|3-5\|10`。|
 |dump_layer|指定需要dump的算子名，多个算子名之间使用空格分隔，形如"Add1_in_0 Add2 Mul2"。算子名获取方法参见dump_layer配置项说明。若指定的算子其输入涉及data算子，会同时将data算子信息dump出来。|
 |dump_data|指定算子dump内容类型，字符串类型。<br>tensor（默认值）：dump算子数据。<br>stats：dump算子统计数据，保存结果为csv格式，文件中包含算子名称、输入/输出的数据类型、最大值、最小值等。<br>通常dump数据量太大并且耗时长，可以先dump算子统计数据，根据统计数据识别可能异常的算子，再dump算子数据。|
 |dump_config_path**（推荐）**|指定dump配置文件（json格式）路径，字符串类型，无默认值。支持绝对/相对路径（即相对执行命令时的当前路径）。上述dump options（除了enable_dump）均能通过json文件配置，**推荐json方式dump，其余配置后续不再演进**。功能模式支持模型Dump/单算子Dump、溢出算子Dump、算子Dump Watch模式等，具体使用方法和约束参见dump_config_path配置项说明。|
@@ -110,7 +110,7 @@ npu_out = npu_mode(input0, input1)
       input: "Add1_in_0:0"
       input: "Add1_in_1:0"
       op {
-        name: "Add1_in_0" 
+        name: "Add1_in_0"
         type: "Data"
         input: ""
         attr {
@@ -134,7 +134,7 @@ npu_out = npu_mode(input0, input1)
 
 ## dump\_config\_path配置项说明
 
-通过表中“dump\_config\_path”参数指定dump配置json文件路径，基于json的配置使能各种场景dump功能。
+通过表中“dump\_config\_path”参数指定dump配置json文件路径，基于json的配置启用各种场景dump功能。
 
 - **使用说明**：
     - 同时配置dump\_config\_path和[表1](#fig1)提供的其他dump options时，dump options有较高的配置优先级。**不建议同时使用**。
@@ -148,26 +148,26 @@ npu_out = npu_mode(input0, input1)
     - 模型Dump配置示例如下：
 
         ```txt
-        {                                                                                            
+        {
          "dump":{
-          "dump_list":[                                                                        
+          "dump_list":[
            { "model_name":"ResNet-101"
            },
-           {                                                                                
+           {
             "model_name":"ResNet-50",
             "layer":[
                   "conv1conv1_relu",
                   "res2a_branch2ares2a_branch2a_relu",
                   "res2a_branch1",
                   "pool1"
-            ] 
-           }  
-          ],  
+            ]
+           }
+          ],
           "dump_path":"/home/output",
                         "dump_mode":"output",
           "dump_op_switch":"off",
                         "dump_data":"tensor"
-         }                                                                                        
+         }
         }
         ```
 
@@ -177,7 +177,7 @@ npu_out = npu_mode(input0, input1)
         {
             "dump":{
                 "dump_path":"/home/output",
-                "dump_list":[], 
+                "dump_list":[],
          "dump_op_switch":"on",
                 "dump_data":"tensor"
             }
@@ -270,7 +270,7 @@ npu_out = npu_mode(input0, input1)
 
 ## 非dump\_config\_path配置项说明
 
-通过表中“非dump\_config\_path”参数使能各种场景dump功能。dump结果文件存储在dump\_path参数指定的目录$\{dump\_path\}/$\(worldsize\_global\_rank\)/$\{time\}/$\{device\_id\}/$\{model\_name\}/$\{model\_id\}/$\{data\_index\}。若$\{dump\_path\}配置为/home/dump，结果目录样例为“/home/dump/worldsize1\_global\_rank0/2024112145738/0/ge\_default\_20200808163719\_121/1/0”。
+通过表中“非dump\_config\_path”参数启用各种场景dump功能。dump结果文件存储在dump\_path参数指定的目录$\{dump\_path\}/$\(worldsize\_global\_rank\)/$\{time\}/$\{device\_id\}/$\{model\_name\}/$\{model\_id\}/$\{data\_index\}。若$\{dump\_path\}配置为/home/dump，结果目录样例为“/home/dump/worldsize1\_global\_rank0/2024112145738/0/ge\_default\_20200808163719\_121/1/0”。
 
 - $\{dump\_path\}：由dump\_path参数指定，默认为脚本所在路径。
 - $\{worldsize\_global\_rank\}：表示集合通信相关的world\_size以及global\_rank信息，若只涉及单卡则表示为“worldsize1\_global\_rank0”。

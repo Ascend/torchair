@@ -49,7 +49,7 @@ custom_op(op_type: str, *args, inputs: Optional[Dict[str, Optional[Union['Tensor
     "Str"]
     ```
 
-- 关于算子原型介绍，请参考《CANN 图模式开发指南》。
+- 关于算子原型介绍，请参考《[CANN GE图开发](https://hiascend.com/document/redirect/CannCommunityGraphguide)》。
 
 ## 调用示例
 

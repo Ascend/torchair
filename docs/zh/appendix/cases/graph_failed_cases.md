@@ -18,7 +18,7 @@
 
     请打开TorchAir的C++和Python侧debug日志，根据报错提示和具体的失败堆栈信息，自行分析和解决问题。若无法解决，获取日志后您可以[单击](https://www.hiascend.com/support)联系技术支持。
 
-**图 1**  入图问题分析流程  
+**图 1**  入图问题分析流程
 ![](../../figures/graph_cases_flowchart.png "入图问题分析流程")<a id="fig1"></a>
 
 ## 关键数据获取
@@ -30,8 +30,10 @@
 |TorchAir的Python侧日志|参考TorchAir Python层日志打印，在PyTorch脚本中添加logger.setLevel(logging.DEBUG)，查看debug日志。|
 |TorchAir的C++侧日志|参考TorchAir C++层日志打印，设置环境变量export TNG_LOG_LEVEL=0，查看C++日志。|
 |TorchAir dump图|参考图结构dump功能，在PyTorch脚本中设置config.debug.graph_dump.type="pbtxt" ，查看TorchAir dump图信息。|
-|GE dump图|参考《CANN 环境变量参考》中的“DUMP_GE_GRAPH”章节，设置环境变量DUMP_GE_GRAPH，查看GE的dump图信息。|
-|CANN侧plog日志|参考《CANN 环境变量参考》中的“ASCEND_GLOBAL_LOG_LEVEL”章节，设置环境变量export ASCEND_GLOBAL_LOG_LEVEL=0开启plog debug日志。参考《CANN 环境变量参考》中的“ASCEND_SLOG_PRINT_TO_STDOUT”章节，设置环境变量export ASCEND_SLOG_PRINT_TO_STDOUT=1开启日志打印。|
+|GE dump图|设置环境变量DUMP_GE_GRAPH，查看GE的dump图信息。|
+|CANN侧plog日志|设置环境变量export ASCEND_GLOBAL_LOG_LEVEL=0开启plog debug日志。<br>设置环境变量export ASCEND_SLOG_PRINT_TO_STDOUT=1开启日志打印。|
+
+环境变量详细介绍请参考《[CANN 环境变量参考](https://hiascend.com/document/redirect/CannCommunityEnvRef)》。
 
 ## 整网运行报错“xxx op dtype is not same”
 
@@ -40,7 +42,7 @@
 在图模式场景下进行整网推理时，算子出现了如下类似的报错：
 
 ```txt
-E89999:[PID:260559] 2024-11-06-15:44:43.218.474 op[FloorDiv_1] op dtype is not same, type1:DT_FLOAT, type2:DT_INT64[FUNC:CheckTwoInputDtypeSame] 
+E89999:[PID:260559] 2024-11-06-15:44:43.218.474 op[FloorDiv_1] op dtype is not same, type1:DT_FLOAT, type2:DT_INT64[FUNC:CheckTwoInputDtypeSame]
        TraceBack (most recent call last):
        Verifying FloorDiv_1 failed.[FUNC:InferShapeAndType][FILE:infershape_pass.cc][LINE:129]
        Call InferShapeAndType for node:FloorDiv_1(FloorDiv) failed[FUNC:Infer][FILE:infershape_pass.cc][LINE:117]
@@ -83,7 +85,7 @@ E89999:[PID:260559] 2024-11-06-15:44:43.218.474 op[FloorDiv_1] op dtype is not s
 图模式场景下使用自定义算子推理时，CANN出现如下报错信息：
 
 ```txt
-RuntimeError: E19025: [PID: 44349] 2024-12-05-16:19:12.399.912 Input tensor is invalid. Reason: The Output memory provided by the user, plus 64 bytes for data alignment, is smaller than op_size in the model, which is an illegal behavior. Output size=8192 , op_size=16416. 
+RuntimeError: E19025: [PID: 44349] 2024-12-05-16:19:12.399.912 Input tensor is invalid. Reason: The Output memory provided by the user, plus 64 bytes for data alignment, is smaller than op_size in the model, which is an illegal behavior. Output size=8192 , op_size=16416.
        TraceBack (most recent call last):
        Check output size failed, index 0, user size 8192, op size 16416.[FUNC:ConstructZeroCopyIoActiveBaseAddrs][FILE:davinci_model.cc][LINE:5728]
        Assert ((ConstructZeroCopyIoActiveBaseAddrs(zero copy_output_indexes_,output_index_to_allocation_ids_, output_data.blobs,output_tensor,false,output_in_dex_to_active_mem_base_addrs )) == ge::SUCCESS) failed[FUNC:UpdateAllNodeArgs][FILE:davinci_model.cc][LINE:5797]
@@ -133,16 +135,16 @@ Meta注册时构造的Tensor类型不符合要求。
 2. 根据报错提示，先检查Meta注册代码，代码形如下方，可以发现确实返回了CPU Tensor。
 
     ```python
-    @impl(m, "npu_custom_batch_matmul_cce", "Meta") 
-    def npu_custom_batch_matmul_cce_meta(a, b, scale):   
+    @impl(m, "npu_custom_batch_matmul_cce", "Meta")
+    def npu_custom_batch_matmul_cce_meta(a, b, scale):
         return torch.zeros(a.shape[0], b.shape[1])
     ```
 
 3. 将返回的Tensor指定device为"meta"，问题即可解决。
 
     ```python
-    @impl(m, "npu_custom_batch_matmul_cce", "Meta") 
-    def npu_custom_batch_matmul_cce_meta(a, b, scale): 
+    @impl(m, "npu_custom_batch_matmul_cce", "Meta")
+    def npu_custom_batch_matmul_cce_meta(a, b, scale):
         return torch.zeros(a.shape[0], b.shape[1], device="meta")
     ```
 
@@ -214,7 +216,7 @@ E89999: [PID: 8383] 2025-06-28-17:38:17.580.416 op[Transpose], attr[perm], has w
            tag: str,
            rank_list,
            group_size: int,
-           meta_outputs: Any = None,):   
+           meta_outputs: Any = None,):
     """allgather_in_tensor(SymInt[] output_size, Tensor input, str tag, int[] ranks, int group_size) -> Tensor"""
        group_name = get_group_name_and_record(tag, rank_list, group_size)
        res = ge.HcomAllGather(input_tensor, rank_size=group_size, group=group_name, fusion=0)
@@ -236,7 +238,7 @@ E89999: [PID: 8383] 2025-06-28-17:38:17.580.416 op[Transpose], attr[perm], has w
 
 ### 问题现象描述
 
-使能TorchAir图模式后，出现如下报错：
+启用TorchAir图模式后，出现如下报错：
 
 ```txt
 torch._dynamo.exc.Unsupported: unsupported operator: npu.custom.default (see https://docs.google.com/document/d/1GgvOe7C8_NVOMLOCwDaYV1mXXyHMXY7ExoewHqooxrs/edit#heading=h.64r4npvq0w0 for how to fix)
@@ -254,7 +256,7 @@ torch._dynamo.exc.Unsupported: unsupported operator: npu.custom.default (see htt
 
 ### 问题现象描述
 
-使能TorchAir图模式后，出现如下报错：
+启用TorchAir图模式后，出现如下报错：
 
 ```txt
 RuntimeError: Found a custom (non-ATen) operator that either mutates or its inputs: npu::npu_xp_inplace_custom.. Getting these operators to work with functionalization requires some extra work. For mutable ops you need to register a corresponding out-of-place variant of the op, and you also need to register a Functionalization kernel that performs some boilerplate, telling functionalization to map from the mutable op to the out-of-place op. See a more complete example of how to do this at https://gist.github.com/bdhirsh/7dadbf6296f8f7d1abcf4c482f438aaa. Please file a GitHub issue if you run into any problems.

@@ -22,7 +22,7 @@
     import torch_npu
     import torchair
     config = torchair.CompilerConfig()
-    # 使能RefData类型的开关
+    # 启用RefData类型的开关
     config.experimental_config.enable_ref_data = True
     npu_backend = torchair.get_npu_backend(compiler_config=config)
     opt_model = torch.compile(model, backend=npu_backend)
@@ -41,7 +41,7 @@
 ```python
 import torch
 import torch_npu
-import torchair 
+import torchair
 from torch import nn
 from torchair.configs.compiler_config import CompilerConfig
 
@@ -61,7 +61,7 @@ npu_backend = torchair.get_npu_backend(compiler_config=config)
 model = torch.compile(model, fullgraph=True, backend=npu_backend, dynamic=True)
 ```
 
-使能RefData数据类型转换功能后，开启[TorchAir Python层日志打印](../basic/python_log_print.md)，有如下打印信息：
+启用RefData数据类型转换功能后，开启[TorchAir Python层日志打印](../basic/python_log_print.md)，有如下打印信息：
 
 ```txt
 [DEBUG] TORCHAIR 20240607 02:06:15 Replace RefData_5_3_20_20_1200_400_20_1_0_140251860631280:RefData with arg0_1:Data in graph graph_1

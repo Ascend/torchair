@@ -2,7 +2,7 @@
 
 ## 功能简介
 
-PyTorch模型使能图模式前，需要先识别FX图中IR是否有对应Converter实现。若有，表示算子支持接入Ascend IR计算图；否则不支持入图。对于不支持入图的算子，请根据实际情况进行Converter补齐，具体操作请参考[Converter补齐](https://gitcode.com/ascend/torchair/blob/master/CONTRIBUTING.md#converter%E8%A1%A5%E9%BD%90)。
+PyTorch模型启用图模式前，需要先识别FX图中IR是否有对应Converter实现。若有，表示算子支持接入Ascend IR计算图；否则不支持入图。对于不支持入图的算子，请根据实际情况进行Converter补齐，具体操作请参考[Converter补齐](https://gitcode.com/ascend/torchair/blob/master/CONTRIBUTING.md#converter%E8%A1%A5%E9%BD%90)。
 
 本功能可以导出算子详细信息，包括算子名、算子Converter支持度、算子调用次数等。
 
@@ -31,7 +31,7 @@ opt_model = torch.compile(model, backend=npu_backend)
 |fx_summary.skip_compile|是否跳过Ascend IR图编译，以FX图Eager方式执行。bool类型。<br>True（默认值）：跳过Ascend IR图编译，以FX图Eager方式执行。适用于模型Converter不全，图模式不能正常执行的场景，该场景下能收集完整的FX信息。<br>False：采用Ascend IR图编译。适用于模型支持以图模式执行且想收集FX信息的场景。|
 
 > [!NOTE]说明
->在正式运行图模式时，要**删除或注释**config.debug.fx\_summary.type = "csv"这行代码，否则将无法正确使能图模式。
+>在正式运行图模式时，要**删除或注释**config.debug.fx\_summary.type = "csv"这行代码，否则将无法正确启用图模式。
 
 ## 产物说明
 

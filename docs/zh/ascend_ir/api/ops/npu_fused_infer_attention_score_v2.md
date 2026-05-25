@@ -2,7 +2,7 @@
 
 ## 功能说明
 
-推理场景下，Ascend Extension for PyTorch提供的**torch\_npu.npu\_fused\_infer\_attention\_score\_v2**（参考《Ascend Extension for PyTorch 自定义 API参考》中的“torch\_npu.save\_npugraph\_tensor\_v2”章节），适配增量和全量推理场景的FlashAttention算子，既可以支持全量计算场景（PromptFlashAttention），也可支持增量计算场景（IncreFlashAttention）。
+推理场景下，Ascend Extension for PyTorch提供的**torch\_npu.npu\_fused\_infer\_attention\_score\_v2**（参考[Ascend Extension for PyTorch文档中心](https://hiascend.com/document/redirect/pytorchuserguide)中的《Ascend Extension for PyTorch 自定义 API参考》“torch\_npu.save\_npugraph\_tensor\_v2”章节），适配增量和全量推理场景的FlashAttention算子，既可以支持全量计算场景（PromptFlashAttention），也可支持增量计算场景（IncreFlashAttention）。
 
 该接口在图模式场景下，如果开启[Tiling调度优化功能](../../features/advanced/tiling_schedule_optimize.md)（config.experimental\_config.tiling\_schedule\_optimize），模型中actual\_seq\_length类参数会存在从Host到Device的拷贝开销，模型执行性能会下降。为此，**TorchAir提供了相应的定制化接口**，保障该算子Tiling调度优化效果。
 

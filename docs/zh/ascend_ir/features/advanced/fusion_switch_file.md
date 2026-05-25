@@ -48,7 +48,7 @@
     {
         "Switch":{
             "GraphFusion":{
-                "ALL":"off"    
+                "ALL":"off"
             },
             "UBFusion":{
                 "ALL":"off"
@@ -57,16 +57,16 @@
     }
     ```
 
-    **说明：** 
+    **说明：**
     - 一键式关闭融合规则仅关闭系统部分融合规则，而非全部融合规则。换言之配置"ALL": "off"后，部分融合算子仍旧会生效，因为关闭部分融合规则会导致功能问题。
     - 一键式关闭融合规则时，也可以同时开启部分融合规则（即配置文件中单个融合规则的配置优先级高于"ALL"），样例如下：
-    
+
         ```txt
         {
             "Switch":{
                 "GraphFusion":{
                     "ALL":"off",
-                    "SoftmaxFusionPass":"on"        
+                    "SoftmaxFusionPass":"on"
                 },
                 "UBFusion":{
                     "ALL":"off",
@@ -76,7 +76,7 @@
         }
         ```
 
-2. 使能算子融合规则配置文件。
+2. 启用算子融合规则配置文件。
 
     该配置文件通过[torchair.get\_npu\_backend](../../api/torchair/get_npu_backend.md)中compiler\_config参数配置生效，示例如下，参数说明参见下表。
 
@@ -113,22 +113,22 @@
 
 ```txt
 {
-    "session_and_graph_id_0_0": {         
+    "session_and_graph_id_0_0": {
         "graph_fusion": {
-            "pass1": {                    
-                "effect_times": "1",      
-                "match_times": "1"        
+            "pass1": {
+                "effect_times": "1",
+                "match_times": "1"
             },
-            "pass2": {                     
+            "pass2": {
                 "effect_times": "2",
                 "match_times": "2"
             }
         },
-        "ub_fusion": {                  
-            "pass3": {                         
-                "effect_times": "3",          
-                "match_times": "3",            
-                "repository_hit_times": "0"    
+        "ub_fusion": {
+            "pass3": {
+                "effect_times": "3",
+                "match_times": "3",
+                "repository_hit_times": "0"
             }
         }
     },
@@ -138,7 +138,7 @@
                 "effect_times": "5",
                 "match_times": "5"
             }
- 
+
         },
         "ub_fusion": {
             "pass2": {

@@ -34,10 +34,10 @@
 工程化开发是标准的算子开发流程，其简化了NPU适配过程，同时会自动注册Ascend C算子对应的Ascend IR，以保证PyTorch算子能与TorchAir max-autotune模式（Ascend IR）配合工作。
 
 > [!NOTE]说明
->使用TorchAir npugraph\_ex后端使能（aclgraph）模式时，您可以使用任意方式开发算子NPU实现，**只需要保证Torch算子能在Eager模式下正常工作**。
+>使用TorchAir npugraph\_ex后端（aclgraph）模式时，您可以使用任意方式开发算子NPU实现，**只需要保证Torch算子能在Eager模式下正常工作**。
 >使用TorchAir max-autotune模式时，需要确保算子NPU实现是以**Ascend C算子工程化方式**开发的aclnnXxx接口，以**Kernel直调方式开**发的NPU实现不会生成Ascend IR注册逻辑，没有对应的Ascend IR，无法完成PyTorch算子到Ascend IR的转换。
 
-本章**仅提供基于Ascend C工程化开发算子的关键步骤说明**，详细的操作请参考《CANN Ascend C算子开发指南》中的“算子实现\>工程化算子开发”章节，例如算子原型json文件的参数含义、msOpGen工具的命令说明等。
+本章**仅提供基于Ascend C工程化开发算子的关键步骤说明**，详细的操作请参考《[CANN Ascend C算子开发](https://hiascend.com/document/redirect/CannCommunityOpdevAscendC)》，例如算子原型json文件的参数含义、msOpGen工具的命令说明等。
 
 ### 创建自定义算子工程与原型
 
@@ -114,7 +114,7 @@
 
 为方便演示，本样例直接使用默认生成的Kernel和Tiling空实现，不影响后续的编译与执行。
 
-实际业务场景下，您可以参考《CANN Ascend C算子开发指南》中的“算子实现\>工程化算子开发”章节下“**Kernel侧算子实现**”和“**Host侧Tiling实现**”，进行核心代码开发。
+实际业务场景下，您可以参考《[CANN Ascend C算子开发](https://hiascend.com/document/redirect/CannCommunityOpdevAscendC)》中的“算子实现\>工程化算子开发”章节下“**Kernel侧算子实现**”和“**Host侧Tiling实现**”，进行核心代码开发。
 
 ### 实现InferShape与InferDataType（可选）
 
@@ -126,7 +126,7 @@
 
     当Ascend C算子输入输出与PyTorch算子可以一一对应时，可以删除算子工程生成的默认实现，TorchAir会在算子执行过程中自动生成InferShape与InferDataType函数。
 
-- **方式2**：如果不满足方式1，支持手动实现推导函数，请参考《CANN Ascend C算子开发指南》中“算子入图（GE图）开发”章节下“开发流程”完成DataType推导与Shape推导。
+- **方式2**：如果不满足方式1，支持手动实现推导函数，请参考《[CANN Ascend C算子开发](https://hiascend.com/document/redirect/CannCommunityOpdevAscendC)》中“算子入图（GE图）开发”章节下“开发流程”完成DataType推导与Shape推导。
 
 本样例中Ascend C算子MyInplace与PyTorch算子my\_inplace符合方式1，可以删除默认实现，使用TorchAir自动生成能力。
 
@@ -163,7 +163,7 @@ PyTorch官方提供的native\_functions.yaml文件定义了PyTorch Native Functi
 请确保已按[环境准备](./overview.md#环境准备)下载torch\_npu源码，算子的ATen IR定义位于third\_party/op-plugin/op\_plugin/config/op\_plugin\_functions.yaml文件中，在“**custom字段**”下添加[目标PyTorch算子](#确定算子原型)Schema定义：
 
 ```yaml
-custom:   
+custom:
 - func: my_inplace(Tensor(a!) x, Tensor y) -> Tensor
   op_api: all_version
 ```
@@ -265,30 +265,30 @@ def converter_my_inplace(x, y):   # 函数入参与Torch算子保持一致
     pip3 install dist/torch*.whl --force-reinstall --no-deps
     ```
 
-2. 验证自定义算子在Eager模式、TorchAir npugraph\_ex后端使能（aclgraph）模式、TorchAir max-autotune模式下功能是否正常。
+2. 验证自定义算子在Eager模式、TorchAir npugraph\_ex后端（aclgraph）模式、TorchAir max-autotune模式下功能是否正常。
 
     ```python
     import torch
     import torch_npu
     import torchair
-    
+
     def test_eager(x, y):
         return torch.ops.npu.my_inplace(x, y)
-    
+
     # aclgraph模式
     @torch.compile(backend="npugraph_ex")
     def test_torchair_npugraph_ex(x, y):
         return torch.ops.npu.my_inplace(x, y)
-    
+
     config = torchair.CompilerConfig()
     config.mode = "max-autotune"           # Ascend IR模式
     @torch.compile(backend=torchair.get_npu_backend(compiler_config=config))
     def test_torchair_max_autotune(x, y):
         return torch.ops.npu.my_inplace(x, y)
-    
+
     x = torch.ones(4, 8).npu()
     y = torch.ones(4, 8).npu()
-    
+
     test_eager(x, y)
     torch.npu.synchronize()
     print("Eager ok")

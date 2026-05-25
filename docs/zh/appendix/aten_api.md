@@ -66,7 +66,7 @@
 |torch.ops.aten.floor.default|支持fp16，fp32|
 |torch.nn.AdaptiveAvgPool2d|支持fp16，fp32output_size仅支持list|
 |torch.fft.fft|支持complex64|
-|torch.fft.fft2|
+|torch.fft.fft2|支持complex64|
 |torch.nn.LogSoftmax|支持bf16，fp16，fp32|
 |torch.abs|支持fp16，fp32，uint8，int8，int16，int32，int64|
 |torch.arange|支持bf16，fp16，fp32，int32，int64|

@@ -13,7 +13,7 @@
 
 |算子名|冗余操作场景示例|
 |--|--|
-|aten.slice|对整个张量进行完整切片操作，如tensor_a[:]。|当算子的输入/输出Shape不一致，或优化后在输入/输出间引入了新的别名关系时，不会进行冗余消除操作。|
+|aten.slice|对整个张量进行完整切片操作，如tensor_a[:]。|
 |aten.slice_scatter|对整个张量进行完整切片操作，如tensor_a.slice_scatter(tensor_b)。|
 |aten.repeat|张量在所有待重复维度上重复的次数为1，如tensor_a.repeat(1)。|
 |aten.constant_pad_nd|张量在所有待扩充维度上扩充的数量为0，如torch.nn.functional.pad(tensor_a, pad=[0, 0, 0, 0], value=3.5)。|

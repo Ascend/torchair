@@ -15,7 +15,7 @@
 ```python
 import torch
 model = torch.compile(model, backend="npugraph_ex", options={
-    "dump_tensor_data": True, 
+    "dump_tensor_data": True,
     "data_dump_dir": "/home/test/dump/",
     "data_dump_stage": "optimized"
     }, dynamic=False)
@@ -43,7 +43,7 @@ model = torch.compile(model, backend="npugraph_ex", options={
 
 该接口提供了类似原生print特性且不影响aclgraph replay的tensor dump能力，允许将图内计算节点的tensor数据、数据类型、shape信息保存到指定的pt或bin文件中以便观察aclgraph的执行过程。可以使用torch.load接口读取保存的tensor。
 
-该接口详细介绍参考《Ascend Extension for PyTorch 自定义 API参考》中的“torch\_npu.save\_npugraph\_tensor”章节。
+该接口详细介绍参考[Ascend Extension for PyTorch文档中心](https://hiascend.com/document/redirect/pytorchuserguide)中的《Ascend Extension for PyTorch 自定义 API参考》“torch\_npu.save\_npugraph\_tensor”章节。
 
 ```python
 import torch

@@ -15,7 +15,7 @@
 
 对此，可通过对阻塞算子（NonZero）进行控核来解决。
 
-**图 1**  多Stream并发场景卡死场景  
+**图 1**  多Stream并发场景卡死场景
 ![](../../figures/multi_stream_case.png "多Stream并发场景卡死场景")
 
 ## 使用方法
@@ -31,9 +31,9 @@
     - 进程级控核
 
         ```python
-        # 获取指定Device上的device资源限制 
-        torch.npu.get_device_limit(device) -> Dict  
-        # 设置指定Device的Device资源限制 
+        # 获取指定Device上的device资源限制
+        torch.npu.get_device_limit(device) -> Dict
+        # 设置指定Device的Device资源限制
         torch.npu.set_device_limit(device, cube_num=-1, vector_num=-1) -> None
         ```
 
@@ -42,7 +42,7 @@
         ```python
         import torch
         import torch_npu
-        
+
         torch.npu.set_device(0)
         torch.npu.set_device_limit(0, 12, 20)
         print(torch.npu.get_device_limit(0))
@@ -53,10 +53,10 @@
         ```python
         # 获取指定Stream的device资源限制
         torch.npu.get_stream_limit(stream) -> Dict
-        
+
         # 设置指定Stream的Device资源限制
         torch.npu.set_stream_limit(stream, cube_num=-1, vector_num=-1) -> None
-        
+
         # 重置指定Stream的Device资源限制
         torch.npu.reset_stream_limit(stream) -> None
         ```
@@ -66,12 +66,12 @@
         ```python
         import torch
         import torch_npu
-        
+
         batch_size = 2
         hidden_size = 16
         x = torch.randn(batch_size, hidden_size).npu()
         stream = torch.npu.current_stream()
-        
+
         torch.npu.set_stream_limit(stream, 3, 8)
         with torch.npu.stream(stream):
             output = torch_npu.npu_swiglu(x, dim=-1)
@@ -117,24 +117,24 @@
     from torchair.core.utils import logger
     import logging
     logger.setLevel(logging.DEBUG)
-    
+
     # 定义模型model
     class Model(torch.nn.Module):
         def __init__(self):
             super().__init__()
         def forward(self, in1, in2, in3, in4):
             # 指定算子级核数
-            with torchair.scope.limit_core_num(4, 5): 
+            with torchair.scope.limit_core_num(4, 5):
                 mm_result = torch.mm(in3, in4)
                 add_result = torch.add(in1, in2)
             mm1_result = torch.mm(in3, in4)
             return add_result, mm_result,mm1_result
-    
+
     model = Model()
     config = CompilerConfig()
     config.debug.graph_dump.type = "pbtxt"
     # 指定全局核数
-    config.ge_config.aicore_num = "24|48"     
+    config.ge_config.aicore_num = "24|48"
     npu_backend = torchair.get_npu_backend(compiler_config=config)
     model = torch.compile(model, backend=npu_backend, dynamic=False, fullgraph=True)
     in1 = torch.randn(1000, 1000, dtype = torch.float16).npu()
@@ -147,12 +147,12 @@
 
 - **图模式（npugraph\_ex）**
 
-    npugraph\_ex后端使能（aclgraph）模式提供了**Stream级核数配置**，两种模式的底层实现并不一样，max-autotune模式实现了算子级核数配置，npugraph\_ex实现了Stream级核数配置，详细说明参见[AI Core和Vector Core限核功能](../../ascend_ir/features/advanced/limit_cores.md)。
+    npugraph\_ex后端（aclgraph）模式提供了**Stream级核数配置**，两种模式的底层实现并不一样，max-autotune模式实现了算子级核数配置，npugraph\_ex实现了Stream级核数配置，详细说明参见[AI Core和Vector Core限核功能](../../ascend_ir/features/advanced/limit_cores.md)。
 
     接口如下：
 
     ```python
-    with torch.npu.npugraph_ex.scope.limit_core_num(op_aicore_num: int, op_vector_num: int ) 
+    with torch.npu.npugraph_ex.scope.limit_core_num(op_aicore_num: int, op_vector_num: int )
     ```
 
     使用如上with语句块，语句块内的算子均使用入参指定核数。
@@ -165,19 +165,19 @@
     ```python
     import torch
     import torch_npu
-    
+
     class Model(torch.nn.Module):
         def __init__(self):
             super().__init__()
-    
+
         def forward(self, in1, in2, in3, in4):
             # 指定Stream级核数
-            with torch.npu.npugraph_ex.scope.limit_core_num(4, 5): 
+            with torch.npu.npugraph_ex.scope.limit_core_num(4, 5):
                 mm_result = torch.mm(in3, in4)
                 add_result = torch.add(in1, in2)
             mm1_result = torch.mm(in3, in4)
             return add_result, mm_result,mm1_result
-    
+
     model = Model().npu()
     model = torch.compile(model, backend="npugraph_ex", dynamic=False, fullgraph=True)
     in1 = torch.randn(1000, 1000, dtype = torch.float16).npu()
@@ -199,7 +199,7 @@
         - HCCL算子：AIV模式控核生效，AI CPU模式不生效。
         - MC2算子：控核生效。
 
-- **npugraph\_ex后端使能（aclgraph）模式下控核与静态Kernel共同使能**
+- **npugraph\_ex后端（aclgraph）模式下控核与静态Kernel共同开启**
 
     在当前处理逻辑中，支持静态编译的计算算子在静态编译后失去了Tiling的行为。这意味着除非在编译态能够传递算子的核数，否则无法对此类算子进行控核。
 
@@ -207,4 +207,4 @@
 
     当CANN版本小于等于CANN 8.5.0时，当同时开启静态Kernel和控核的情况下，保证控核特性优先生效，静态Kernel功能将被禁用。
 
-    当CANN版本大于CANN 8.5.0时，静态编译支持传入核数信息，因此控核和静态Kernel可以同时使能。
+    当CANN版本大于CANN 8.5.0时，静态编译支持传入核数信息，因此控核和静态Kernel可以同时启用。

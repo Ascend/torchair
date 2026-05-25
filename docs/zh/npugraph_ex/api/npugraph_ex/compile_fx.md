@@ -30,7 +30,6 @@ compile_fx(gm, example_inputs=None, options=None)
 - [AI-Core和Vector-Core限核功能](../../advanced/limit_cores.md)
 - [FX图优化Pass配置功能](../../basic/inplace_pass.md)的input_inplace_pass配置需要配合`aot_module_simplified(keep_inference_input_mutations=True)`使用
 
-
 ## 调用示例
 
 ```python
@@ -56,7 +55,7 @@ def custom_compiler(gm: torch.fx.GraphModule, example_inputs):
 # 构建自定义的backend
 def custom_backend(gm: torch.fx.GraphModule, example_inputs):
     return aot_module_simplified(gm, example_inputs, fw_compiler=custom_compiler)
-                        
+
 x = torch.ones([2, 2], dtype=torch.int32).npu()
 y = torch.ones([2, 2], dtype=torch.int32).npu()
 model = torch.compile(Model().npu(), backend=custom_backend, fullgraph=True, dynamic=False)

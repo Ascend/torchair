@@ -83,12 +83,12 @@ for i in range(4):
     from torch import tensor
     from torchair._ge_concrete_graph import ge_apis as ge
     from torchair.ge._ge_graph import get_default_ge_graph
-    
+
     primals_1_0 = ge.Data(index=0, dtype=0, shape=[64, 128], placement="NPU", node_name="primals_1")
     primals_2_0 = ge.Data(index=1, dtype=0, shape=[64], placement="NPU", node_name="primals_2")
     primals_3_0 = ge.Data(index=2, dtype=0, shape=[100, 128], placement="NPU", node_name="primals_3")
     primals_4_0 = ge.Data(index=3, dtype=0, shape=[64], placement="NPU", node_name="primals_4")
-    
+
     # File "/npu/pytorch/test/test.py", line 24, in forward    x = self.linear1(x)
     ## FX Code: t: torch.float32[128, 64]npu:0 = torch.ops.aten.t.default(primals_1: torch.float32[64, 128]npu:0)
     ## FX Code: addmm: torch.float32[100, 64]npu:0 = torch.ops.aten.addmm.default(primals_2: torch.float32[64]npu:0, primals_3: torch.float32[100, 128]npu:0, t: torch.float32[128, 64]npu:0)
@@ -96,16 +96,16 @@ for i in range(4):
     MatMulV2_0 = ge.MatMulV2(primals_3_0, Transpose_0, None, None, node_name="MatMulV2")
     Mul_0 = ge.Mul(MatMulV2_0, ge.Const(1, dtype=0), node_name="Mul")
     Add_0 = ge.Add(Mul_0, primals_2_0, node_name="Add")
-    
+
     # File "/npu/pytorch/test/test.py", line 25, in forward    x = x - self.running_mean
     ## FX Code: sub: torch.float32[100, 64]npu:0 = torch.ops.aten.sub.Tensor(addmm: torch.float32[100, 64]npu:0, primals_4: torch.float32[64]npu:0)
     Sub_0 = ge.Sub(Add_0, primals_4_0, node_name="Sub")
-    
+
     # File "/npu/pytorch/test/test.py", line 26, in forward    x = x * scale_factor
     ## FX Code: mul: torch.float32[100, 64]npu:0 = torch.ops.aten.mul.Tensor(sub: torch.float32[100, 64]npu:0, 100)
     Mul_1_0 = ge.Mul(Sub_0, ge.Const(100, dtype=0), node_name="Mul_1")
     Cast_0 = ge.Cast(Mul_1_0, dst_type=0, node_name="Cast")
-    
+
     _ = ge.NetOutput([Cast_0], dependencies=[])
     ```
 
@@ -147,7 +147,7 @@ for i in range(4):
     from torch import tensor
     from torchair._ge_concrete_graph import ge_apis as ge
     from torchair.ge._ge_graph import get_default_ge_graph
-    
+
     primals_1_0 = ge.Data(index=0, dtype=0, shape=[64, 128], placement="NPU", node_name="primals_1")
     primals_2_0 = ge.Data(index=1, dtype=0, shape=[64], placement="NPU", node_name="primals_2")
     primals_3_0 = ge.Data(index=2, dtype=9, shape=[], placement="CPU", node_name="primals_3")
@@ -156,7 +156,7 @@ for i in range(4):
     Gather_0 = ge.Gather(Shape_0, 0, node_name="Gather")
     primals_5_0 = ge.Data(index=4, dtype=0, shape=[64], placement="NPU", node_name="primals_5")
     primals_6_0 = ge.Data(index=5, dtype=9, shape=[], placement="CPU", node_name="primals_6")
-    
+
     # File "/npu/pytorch/test/test.py", line 24, in forward    x = self.linear1(x)
     ## FX Code: t: torch.float32[128, 64]npu:0 = torch.ops.aten.t.default(primals_1: torch.float32[64, 128]npu:0)
     ## FX Code: addmm: torch.float32[s0, 64]npu:0 = torch.ops.aten.addmm.default(primals_2: torch.float32[64]npu:0, primals_4: torch.float32[s0, 128]npu:0, t: torch.float32[128, 64]npu:0)
@@ -164,17 +164,17 @@ for i in range(4):
     MatMulV2_0 = ge.MatMulV2(primals_4_0, Transpose_0, None, None, node_name="MatMulV2")
     Mul_0 = ge.Mul(MatMulV2_0, ge.Const(1, dtype=0), node_name="Mul")
     Add_0 = ge.Add(Mul_0, primals_2_0, node_name="Add")
-    
+
     # File "/npu/pytorch/test/test.py", line 25, in forward    x = x - self.running_mean
     ## FX Code: sub_1: torch.float32[s0, 64]npu:0 = torch.ops.aten.sub.Tensor(addmm: torch.float32[s0, 64]npu:0, primals_5: torch.float32[64]npu:0)
     Sub_0 = ge.Sub(Add_0, primals_5_0, node_name="Sub")
-    
+
     # File "/npu/pytorch/test/test.py", line 26, in forward    x = x * scale_factor
     ## FX Code: mul_4: torch.float32[s0, 64]npu:0 = torch.ops.aten.mul.Tensor(sub_1: torch.float32[s0, 64]npu:0, primals_6: "Sym(s2)")
     Cast_0 = ge.Cast(primals_6_0, dst_type=0, node_name="Cast")
     Mul_1_0 = ge.Mul(Sub_0, Cast_0, node_name="Mul_1")
     Cast_1_0 = ge.Cast(Mul_1_0, dst_type=0, node_name="Cast_1")
-    
+
     _ = ge.NetOutput([Cast_1_0], dependencies=[])
     ```
 
@@ -221,13 +221,13 @@ torch._dynamo.mark_static(inp)
     from torch import tensor
     from torchair._ge_concrete_graph import ge_apis as ge
     from torchair.ge._ge_graph import get_default_ge_graph
-    
+
     primals_1_0 = ge.Data(index=0, dtype=0, shape=[64, 128], placement="NPU", node_name="primals_1")
     primals_2_0 = ge.Data(index=1, dtype=0, shape=[64], placement="NPU", node_name="primals_2")
     primals_3_0 = ge.Data(index=2, dtype=0, shape=[100, 128], placement="NPU", node_name="primals_3")
     primals_4_0 = ge.Data(index=3, dtype=0, shape=[64], placement="NPU", node_name="primals_4")
     primals_5_0 = ge.Data(index=4, dtype=9, shape=[], placement="CPU", node_name="primals_5")
-    
+
     # File "/npu/pytorch/test/test.py", line 24, in forward    x = self.linear1(x)
     ## FX Code: t: torch.float32[128, 64]npu:0 = torch.ops.aten.t.default(primals_1: torch.float32[64, 128]npu:0)
     ## FX Code: addmm: torch.float32[100, 64]npu:0 = torch.ops.aten.addmm.default(primals_2: torch.float32[64]npu:0, primals_3: torch.float32[100, 128]npu:0, t: torch.float32[128, 64]npu:0)
@@ -235,17 +235,17 @@ torch._dynamo.mark_static(inp)
     MatMulV2_0 = ge.MatMulV2(primals_3_0, Transpose_0, None, None, node_name="MatMulV2")
     Mul_0 = ge.Mul(MatMulV2_0, ge.Const(1, dtype=0), node_name="Mul")
     Add_0 = ge.Add(Mul_0, primals_2_0, node_name="Add")
-    
+
     # File "/npu/pytorch/test/test.py", line 25, in forward    x = x - self.running_mean
     ## FX Code: sub: torch.float32[100, 64]npu:0 = torch.ops.aten.sub.Tensor(addmm: torch.float32[100, 64]npu:0, primals_4: torch.float32[64]npu:0)
     Sub_0 = ge.Sub(Add_0, primals_4_0, node_name="Sub")
-    
+
     # File "/npu/d00885544/pytorch/every_test/1107_doc/test.py", line 26, in forward    x = x * scale_factor
     ## FX Code: mul: torch.float32[100, 64]npu:0 = torch.ops.aten.mul.Tensor(sub: torch.float32[100, 64]npu:0, primals_5: "Sym(s0)")
     Cast_0 = ge.Cast(primals_5_0, dst_type=0, node_name="Cast")
     Mul_1_0 = ge.Mul(Sub_0, Cast_0, node_name="Mul_1")
     Cast_1_0 = ge.Cast(Mul_1_0, dst_type=0, node_name="Cast_1")
-    
+
     _ = ge.NetOutput([Cast_1_0], dependencies=[])
     ```
 
@@ -255,7 +255,7 @@ torch._dynamo.mark_static(inp)
 
 本章沿用[Dynamo动/静态图展示](#dynamo动静态图展示)提供的样例脚本test\_compile.py。运行该脚本，通过TorchAir的编译日志或Dump的GE build图来判断编译后的图是否完全静态下沉调度。
 
-Dump GE图参见《CANN 环境变量参考》中的“DUMP\_GE\_GRAPH”章节，dump的图文件一般为txt、pbtxt两种格式，txt文件比pbtxt文件多保存了一些属性信息，pbtxt文件可使用Netron等可视化软件打开。
+Dump GE图参见《[CANN 环境变量参考](https://hiascend.com/document/redirect/CannCommunityEnvRef)》中的“DUMP\_GE\_GRAPH”章节，dump的图文件一般为txt、pbtxt两种格式，txt文件比pbtxt文件多保存了一些属性信息，pbtxt文件可使用Netron等可视化软件打开。
 
 - txt格式判断：build图中**如果存在graph的\_graph\_unknown\_flag属性值，且取值为true**则为非完全静态下沉调度，否则为完全静态下沉调度。
 - pbtxt：下面分别提供不同场景下的图信息展示，其中GE build图通过可视化的pbtxt格式展示。

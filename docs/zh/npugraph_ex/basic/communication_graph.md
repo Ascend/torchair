@@ -10,9 +10,9 @@
 
 **表 1**  集合通信API入图支持情况
 
-|PyTorch集合通信API|支持情况|说明|
+|PyTorch集合通信API|支持情况|
 |--|--|--|
-|torch.distributed.all_gather|√|torch_npu接口详细介绍请参考《Ascend Extension for PyTorch 自定义API参考》，其余接口均为PyTorch原生接口。|
+|torch.distributed.all_gather|√|
 |torch.distributed.all_gather_into_tensor|√|
 |torch.distributed.all_reduce|√|
 |torch.distributed.all_to_all|√|

@@ -2,7 +2,7 @@
 
 ## 功能简介
 
-npugraph\_ex后端使能（aclgraph）模式下，由于aclgraph本身不支持动态shape，因此执行过程中可能会因为输入shape的变化而多次重新捕获aclgraph。
+npugraph\_ex后端（aclgraph）模式下，由于aclgraph本身不支持动态shape，因此执行过程中可能会因为输入shape的变化而多次重新捕获aclgraph。
 
 重新捕获的过程会带来额外的性能开销和Device侧资源消耗，尤其是频繁的重捕获，可能导致资源不足。
 

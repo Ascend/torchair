@@ -4,7 +4,7 @@
 TorchAir继承自PyTorch框架[Dynamo模式](https://pytorch.org/docs/stable/torch.compiler_dynamo_deepdive.html)，将PyTorch的[FX图](https://pytorch.org/docs/stable/fx.html)转换为GE计算图，并提供了GE计算图在昇腾NPU的编译与执行的能力。
 >
 > - **如果您想了解如何使用TorchAir，可以优先通过访问[TorchAir图模式使用指南](https://www.hiascend.com/document/detail/zh/Pytorch/730/modthirdparty/torchairuseguide/torchair_00004.html)，了解关于TorchAir的更多信息。**
-> - **如果您计划为TorchAir贡献代码，请参考REAMDE内容。**
+> - **如果您计划为TorchAir贡献代码，请参考README内容。**
 
 # 安装与卸载
 
@@ -83,7 +83,7 @@ make install_torchair
 ```
 
 ## 2.卸载
-   
+
 torchair的卸载只需要执行命令：
 
 ```shell
@@ -165,7 +165,7 @@ TorchAir常用特性如下，全量特性介绍请访问[docs](docs/zh/_menu_tor
 # 支持的型号
 
 - Atlas A2/A3 训练系列产品
-- Atlas A3 推理系列产品 / Atlas 800I A2 推理产品 
+- Atlas A3 推理系列产品 / Atlas 800I A2 推理产品
 - A200I A2 Box 异构组件
 
 # 贡献

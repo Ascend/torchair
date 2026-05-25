@@ -22,7 +22,7 @@ cache_compile(func, *, config: Optional[CompilerConfig] = None, backend: Optiona
 |global_rank|输入|分布式训练时的rank，int类型。取值范围为[0, world_size-1]，其中world_size是参与分布式训练的总进程数。一般情况下TorchAir会自动通过torch.distributed.get_rank()获取默认值。|
 |tp_rank|输入|指张量模型并行rank，int类型，取值是global_rank中划分为TP域的rank id。|
 |pp_rank|输入|指流水线并行rank，int类型，取值是global_rank中划分为PP域的rank id。|
-|ge_cache|输入|是否缓存Ascend IR图编译结果，bool类型。除了优化Dynamo编译耗时，还支持优化Ascend IR图编译耗时。<br>True：开启缓存Ascend IR编译结果。生成的缓存路径是cache_dir指定的目录。如`/home/workspace/.torchair_cache/${model_info}/prompt/ge_cache_${时间戳}.om`。<br>False（默认值）：关闭缓存Ascend IR图编译结果。该功能受CANN包版本变更影响，用户根据实际情况手动开启。|否|
+|ge_cache|输入|是否缓存Ascend IR图编译结果，bool类型。除了优化Dynamo编译耗时，还支持优化Ascend IR图编译耗时。<br>True：开启缓存Ascend IR编译结果。生成的缓存路径是cache_dir指定的目录。如`/home/workspace/.torchair_cache/${model_info}/prompt/ge_cache_${时间戳}.om`。<br>False（默认值）：关闭缓存Ascend IR图编译结果。该功能受CANN包版本变更影响，用户根据实际情况手动开启。|
 |**kwargs|输入|预留参数项，用于后续功能扩展。当前版本支持指定模型运行时使用的decomposition（将较大算子操作分解为小算子实现），通过custom_decompositions配置项实现。您可以参考调用示例的Add算子分解样例。|
 
 ## 返回值说明
@@ -60,19 +60,19 @@ cache_compile(func, *, config: Optional[CompilerConfig] = None, backend: Optiona
     @register_decomposition(torch.ops.aten.add.default)
     def test_add_decomp(t1, t2):
         return t1 + t2
-    
+
     class Model(torch.nn.Module):
         def __init__(self):
             super().__init__()
             # 将被分解算子的列表通过custom_decompositions传入
             self.cached = torchair.inference.cache_compile(self.inner_forward,
                 custom_decompositions=get_decompositions([torch.ops.aten.add.default]))
-    
+
         def inner_forward(self, t1, t2):
             return torch.ops.aten.add(t1, t2)
-    
+
         def forward(self, t1, t2):
             return self.cached(t1, t2)
-    
+
     # ...
     ```
