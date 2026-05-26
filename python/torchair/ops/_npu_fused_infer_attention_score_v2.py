@@ -38,7 +38,7 @@ def _npu_fused_infer_attention_score_v2(*args, **kwargs):
 
 
 def npu_fused_infer_attention_score_v2_impl(*args, **kwargs):
-    raise NotImplementedError("torchair.ops.npu_fused_infer_attention_score_v2 does not support eager mode or reduce-overhead mode, " +
+    raise NotImplementedError("torchair.ops.npu_fused_infer_attention_score_v2 does not support in this mode, only support in max-autotune mode, " +
                               "support using max-autotune mode or torch_npu.npu_fused_infer_attention_score_v2!")
 
 
@@ -315,7 +315,7 @@ def get_change_d_scale_v2(value, value_dtype):
     # value_dtype float4_e1m2fn_x2 伪装 uint8
     if (hasattr(torch, 'float4_e1m2fn_x2') and value.dtype == torch.float4_e1m2fn_x2) or value_dtype == torch_npu.float4_e1m2fn_x2:
         change_d_scale = 2
-    
+
     return change_d_scale
 
 
@@ -378,11 +378,11 @@ def infer_lse_out_shape(query, input_layout, query_layout, num_heads):
 def npu_fused_infer_attention_score_v2_meta_impl(query, key, value, *, query_rope=None, key_rope=None, pse_shift=None,
     atten_mask=None, actual_seq_qlen=None, actual_seq_kvlen=None, block_table=None, dequant_scale_query=None,
     dequant_scale_key=None, dequant_offset_key=None, dequant_scale_value=None, dequant_offset_value=None,
-    dequant_scale_key_rope=None, quant_scale_out=None, quant_offset_out=None, quant_scale_p=None, learnable_sink=None, num_query_heads=1, 
-    num_key_value_heads=0, softmax_scale=1.0, pre_tokens=2147483647, next_tokens=2147483647, input_layout="BSH", 
-    sparse_mode=0, block_size=0, query_quant_mode=0, key_quant_mode=0, value_quant_mode=0, inner_precise=0, 
-    return_softmax_lse=False, query_dtype=None, key_dtype=None, value_dtype=None, query_rope_dtype=None, 
-    key_rope_dtype=None, key_shared_prefix_dtype=None, value_shared_prefix_dtype=None, dequant_scale_query_dtype=None, 
+    dequant_scale_key_rope=None, quant_scale_out=None, quant_offset_out=None, quant_scale_p=None, learnable_sink=None, num_query_heads=1,
+    num_key_value_heads=0, softmax_scale=1.0, pre_tokens=2147483647, next_tokens=2147483647, input_layout="BSH",
+    sparse_mode=0, block_size=0, query_quant_mode=0, key_quant_mode=0, value_quant_mode=0, inner_precise=0,
+    return_softmax_lse=False, query_dtype=None, key_dtype=None, value_dtype=None, query_rope_dtype=None,
+    key_rope_dtype=None, key_shared_prefix_dtype=None, value_shared_prefix_dtype=None, dequant_scale_query_dtype=None,
     dequant_scale_key_dtype=None, dequant_scale_value_dtype=None, dequant_scale_key_rope_dtype=None, out_dtype=None):
     # 禁止单独修改此函数，请同步修改actual seq length为symint list的接口
     if num_query_heads <= 0:

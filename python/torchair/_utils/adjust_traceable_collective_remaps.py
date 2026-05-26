@@ -49,9 +49,14 @@ def adjust_traceable_collective_remaps():
             npu_send_patch_dist,
             npu_recv_patch_dist
         )
-        traceable_collective_remaps.update({
+        for key, value in {
             legacy_all_gather_base: all_gather_tensor_inplace_fixed,
             legacy_allgather: all_gather_tensor_inplace_fixed,
+        }.items():
+            if key not in traceable_collective_remaps:
+                traceable_collective_remaps[key] = value
+
+        traceable_collective_remaps.update({
             legacy_all_to_all: npu_all_to_all_patch_dist,
             legacy_broadcast: npu_broadcast_patch_dist,
             legacy_send: npu_send_patch_dist,

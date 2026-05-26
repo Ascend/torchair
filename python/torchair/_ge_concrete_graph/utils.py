@@ -5,7 +5,10 @@ from typing import Any, Dict, List, Tuple, Union, Callable
 import sympy
 import torch
 from torch.utils._mode_utils import no_dispatch
-from torch.fx.experimental.symbolic_shapes import hint_int
+try:
+    from torch.fx.experimental.symbolic_shapes import hint_int
+except ImportError:
+    from torch.fx.experimental.symbolic_shapes import optimization_hint as hint_int
 from torchair.core.utils import logger
 from torchair._ge_concrete_graph.ge_ir_pb2 import GraphDef
 from torchair.ge._ge_graph import compat_as_bytes, DataType, is_sym, Tensor, \
@@ -307,9 +310,12 @@ def generate_shape_from_tensor(fake: torch.Tensor) -> List[int]:
             generalized_shape.append(dim)
         else:
             try:
-                generalized_shape.append(int(str(dim)))
+                if torch.__version__ >= '2.12.0':
+                    generalized_shape.append(hint_int(dim))
+                else:
+                    generalized_shape.append(int(str(dim)))
             except Exception:
-                generalized_shape.append(-1)
+                    generalized_shape.append(-1)
     return generalized_shape
 
 

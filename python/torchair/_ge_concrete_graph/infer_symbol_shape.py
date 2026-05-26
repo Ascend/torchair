@@ -7,7 +7,11 @@ import warnings
 
 import torch
 from torch._subclasses.fake_tensor import FakeTensorMode
-from torch.fx.experimental.symbolic_shapes import ShapeEnv, DimDynamic, hint_int
+try:
+    from torch.fx.experimental.symbolic_shapes import hint_int
+except ImportError:
+    from torch.fx.experimental.symbolic_shapes import optimization_hint as hint_int
+from torch.fx.experimental.symbolic_shapes import ShapeEnv, DimDynamic
 from torch._dynamo.source import GlobalSource
 from torchair.ge._ge_graph import torch_type_to_ge_type, torch_type_to_ge_type
 from torchair.ge._ge_graph import is_sym, sym_to_ge_dtype, ge_type_to_torch_type, _ge_proto_dtype_to_ge_dtype
@@ -73,40 +77,40 @@ class PyToCppTransformer(ast.NodeTransformer):
                                 args=[self.visit(node.args[0])], keywords=[])
             if node.func.id == "IntTrueDiv":
                 return ast.Call(func=ast.Name(id="Div", ctx=ast.Load()),
-                                args=[self.visit(node.args[0]), self.visit(node.args[1])], keywords=[])  
+                                args=[self.visit(node.args[0]), self.visit(node.args[1])], keywords=[])
         return self.generic_visit(node)
-    
+
 
 class ASTUnparser(ast.NodeVisitor):
     def __init__(self):
         self.result = []
-   
+
     def visit_Expression(self, node):
         return self.visit(node.body)
-   
+
     def visit_Name(self, node):
         self.result.append(node.id)
-   
+
     def visit_Constant(self, node):
         self.result.append(repr(node.value))
-   
+
     def visit_Num(self, node):  # Python 3.7 及以下
         self.result.append(repr(node.n))
-   
+
     def visit_Str(self, node):  # Python 3.7 及以下
         self.result.append(repr(node.s))
-   
+
     def visit_BinOp(self, node):
         self.result.append('(')
         self.visit(node.left)
         self.result.append(self.get_op_symbol(node.op))
         self.visit(node.right)
         self.result.append(')')
-   
+
     def visit_UnaryOp(self, node):
         self.result.append(self.get_unary_op_symbol(node.op))
         self.visit(node.operand)
-   
+
     def visit_Call(self, node):
         self.visit(node.func)
         self.result.append('(')
@@ -115,12 +119,12 @@ class ASTUnparser(ast.NodeVisitor):
                 self.result.append(', ')
             self.visit(arg)
         self.result.append(')')
-   
+
     def visit_Attribute(self, node):
         self.visit(node.value)
         self.result.append('.')
         self.result.append(node.attr)
-   
+
     def get_op_symbol(self, op):
         op_symbols = {
             ast.Add: '+',
@@ -138,7 +142,7 @@ class ASTUnparser(ast.NodeVisitor):
             ast.MatMult: '@'
         }
         return op_symbols[type(op)]
-   
+
     def get_unary_op_symbol(self, op):
         op_symbols = {
             ast.UAdd: '+',
@@ -147,7 +151,7 @@ class ASTUnparser(ast.NodeVisitor):
             ast.Invert: '~'
         }
         return op_symbols[type(op)]
-   
+
     def unparse(self, node):
         self.result = []
         self.visit(node)
@@ -158,10 +162,10 @@ def sympy_to_ge_expr(expr: str, name_replacements=None) -> str:
     tree = ast.parse(str(expr), mode='eval')
     new_tree = PyToCppTransformer(name_replacements).visit(tree)
     ast.fix_missing_locations(new_tree)
-    # The `unparse` function is available in AST starting from Python 3.9 and above. 
+    # The `unparse` function is available in AST starting from Python 3.9 and above.
     # For versions below Python 3.9, use a custom unparser
     if(hasattr(ast, 'unparse')):
-        return ast.unparse(new_tree)    
+        return ast.unparse(new_tree)
     unparser = ASTUnparser()
     return unparser.unparse(new_tree)
 
@@ -240,8 +244,8 @@ class SymTensor:
         elif self.ge_dtype:
             return f"TypeTensor({self.dtype_str})"
         return f"UndefinedTensor()"
-    
-    
+
+
 def infer_and_gen_sym_shape_silent(target, args, kwargs, ge_outputs, ops):
     try:
         infer_and_gen_sym_shape(target, args, kwargs, ge_outputs, ops)
@@ -253,11 +257,11 @@ def infer_and_gen_sym_shape_silent(target, args, kwargs, ge_outputs, ops):
 def infer_and_gen_sym_shape(target, args, kwargs, ge_outputs, ops):
 
     def is_builtin_ge_op(op):
-        return hasattr(ge, op.type)  
+        return hasattr(ge, op.type)
 
     if all(is_builtin_ge_op(op) for op in ops):
         return
-      
+
     kwargs = dict(kwargs)
     kwargs.pop('meta_outputs', None)
     syms_ctx = defaultdict(lambda: SymTensor())
@@ -337,7 +341,7 @@ def infer_and_gen_sym_shape(target, args, kwargs, ge_outputs, ops):
             return ctx[op.input[ref_input_index]]
         else:
             logger.debug(f"Can't find output:{op.output_desc[index].name} of op:{op.name} in syms_ctx or ref_input")
-            return SymTensor()                
+            return SymTensor()
 
     logger.debug(f"Start infer ge sym for {target}")
     for k, v in syms_ctx.items():

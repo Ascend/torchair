@@ -35,7 +35,7 @@ def _npu_fused_infer_attention_score(*args, **kwargs):
 
 
 def npu_fused_infer_attention_score_impl(*args, **kwargs):
-    raise NotImplementedError("torchair.ops.npu_fused_infer_attention_score does not support eager mode or reduce-overhead mode, " +
+    raise NotImplementedError("torchair.ops.npu_fused_infer_attention_score does not support in this mode, only support in max-autotune mode," +
                               "support using max-autotune mode or torch_npu.npu_fused_infer_attention_score!")
 
 
@@ -150,10 +150,10 @@ def convert_npu_npu_fused_infer_attention_score_tensor(
         value_shared_prefix=value_shared_prefix, actual_shared_prefix_len=actual_shared_prefix_len,
         query_rope=query_rope, key_rope=key_rope, key_rope_antiquant_scale=key_rope_antiquant_scale,
         dequant_scale_query=dequant_scale_query, learnable_sink=learnable_sink, q_start_idx=None, kv_start_idx=None,
-        num_heads=num_heads, scale=scale, pre_tokens=pre_tokens, next_tokens=next_tokens, input_layout=input_layout, 
-        num_key_value_heads=num_key_value_heads, sparse_mode=sparse_mode, inner_precise=inner_precise, 
-        block_size=block_size, antiquant_mode=antiquant_mode, softmax_lse_flag=softmax_lse_flag, 
-        key_antiquant_mode=key_antiquant_mode, value_antiquant_mode=value_antiquant_mode, 
+        num_heads=num_heads, scale=scale, pre_tokens=pre_tokens, next_tokens=next_tokens, input_layout=input_layout,
+        num_key_value_heads=num_key_value_heads, sparse_mode=sparse_mode, inner_precise=inner_precise,
+        block_size=block_size, antiquant_mode=antiquant_mode, softmax_lse_flag=softmax_lse_flag,
+        key_antiquant_mode=key_antiquant_mode, value_antiquant_mode=value_antiquant_mode,
         query_quant_mode=query_quant_mode, pse_type=0, out_dtype=0)
 
 
@@ -269,7 +269,7 @@ def get_change_d_scale(value):
     #int4伪装int32
     if value is not None and value.dtype == torch.int32:
         change_d_scale = 8
-    
+
     return change_d_scale
 
 
