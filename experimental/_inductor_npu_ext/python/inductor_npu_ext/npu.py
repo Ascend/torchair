@@ -514,9 +514,39 @@ class NPUKernel(Kernel):
         return scalars
 
     def _get_view_road(self, src: Loop, dst: DenseLoop):
+        """求出从 src loop 形变到 dst loop 的 op 序列，按 list 顺序依次 apply。
+
+        ascir 约束：**Load 以外的所有节点（Transpose / Broadcast / 算术 op…），
+        输出的 size/stride 必须是 contiguous 关系**（stride[i] = product(size[i+1:]),
+        size=1 维 stride=0）。所以 Transpose / Broadcast 的 .dst 一律用
+        `DenseLoop(axis, size)` 重建，不复用 src 那个 non-contiguous 的 stride。
+
+        src 是 `_index_to_loop` 给的："axis 按 dst.axis 顺序标，stride 反映上游
+        buffer 的真实物理 layout"（permute/broadcast 视图叠加后给 inductor 看见的
+        形态）；只有作为 Load.y 时才允许 non-contiguous。
+
+        分两步：
+          1. transpose：把 src.axis 按 stride 大→小重排出"contig 形态"。这是
+             load 节点真实输出的视图（stride 单调递减）。Transpose op:
+               src = contig 形态（= load.y）
+               dst = DenseLoop(axis=dst.axis, size=src.size) 即 axis 还原到 dst
+                     顺序、size 跟 src 一致、stride 重新算成 contiguous
+             仅当 contig != src 才需要这步。
+          2. broadcast：逐维把 size=1 升到 dst.size[dim]，每步 Broadcast op:
+               src = 当前 contiguous loop
+               dst = DenseLoop(axis, size_after) 升 size 后重算 contiguous stride
+        """
         if src == dst:
             return []
         num_axis = len(src.axis)
+
+        class MoveOp:
+            def __init__(self, *, kind, src, dst):
+                self.kind = kind
+                self.src = src
+                self.dst = dst
+
+        # ---- step 1: 推 contig 形态 + 生成 Transpose op ----
         hint_to_axis = []
         for hint, axis, size, order in zip(src.hint_stride, src.axis, src.size, range(num_axis)):
             if hint != 0:
@@ -526,37 +556,36 @@ class NPUKernel(Kernel):
         iter_non1_order = iter(non1_order)
         expect_dims = [i if i not in non1_order else next(iter_non1_order) for i in range(num_axis)]
 
-        class MoveOp:
-            def __init__(self, *, kind, src, dst):
-                self.kind = kind
-                self.src = src
-                self.dst = dst
-
-        road = []
-
+        contig = src.copy()
         current_dims = list(range(num_axis))
-        src_loop = src.copy()
         for i in reversed(range(num_axis)):
             if current_dims[i] != expect_dims[i]:
                 j = current_dims.index(expect_dims[i])
-                src_loop.transpose_(i, j)
+                contig.transpose_(i, j)
                 current_dims[i], current_dims[j] = current_dims[j], current_dims[i]
 
-        if src_loop != src:
-            road.insert(0, MoveOp(kind="transpose", src=src_loop, dst=dst))
+        road = []
+        if contig != src:
+            # Transpose.dst：axis 跟 dst 一致，size 跟 src 一致（broadcast 还没升），
+            # stride 重新算成 contiguous（不复用 src 那个 non-contig stride）。
+            transpose_dst = DenseLoop(axis=list(src.axis), size=list(src.size))
+            road.append(MoveOp(kind="transpose", src=contig.copy(), dst=transpose_dst.copy()))
+            cur = transpose_dst
+        else:
+            cur = src.copy()
 
-        road_dst = road[0].src if road else dst
+        # ---- step 2: 逐维 broadcast 把 size=1 升到 dst.size[dim] ----
         broadcast_dims = [
             i
-            for i, (src_size, dst_size) in enumerate(zip(src_loop.size, road_dst.size))
-            if str(src_size) == '1' and str(src_size) != str(dst_size)
+            for i, (s, d) in enumerate(zip(cur.size, dst.size))
+            if str(s) == '1' and str(s) != str(d)
         ]
         for dim in broadcast_dims:
-            road_dst = road[0].src if road else dst
-            road.insert(0, MoveOp(kind="broadcast", src=road_dst.copy().debroadcast_(dim), dst=road_dst))
-
-        if len(road) > 0:
-            road[0].src = src_loop.copy()
+            new_size = list(cur.size)
+            new_size[dim] = dst.size[dim]
+            nxt = DenseLoop(axis=list(cur.axis), size=new_size)
+            road.append(MoveOp(kind="broadcast", src=cur.copy(), dst=nxt.copy()))
+            cur = nxt
 
         return road
 

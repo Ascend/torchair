@@ -153,16 +153,47 @@ class NpuContext:
             os.makedirs(stub_header_dir)
             Path(os.path.join(stub_header_dir, "NPUCachingAllocator.h")).touch()
             with open(os.path.join(stub_header_dir, "NPUStream.h"), 'w') as f:
+                # stream(bool) 带可选参数 —— wrapper 实际调用是 stream(false)
                 f.write('''
                         namespace c10_npu {
                             struct getCurrentNPUStream{
-                                void *stream(){ return (void*)0x123; }
+                                void *stream(bool = false){ return (void*)0x123; }
                             };
                             namespace NPUCachingAllocator {
                                 void *raw_alloc_with_stream(size_t size, void *stream) { return (void*)0x456; }
                                 void raw_delete(void *ptr) { return; }
                             }
                         }''')
+            # NPUWorkspaceAllocator.h —— wrapper 用 at_npu::native::allocate_workspace
+            # + at::Tensor.storage().data() 申请 workspace；host-only 全打桩成固定地址。
+            # 同时把 aclrtStream / at::Tensor / at::Storage 也桩在这里（wrapper 没 include
+            # at/ATen.h，靠这条链补齐）。
+            with open(os.path.join(stub_header_dir, "NPUWorkspaceAllocator.h"), 'w') as f:
+                f.write('''
+                        #include <cstdint>
+                        #include <cstddef>
+                        typedef void *aclrtStream;
+                        namespace at {
+                            struct Storage { void *data() const { return (void*)0x789; } };
+                            struct Tensor { Storage storage() const { return {}; } };
+                        }
+                        namespace at_npu { namespace native {
+                            inline at::Tensor allocate_workspace(uint64_t size, aclrtStream stream) {
+                                (void)size; (void)stream; return {};
+                            }
+                        }}''')
+            # framework/OpCommand.h —— wrapper 用 OpCommand::RunOpApiV2(name, lambda)
+            # 同步 launch。host-only stub 下直接同步调一次 lambda 模拟"立即执行"。
+            framework_dir = os.path.join(self.tmp_resource.name, "include/torch_npu/csrc/framework")
+            os.makedirs(framework_dir)
+            with open(os.path.join(framework_dir, "OpCommand.h"), 'w') as f:
+                f.write('''
+                        namespace at_npu { namespace native {
+                            struct OpCommand {
+                                template <typename F>
+                                static void RunOpApiV2(const char *name, F &&fn) { (void)name; fn(); }
+                            };
+                        }}''')
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
