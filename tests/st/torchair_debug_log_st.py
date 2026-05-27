@@ -34,6 +34,7 @@ FORWARD_STEP_TEMPLATES = [
     "aot_forward_graph_after_explicit_order_for_side_effect_nodes.pbtxt",
     "aot_forward_graph_after_explicit_order_for_cmo.pbtxt",
     "aot_forward_graph_after_move_transpose_into_mm.pbtxt",
+    "aot_forward_graph_after_move_mm_weight_transpose_after_bitcast.pbtxt",
     "aot_forward_optimized_ge_graph.pbtxt",
 ]
 
@@ -54,6 +55,7 @@ BACKWARD_STEP_TEMPLATES = [
     "aot_backward_graph_after_explicit_order_for_side_effect_nodes.pbtxt",
     "aot_backward_graph_after_explicit_order_for_cmo.pbtxt",
     "aot_backward_graph_after_move_transpose_into_mm.pbtxt",
+    "aot_backward_graph_after_move_mm_weight_transpose_after_bitcast.pbtxt",
     "aot_backward_optimized_ge_graph.pbtxt",
 ]
 
@@ -109,7 +111,7 @@ def check_torchair_directory_structure(base_dir: str, file_list: list) -> list:
 def add_sample_with_backward_and_post_grad_custom():
     import torchair
     from torch._dynamo.utils import get_debug_dir
-    
+
     config = torchair.CompilerConfig()
     config.debug.graph_dump.type = "pbtxt"
     config.experimental_config.remove_noop_ops = True
@@ -119,11 +121,11 @@ def add_sample_with_backward_and_post_grad_custom():
 
     def _custom_post_fn(gm, example_inputs, compile_config: torchair.CompilerConfig):
         return None
-    
+
     config.post_grad_custom_pre_pass = _custom_pre_fn
     config.post_grad_custom_post_pass = _custom_post_fn
     npu_backend = torchair.get_npu_backend(compiler_config=config)
-    
+
     class Model(torch.nn.Module):
         def forward(self, x):
             return x + x
@@ -158,13 +160,13 @@ def add_sample_cache():
     config = torchair.CompilerConfig()
     config.experimental_config.remove_noop_ops = True
     config.debug.graph_dump.type = "pbtxt"
-    
+
     def _custom_pre_fn(gm, example_inputs, compile_config: torchair.CompilerConfig):
         return None
 
     def _custom_post_fn(gm, example_inputs, compile_config: torchair.CompilerConfig):
         return None
-    
+
     config.post_grad_custom_pre_pass = _custom_pre_fn
     config.post_grad_custom_post_pass = _custom_post_fn
 
@@ -203,7 +205,7 @@ def add_sample_cache():
     prompt_data = torch.ones(3, 2, requires_grad=True)
     y_data = torch.ones(3, 2, requires_grad=True)
     prompt1 = InputMeta(prompt_data, True), [y_data]
-    
+
     model(*prompt1)  # first enter CacheBackend
 
 
@@ -218,7 +220,7 @@ class TestLogDebug(unittest.TestCase):
         tmpdir = cls._exit_stack.enter_context(
             tempfile.TemporaryDirectory(prefix="torchair_debug_")
         )
-        cls.DEBUG_DIR = tmpdir  
+        cls.DEBUG_DIR = tmpdir
         cls._exit_stack.enter_context(
             torch._dynamo.config.patch(debug_dir_root=cls.DEBUG_DIR)
         )
@@ -246,7 +248,7 @@ class TestLogDebug(unittest.TestCase):
 
     def _run_test(self, sample_func, expected_patterns, model_ids):
         self.assertIsNotNone(self.DEBUG_DIR)
-        
+
         launcher = (
             f"import os, sys; "
             f"sys.path.insert(0, {SCRIPT_DIR!r}); "
@@ -254,7 +256,7 @@ class TestLogDebug(unittest.TestCase):
             f"import torchair_debug_log_st as m; "
             f"m.{sample_func}()"
         )
-        
+
         res = subprocess.run(
             [sys.executable, "-u", "-c", launcher],
             cwd=self.DEBUG_DIR,
@@ -263,10 +265,10 @@ class TestLogDebug(unittest.TestCase):
             encoding="utf-8",
             errors="replace",
         )
-        
+
         if res.returncode != 0:
             print(f"debug_dump_subprocess_error: stdout:\n{res.stdout}\nstderr:\n{res.stderr}")
-        
+
         debug_dir_output = None
         match = re.search(r"get_debug_dir\(\): \s*(\S+)", res.stdout)
         if match:
@@ -287,10 +289,10 @@ class TestLogDebug(unittest.TestCase):
             for template in expected_patterns:
                 rel_path = template.format(id=model_id)
                 expected_files.append(rel_path)
-        
+
         missing_files = check_torchair_directory_structure(torchair_root, expected_files)
         self.assertFalse(missing_files, msg=f"Missing files: {', '.join(missing_files)}")
-        
+
         expected_count = len(expected_patterns) * len(model_ids) + 1
         actual_count = 0
         for root, _, files in os.walk(torchair_root):

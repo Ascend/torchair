@@ -95,14 +95,14 @@ add_subdirectory(torchair)
 
 add_custom_target(torchair ALL
         COMMAND cd ${CMAKE_BINARY_DIR}/dist/ && ${PYTHON_BIN_PATH} setup.py bdist_wheel
-        DEPENDS _torchair _npu_graph_executor copy_pyfiles
+        DEPENDS _torchair _npu_graph_executor _npu_utils copy_pyfiles
         VERBATIM)
 
 if (DEFINED TORCHAIR_INSTALL_DST)
     add_custom_target(install_torchair ALL
             COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_BINARY_DIR}/dist/npugraph_ex ${TORCHAIR_INSTALL_DST}/..
             COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_BINARY_DIR}/dist/torchair ${TORCHAIR_INSTALL_DST}
-            DEPENDS _torchair _npu_graph_executor copy_pyfiles
+            DEPENDS _torchair _npu_graph_executor _npu_utils copy_pyfiles
             VERBATIM)
 else()
     add_custom_target(install_torchair ALL

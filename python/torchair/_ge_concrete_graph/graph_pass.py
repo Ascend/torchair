@@ -140,7 +140,7 @@ def _get_output_to_input_ref_idx(op: OpDef) -> Dict[int, int]:
         ref_idx_mapping[2] = 8
     elif op.type == "FusedCausalConv1d":
         ref_idx_mapping[1] = 2
-        
+
     return ref_idx_mapping
 
 
@@ -191,28 +191,28 @@ def _find_ref_ops_and_io_ops(graph: GraphDef):
 
 '''
 * ******************************************************************************************************
-*         input                        Data --------|                  Data       
-*           |                            |          |                    |        
-*           |                        TensorMove     |                    |        
-*           |                            |          |                    |        
-*     Scatter_update_    --->      Scatter(ref op) /      --->     Scatter(ref op) 
-*           |                         |      \    /                      |         
-*       other_op                  other_op    \  /                   other_op      
-*           |                         |      assign                      |         
-*        output                   NET_OUTPUT                         NET_OUTPUT    
+*         input                        Data --------|                  Data
+*           |                            |          |                    |
+*           |                        TensorMove     |                    |
+*           |                            |          |                    |
+*     Scatter_update_    --->      Scatter(ref op) /      --->     Scatter(ref op)
+*           |                         |      \    /                      |
+*       other_op                  other_op    \  /                   other_op
+*           |                         |      assign                      |
+*        output                   NET_OUTPUT                         NET_OUTPUT
 * ******************************************************************************************************
-*         input                     Data --------|              Data --------|              Data       
-*           |                         |          |                |          |                |        
-*           |                     TensorMove     |                |          |                |        
-*           |                         |          |                |          |                |        
-*     Scatter_update_   --->    Scatter(ref op) /    --->   Scatter(ref op) /    --->    Scatter(ref op) 
-*           |                      |      \    /               |      \    /                  |         
-*           |                      |       \  /                |       \  /                   |      
-*           |                      |      assign               |      assign                  |         
-*        output                NET_OUTPUT                   NET_OUTPUT                    NET_OUTPUT    
+*         input                     Data --------|              Data --------|              Data
+*           |                         |          |                |          |                |
+*           |                     TensorMove     |                |          |                |
+*           |                         |          |                |          |                |
+*     Scatter_update_   --->    Scatter(ref op) /    --->   Scatter(ref op) /    --->    Scatter(ref op)
+*           |                      |      \    /               |      \    /                  |
+*           |                      |       \  /                |       \  /                   |
+*           |                      |      assign               |      assign                  |
+*        output                NET_OUTPUT                   NET_OUTPUT                    NET_OUTPUT
 * ******************************************************************************************************
 
-Due to the limitation that the inplace operator cannot directly enter the fx graph, 
+Due to the limitation that the inplace operator cannot directly enter the fx graph,
 it will be converted into a non inplace operator and inplace copy for implementation.
 However, this process will introduce two redundant data copies, so we need to optimize the graph
 as shown in the above figure, to simplify the memory copy in the graph.
@@ -576,3 +576,34 @@ def move_transpose_into_mm(graph: GeGraph):
             remove_transpose_node(*w_relate_nodes)
             remove_transpose_node(*scale_relate_nodes)
             logger.debug('set attr transpose_w to True in %s.', gmmfr_node.name)
+
+
+def move_mm_weight_transpose_after_bitcast(graph: GeGraph):
+    name_to_op: Dict[str, OpDef] = {op.name: op for op in graph.op}
+
+    def find_nodes(node, patterns):
+        res = []
+        for pattern in patterns:
+            op_type, idx = pattern
+            if idx >= len(node.input):
+                return []
+            next_node = name_to_op[node.input[idx].split(":")[0]]
+            if next_node is None or next_node.type != op_type:
+                return []
+            res.append(next_node)
+            node = next_node
+        return res
+
+    qbmm_nodes = [node for node in graph.op if node.type == "QuantBatchMatmulV3"]
+    for qbmm_node in qbmm_nodes:
+
+        # Pattern: QuantBatchMatmulV3 -> input[1] -> Bitcast -> input[0] -> Transpose
+        nodes = find_nodes(qbmm_node, (('Bitcast', 1), ('Transpose', 0)))
+        if not nodes:
+            continue
+
+        bitcast_node, transpose_node = nodes
+        bitcast_node.input[0] = transpose_node.input[0]
+        transpose_node.input[0] = f"{bitcast_node.name}:0"
+        qbmm_node.input[1] = f"{transpose_node.name}:0"
+        logger.debug('move transpose after bitcast for QuantBatchMatmulV3 %s.', qbmm_node.name)

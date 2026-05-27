@@ -4,3 +4,4 @@ recursive-include * *.json
 recursive-include * _torchair.so
 recursive-include * _abi_compat_ge_apis.so
 recursive-include * _npu_graph_executor.so
+recursive-include * _npu_utils.so

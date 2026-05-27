@@ -43,6 +43,11 @@ constant_pad_nd = "constant_pad_nd"
 [default.extend-words]
 iy = "iy"
 tendencias = "tendencias"
+# tensor layout names
+nd = "nd"
+nz = "nz"
+# existing code uses plural variable name for collections
+datas = "datas"
 # intel cpu features
 tme = "tme"
 dout = "dout"

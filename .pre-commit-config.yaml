@@ -60,6 +60,7 @@ repos:
       - id: bandit
         name: bandit (Python 安全漏洞检查)
         types: [python]
+        additional_dependencies: ["bandit[toml]"]
         args: [
           "--config=pre-commit/pyproject.toml",
           "--quiet",
