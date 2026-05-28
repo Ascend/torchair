@@ -2,6 +2,7 @@ import math
 from typing import Optional
 import torch
 from torch.library import Library, impl
+from torchair.ge._ge_graph import ge_type_to_torch_type, torch_dtype_value_to_ge_type
 
 m = Library("npu_inference", "DEF")
 m.define("npu_tome_merge(Tensor token_a, Tensor token_b, Tensor topk_indice, \
@@ -22,6 +23,10 @@ m.define("npu_dequant_swiglu_quant(Tensor x, *, Tensor? weight_scale=None, Tenso
           bool activate_left=False, int quant_mode=0, int? dst_type=None, int? round_mode=None, \
           int? activate_dim=None, int swiglu_mode=0, float clamp_limit=7.0, float glu_alpha=1.702, \
           float glu_bias=1.0) -> (Tensor, Tensor)")
+m.define("npu_fused_quant_matmul(Tensor x1, Tensor x2, Tensor scale, *, Tensor? offset=None, \
+ 	      Tensor? pertoken_scale=None, Tensor? bias=None, Tensor? x3=None, str fused_op_type='', \
+ 	      int? output_dtype=None, int? x1_dtype=None, int? x2_dtype=None, int? pertoken_scale_dtype=None, \
+ 	      int? scale_dtype=None, int? x3_dtype=None, int[]? group_sizes=None, Tensor? y_scale=None) -> Tensor")
 
 
 @impl(m, "npu_tome_merge", "PrivateUse1")
@@ -129,16 +134,16 @@ def npu_dequant_swiglu_quant_meta(x, *, weight_scale=None, activation_scale=None
         raise RuntimeError("x last dim should be even")
     if quant_mode != 0 and quant_mode != 1:
         raise RuntimeError("quant_mode only support 0 or 1, but got " + str(quant_mode))
-    
+
     y_size = []
     for i in range(x.dim()):
         if i == select_dim:
             y_size.append(math.floor(x.size(i) / 2))
         else:
             y_size.append(x.size(i))
-    
+
     scale_size = y_size[:-1]
-    
+
     output_dtype = torch.int8
     if dst_type == 23:
         output_dtype = torch.float8_e5m2
@@ -146,6 +151,34 @@ def npu_dequant_swiglu_quant_meta(x, *, weight_scale=None, activation_scale=None
         output_dtype = torch.float8_e4m3fn
     elif dst_type == 296 or dst_type == 297:
         output_dtype = torch.uint8
-    
+
     return (torch.empty(y_size, dtype=output_dtype, device=x.device),
             torch.empty(scale_size, dtype=torch.float32, device=x.device))
+
+
+@impl(m, "npu_fused_quant_matmul", "Meta")
+def npu_fused_quant_matmul_meta(x1, x2, scale, *, offset=None, pertoken_scale=None, bias=None, x3=None,
+                                fused_op_type='', output_dtype=None, x1_dtype=None, x2_dtype=None,
+                                pertoken_scale_dtype=None, scale_dtype=None, x3_dtype=None, group_sizes=None,
+                                y_scale=None):
+    import importlib
+    INT4_VALUES_PER_INT8 = 2
+    FIRST_DIM_INDEX = 0
+    LAST_DIM_INDEX = -1
+    torch_npu_int4 = getattr(importlib.import_module("torch_npu"), "int4", None)
+    is_a8w4 = x1.dtype == torch.int8 and x2_dtype == torch_npu_int4
+    if not is_a8w4:
+        raise RuntimeError("fused_quant_matmul only support a8w4.")
+
+    dim_list = []
+    dimm = x1.size(FIRST_DIM_INDEX)
+    dimn = x2.size(LAST_DIM_INDEX) * INT4_VALUES_PER_INT8
+    dim_list.append(dimm)
+    dim_list.append(dimn)
+    if bias is not None:
+        raise RuntimeError("fused_quant_matmul not support bias.")
+
+    tensor_dtype = torch.int8
+    if output_dtype is not None:
+        tensor_dtype = ge_type_to_torch_type(torch_dtype_value_to_ge_type(output_dtype))
+    return x1.new_empty(tuple(dim_list), dtype=tensor_dtype, device=x1.device)
