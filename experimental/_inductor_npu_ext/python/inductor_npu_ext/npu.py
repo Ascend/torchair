@@ -637,7 +637,11 @@ def _emit_fused_layout_checks(
     Emit layout checks for kernel inputs (size/stride/dtype/device, skips storage_offset).
     Deduplicates by buffer name, each tensor checked only once.
     """
-    input_set = set(kernel.fused_graph.inputs)
+    input_outer_set = set(kernel.fused_graph.inputs_outer)
+    input_call_args = {
+        pa.buffer for pa in precompile_args
+        if isinstance(pa, TensorArg) and pa.name in input_outer_set
+    }
     seen_buffers: Set[str] = set()
 
     if not scheduling._fused_layout_import_emitted:
@@ -645,7 +649,7 @@ def _emit_fused_layout_checks(
         scheduling._fused_layout_import_emitted = True
 
     for buffer, buffer_type in zip(call_args, precompile_args):
-        if not isinstance(buffer_type, TensorArg) or buffer not in input_set or buffer in seen_buffers:
+        if not isinstance(buffer_type, TensorArg) or buffer not in input_call_args or buffer in seen_buffers:
             continue
         seen_buffers.add(buffer)
 

@@ -28,6 +28,7 @@ _LoweringGuard.support(aten.relu, float_dtypes())
 _LoweringGuard.support(aten.sgn, float_dtypes())
 _LoweringGuard.support(aten.sign, float_dtypes())
 _LoweringGuard.support(aten.neg, float_dtypes() + (torch.int32,))
+_LoweringGuard.support(aten.erf, float_dtypes())
 
 # basic compare ops, support int32 as well。
 # 比较 op 输入 float/int32，输出 bool —— 必须显式给 support_out_dtypes 放行 bool/uint8，
