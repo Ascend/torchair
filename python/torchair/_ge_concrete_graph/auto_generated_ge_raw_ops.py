@@ -58720,6 +58720,51 @@ def DynamicMxQuant(x: Tensor,
     return y, mxscale
 
 
+# This api is auto-generated from IR AntiMxQuant
+@auto_convert_to_tensor([False, False], [False, False])
+def AntiMxQuant(x: Tensor,
+                mxscale: Tensor,
+                *,
+                axis: int = -1,
+                dst_type: int = 27,
+                dependencies=[],
+                node_name=None):
+    """REG_OP(AntiMxQuant)\n
+    .INPUT(x, TensorType({DT_FLOAT4_E2M1, DT_FLOAT4_E1M2, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN}))\n
+    .INPUT(mxscale, TensorType({DT_FLOAT8_E8M0}))\n
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT}))\n
+    .ATTR(axis, Int, -1)\n
+    .ATTR(dst_type, Int, DT_BF16)\n
+    """
+    op = get_default_ge_graph().op.add()
+    op.type = "AntiMxQuant"
+    op.name = next_unique_name(node_name, "AntiMxQuant")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
+    op.input_desc[-1].name = "x"
+    op.input.append(mxscale.tensor)
+    op.input_desc.add().CopyFrom(mxscale.desc)
+    op.input_desc[-1].name = "mxscale"
+
+    # process attrs
+    op.attr["axis"].i = axis
+    op.attr["dst_type"].i = dst_type
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+
+    return y
+
+
 # This api is auto-generated from IR GroupedDynamicMxQuant
 @auto_convert_to_tensor([False, False], [False, False])
 def GroupedDynamicMxQuant(x: Tensor,
