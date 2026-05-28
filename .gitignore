@@ -17,3 +17,10 @@ __pycache__
 **/.npu_kernels*
 **/torch_compile_debug*
 .github
+
+# Auto-downloaded remote skills
+.claude/skills/_remote/
+.claude/skills/gitcode-pr
+.claude/skills/gitcode-issue
+.claude/skills/api-doc-generator
+.claude/skills/gitcode-pipeline
