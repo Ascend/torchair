@@ -35,9 +35,6 @@ npu_fused_infer_attention_score_v2(Tensor query, Tensor key, Tensor value, *, Te
 
 - 本接口只支持图模式，**不支持Eager模式**下调用。
 - 其他约束与torch\_npu.npu\_fused\_infer\_attention\_score\_v2接口保持一致。
-- 该接口仅支持如下产品：
-    - Atlas A2 训练系列产品/Atlas A2 推理系列产品
-    - Atlas A3 训练系列产品/Atlas A3 推理系列产品
 
 ## 调用示例
 

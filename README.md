@@ -164,9 +164,9 @@ TorchAir常用特性如下，全量特性介绍请访问[docs](docs/zh/_menu_tor
 
 # 支持的型号
 
-- Atlas A2/A3 训练系列产品
-- Atlas A3 推理系列产品 / Atlas 800I A2 推理产品
-- A200I A2 Box 异构组件
+- Ascend 950PR/Ascend 950DT
+- Atlas A3 训练系列产品/Atlas A3 推理系列产品
+- Atlas A2 训练系列产品/Atlas A2 推理系列产品
 
 # 贡献
 

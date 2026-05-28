@@ -12,9 +12,6 @@
 - 本功能仅适用于GE图模式场景，模型为静态Shape。
 - 当前仅融合算子（矢量计算和矩阵计算融合）支持Tiling下沉，例如FusedInferAttentionScore、IncreFlashAttention。
 - 基于新版本CANN包（支持Tiling下沉特性）编译生成的Tiling下沉算子，不兼容旧版CANN（不支持Tiling下沉特性）运行环境。
-- 本功能支持如下产品：
-    - Atlas A3 训练系列产品/Atlas A3 推理系列产品
-    - Atlas A2 训练系列产品/Atlas A2 推理系列产品
 
 ## 使用方法
 

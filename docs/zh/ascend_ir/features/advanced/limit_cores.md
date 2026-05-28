@@ -64,18 +64,6 @@ GE图模式提供了两种限核方法，即**算子级核数**和**全局核数
 
     说明：形如`{aicore_num}|${vectorcore_num}`，必须用`|`来分隔。`${aicore_num}`：表示全局AI Core数，整数类型，取值范围为[1, max_aicore]。`${vectorcore_num}`：表示全局Vector Core数，整数类型，取值范围为[1, max_vectorcore]。
 
-    在如下产品中，AI处理器上仅存在AI Core不存在Vector Core，参数配置形如config.ge_config.aicore_num = `24|`或`24`，若配置了其它数值不会生效。
-
-    - Atlas 训练系列产品
-    - Atlas 推理系列产品
-
-    ```txt
-    [SoCInfo]
-    # AI处理器仅存在10个AI Core
-    ai_core_cnt=10
-    vector_core_cnt=8
-    ```
-
     配置结果可通过开启Python侧日志获取，假设config.ge\_config.aicore\_num="24|100"，日志信息如下：
 
     ```txt

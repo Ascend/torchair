@@ -26,12 +26,11 @@ TorchAir在Ascend Extension for PyTorch（torch\_npu）中的位置如[图1](#fi
     - PyTorch 训练模型迁移调优指南：了解如何将模型迁移至昇腾NPU。
 - **产品支持情况**：
 
-    大部分功能默认支持所有产品，如有特殊情况，将在功能章节的“使用约束”中说明。
-
-    注意npugraph\_ex后端提供的功能目前仅支持如下产品：
-
+    - Ascend 950PR/Ascend 950DT
     - Atlas A3 训练系列产品/Atlas A3 推理系列产品
     - Atlas A2 训练系列产品/Atlas A2 推理系列产品
+
+    如有特殊情况，将在功能章节的“使用约束”中额外说明。
 
 - **整体约束**：PyTorch图模式支持单进程和多进程，每个进程**只支持使用1张NPU卡**，不支持使用多张NPU卡。
 - **npugraph\_ex后端功能约束**：
