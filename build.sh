@@ -26,7 +26,7 @@ logging() {
   echo "[INFO] $@"
 }
 
-# parse and set optionss
+# parse and set options
 checkopts() {
   VERBOSE=""
   THREAD_NUM=8
@@ -94,7 +94,22 @@ run_test() {
   mkdir -pv "${TORCHAIR_ROOT}/coverage"
   make torchair_${TYPE} -j${THREAD_NUM}
   if [[ "$TYPE" == "ut" ]]; then
-    ${PYTHON_BIN_PATH} -m unittest discover -s ${TORCHAIR_ROOT}/experimental/_inductor_npu_ext/tests -p "*.py"
+    # only run ut.py when torch version >= 2.8
+    if ${PYTHON_BIN_PATH} -c 'import sys
+try:
+    from distutils.version import LooseVersion as V
+    import torch
+    sys.exit(0 if V(getattr(torch, "__version__", "0")) >= V("2.8") else 1)
+except Exception:
+    sys.exit(1)
+'; then
+      if ! ( cd ${TORCHAIR_ROOT}/experimental/_inductor_npu_ext/tests && ${PYTHON_BIN_PATH} ut.py ); then
+        echo "inductor_npu_ext ut.py FAILED"
+        exit 1
+      fi
+    else
+      echo "Skipping unit tests for inductor npu ext: torch version < 2.8 or cannot determine torch version"
+    fi
   fi
   lcov -o ${TORCHAIR_ROOT}/coverage/coverage.info -e ${CMAKE_PATH}/${TYPE}/${TYPE}.coverage "*torchair/torchair*"
 }

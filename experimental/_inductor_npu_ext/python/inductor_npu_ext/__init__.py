@@ -8,7 +8,7 @@ from torch._inductor.codegen.common import register_backend_for_device
 from torch._inductor import graph as torch__inductor_graph
 
 from inductor_npu_ext.npu import NPUScheduling, NpuWrapperCodeGen
-from inductor_npu_ext.common import logger
+from inductor_npu_ext.common import logger, current_soc, Soc
 from inductor_npu_ext.common.utils import patch_fn
 from inductor_npu_ext.config import _debug_options
 
@@ -63,9 +63,27 @@ def _load_npu_passes():
 
 
 def _finetune_decompose():
+    """清掉 inductor 的 decomposition 表，只留少量必需项。
+
+    保留的 op 都是 inductor 没注册直接 lowering、必须靠 decomposition 才能下沉
+    到 NPUOverrides 支持的原子 op 的"复合 op"：
+      - _to_copy：dtype cast 路径
+      - silu(x) = x / (1 + (-x).exp())：让 silu 拆成 neg+exp+add+div
+      - sgn(x) → sign(x)（实数路径），让 sgn 走 NPUOverrides.sign → ir.sign
+      - floor_divide：inductor 没注册直接 lowering，靠 decomposition 拆成
+        div + floor，两者都已支持
+    """
     from torch._inductor.decomposition import decompositions
 
-    decompositions_whitelist = {k: v for k, v in decompositions.items() if k in {aten._to_copy.default}}
+    def _packet_overloads(packet):
+        return {getattr(packet, ov) for ov in packet.overloads()}
+
+    keep = _packet_overloads(aten._to_copy)
+    keep |= _packet_overloads(aten.silu)
+    keep |= _packet_overloads(aten.sgn)
+    keep |= _packet_overloads(aten.detach)
+    keep |= _packet_overloads(aten.floor_divide)
+    decompositions_whitelist = {k: v for k, v in decompositions.items() if k in keep}
     decompositions.clear()
     decompositions.update(decompositions_whitelist)
 
@@ -126,8 +144,9 @@ def _fallback_node_due_to_unsupported_type(node: torch.fx.Node, allow_cpu_inputs
                 return True
 
         if meta.stride() and all([str(v) != "1" for v in meta.stride()]):
-            _summary.fallback(node, f"performance of non-contiguous stride {meta.stride()} maybe worse than eager")
-            return True
+            if current_soc and current_soc < Soc.A5:
+                _summary.fallback(node, f"performance of non-contiguous stride {meta.stride()} maybe worse than eager")
+                return True
 
     support_input_dtypes, support_output_dtypes = _LoweringGuard.dtypes_support(node.target)
     for meta in in_metas:

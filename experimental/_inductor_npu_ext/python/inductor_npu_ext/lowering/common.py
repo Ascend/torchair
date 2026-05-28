@@ -7,8 +7,9 @@ import torch
 import torch.utils._pytree as pytree
 from torch._ops import OpOverload, OpOverloadPacket
 
-from inductor_npu_ext.common import logger
+from inductor_npu_ext.common import logger, current_soc, Soc
 from inductor_npu_ext.common.utils import get_node_meta
+from inductor_npu_ext.config import _debugging_on_cpu
 
 
 class LowerSummary:
@@ -87,27 +88,29 @@ def byte_dtypes():
 
 
 class _LoweringGuard:
-    _datas: Dict[OpOverload, Tuple[Tuple[torch.dtype], Tuple[torch.dtype]]] = {}
+    _data: Dict[OpOverload, Tuple[Tuple[torch.dtype], Tuple[torch.dtype]]] = {}
 
     @classmethod
     def has(cls, op: OpOverload):
-        return op in cls._datas.keys()
+        return op in cls._data.keys()
 
     @classmethod
     def dtypes_support(cls, op: OpOverload):
-        return cls._datas.get(op)
+        return cls._data.get(op)
 
     @classmethod
     def support(cls, ops: Union[OpOverload, OpOverloadPacket, Tuple[OpOverload]],
                 support_in_dtypes: Tuple[torch.dtype],
-                support_out_dtypes: Tuple[torch.dtype] = None):
+                support_out_dtypes: Tuple[torch.dtype] = None, since: Soc = None):
+        if current_soc and since and current_soc < since:
+            return
         support_out_dtypes = support_out_dtypes if support_out_dtypes is not None else support_in_dtypes
         if isinstance(ops, OpOverloadPacket):
             ops = [getattr(ops, overload) for overload in ops.overloads()]
         elif isinstance(ops, OpOverload):
             ops = [ops]
         for op in ops:
-            cls._datas[op] = (support_in_dtypes, support_out_dtypes)
+            cls._data[op] = (support_in_dtypes, support_out_dtypes)
 
 
 _summary = LowerSummary()

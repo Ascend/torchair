@@ -330,6 +330,148 @@ class TestInductorNpuExt(unittest.TestCase):
         self._assert_contig_non_load(graphs)
         self._assert_binary_axis_consistent(graphs)
 
+    # ---- 白名单算子看护 ----
+    # 看护 aten_lowering.py 开放的 lowering 白名单算子，确保它们都能成功转换为
+    # 合法的 ascir graph（不退化回 eager）。每个 case 独立 reset + 清 debug 目录。
+    # 共同断言：
+    #   - 至少生成一个 asc_graph.py（说明走了 NPU 后端，没整体 fallback）
+    #   - 除 Load 外节点 stride == contiguous_stride(size)
+    #   - 二元 op 两路输入 axis 一致
+    #   - 给定 expect_op 时，断言对应 ascir op 真出现在图里（确认目标算子真 lower）
+
+    def _lower_and_check(self, fn, args, expect_op=None):
+        import torch._dynamo
+        torch._dynamo.reset()
+        for d in (Path.cwd() / "torch_compile_debug", Path.cwd() / ".npu_kernels_root"):
+            if d.exists():
+                shutil.rmtree(d)
+        with torch.no_grad():
+            torch.compile(fn)(*args)
+        graphs = _collect_asc_graphs()
+        self.assertGreater(len(graphs), 0, "未生成任何 asc_graph.py")
+        if expect_op is not None:
+            self._assert_has_op(graphs, expect_op)
+        self._assert_contig_non_load(graphs)
+        self._assert_binary_axis_consistent(graphs)
+
+    def test_lowering_pointwise(self):
+        """白名单 pointwise 算子各自能 lower 成对应 ascir op。"""
+        r = torch.randn
+        # (expect_ascir_op, fn, args)。expect=None 表示算子会被 inductor 拆成多个
+        # 原子 op（silu/remainder），只校验图合法不锚定单一 op。
+        cases = [
+            ("Add",     lambda a, b: a + b,                         [r(8, 16), r(8, 16)]),
+            ("Sub",     lambda a, b: a - b,                         [r(8, 16), r(8, 16)]),
+            ("Mul",     lambda a, b: a * b,                         [r(8, 16), r(8, 16)]),
+            ("TrueDiv", lambda a, b: a / (b.abs() + 1.0),           [r(8, 16), r(8, 16)]),
+            # 张量指数，避免 inductor 把 x**const 优化成连乘（那样图里只剩 Mul）
+            ("Pow",     lambda a, b: a.abs() ** (b.abs() + 1.0),    [r(8, 16), r(8, 16)]),
+            ("Sqrt",    lambda a: torch.sqrt(a.abs() + 1.0),        [r(8, 16)]),
+            ("Rsqrt",   lambda a: torch.rsqrt(a.abs() + 1.0),       [r(8, 16)]),
+            ("Abs",     lambda a: a.abs() + 1.0,                    [r(8, 16)]),
+            ("Exp",     lambda a: torch.exp(a * 0.1),               [r(8, 16)]),
+            ("Sigmoid", lambda a: torch.sigmoid(a),                 [r(8, 16)]),
+            ("Relu",    lambda a: torch.relu(a) + 1.0,              [r(8, 16)]),
+            ("Neg",     lambda a: -a + 1.0,                         [r(8, 16)]),
+            ("Sign",    lambda a: torch.sgn(a) + 1.0,               [r(8, 16)]),
+            ("Log1p",   lambda a: torch.log1p(a.abs() + 1.0),       [r(8, 16)]),
+            (None,      lambda a: torch.nn.functional.silu(a),      [r(8, 16)]),
+            (None,      lambda a, b: torch.remainder(a, b.abs() + 1.0), [r(8, 16), r(8, 16)]),
+            # floor_divide：inductor 靠 decomposition 拆成 div+floor（需 _finetune_decompose
+            # 保留它的 decomposition），无单一 ascir op
+            (None,      lambda a, b: torch.floor_divide(a.abs(), b.abs() + 1.0), [r(8, 16), r(8, 16)]),
+        ]
+        for expect_op, fn, args in cases:
+            with self.subTest(op=expect_op or "compound"):
+                self._lower_and_check(fn, args, expect_op)
+
+    def test_lowering_compare(self):
+        """比较 op 输出 bool —— 看护 support_out_dtypes 放行 bool/uint8、且
+        convert_element_type 接受 bool 输入两处配置，缺一会 fallback 回 eager。
+        用 .to(float32) 把 bool 转回，模拟典型用法。"""
+        r = torch.randn
+        cases = [
+            ("Ge", lambda a, b: (a >= b).to(torch.float32), [r(8, 16), r(8, 16)]),
+            ("Le", lambda a, b: (a <= b).to(torch.float32), [r(8, 16), r(8, 16)]),
+            ("Gt", lambda a, b: (a > b).to(torch.float32),  [r(8, 16), r(8, 16)]),
+            ("Lt", lambda a, b: (a < b).to(torch.float32),  [r(8, 16), r(8, 16)]),
+            ("Eq", lambda a, b: (a == b).to(torch.float32), [r(8, 16), r(8, 16)]),
+            ("Ne", lambda a, b: (a != b).to(torch.float32), [r(8, 16), r(8, 16)]),
+        ]
+        for expect_op, fn, args in cases:
+            with self.subTest(op=expect_op):
+                self._lower_and_check(fn, args, expect_op)
+
+    def test_lowering_reduce_and_convert(self):
+        """白名单 reduce（sum/mean/max/min）+ dtype 转换能 lower。"""
+        r = torch.randn
+        cases = [
+            ("Sum",  lambda a: a.sum(-1),                  [r(8, 16)]),
+            ("Sum",  lambda a: a.mean(-1),                 [r(8, 16)]),  # mean = sum * (1/n)
+            ("Max",  lambda a: torch.max(a),               [r(8, 16)]),
+            ("Min",  lambda a: torch.min(a),               [r(8, 16)]),
+            ("Cast", lambda a: (a + 1.0).to(torch.float16), [r(8, 16)]),
+        ]
+        for expect_op, fn, args in cases:
+            with self.subTest(op=expect_op):
+                self._lower_and_check(fn, args, expect_op)
+
+    def test_lowering_view_ops(self):
+        """白名单 view 类算子（permute/unsqueeze/squeeze/select/slice/expand/
+        transpose）必须跟计算 op 组合才会产生实际融合；只校验生成的图合法
+        （view 可能被 reinterpret 进 load 的 stride，不强求出现独立 view 节点）。"""
+        r = torch.randn
+        cases = [
+            ("permute",   lambda a, b: a.permute(1, 0) + b,   [r(8, 16), r(16, 8)]),
+            ("unsqueeze", lambda a, b: a.unsqueeze(-1) + b,   [r(8, 16), r(8, 16, 4)]),
+            ("squeeze",   lambda a, b: a.squeeze(1) + b,      [r(8, 1, 16), r(8, 16)]),
+            ("select",    lambda a, b: a.select(0, 0) + b,    [r(4, 8, 16), r(8, 16)]),
+            ("slice",     lambda a, b: a[:, 1:3] + b,         [r(8, 16), r(8, 2)]),
+            ("expand",    lambda a, b: a.expand(8, 16) * b,   [r(1, 16), r(8, 16)]),
+            ("transpose", lambda a, b: a.transpose(0, 1) + b, [r(8, 16), r(16, 8)]),
+        ]
+        for name, fn, args in cases:
+            with self.subTest(view=name):
+                self._lower_and_check(fn, args, expect_op=None)
+
+    def test_soc_gating(self):
+        """看护 _LoweringGuard.support(since=...) 的 SoC gating 逻辑。
+
+        gating 规则：current_soc 已知且 since 给定且 current_soc < since 时
+        跳过注册（该算子在当前 SoC 上会 fallback）；否则注册。
+
+        UT 跑在 cpu 模式（current_soc=None），gating 默认不生效，所以这里直接
+        patch lowering.common.current_soc 模拟各档 SoC，用白名单外的探针 op
+        （aten.atan）验证注册与否，避免污染真实白名单、也不依赖真实设备。
+        """
+        from inductor_npu_ext.lowering import common as lc
+        from inductor_npu_ext.lowering.common import float_dtypes
+        from inductor_npu_ext.common import Soc
+
+        probe = torch.ops.aten.atan.default  # 不在白名单里
+        saved = lc.current_soc
+
+        def reg(soc, since):
+            lc.current_soc = soc
+            lc._LoweringGuard._data.pop(probe, None)
+            lc._LoweringGuard.support(probe, float_dtypes(), since=since)
+            return lc._LoweringGuard.has(probe)
+
+        try:
+            # current_soc < since → 跳过注册（在该 SoC 上 fallback）
+            self.assertFalse(reg(Soc.A2, Soc.A5), "A2 < A5 应跳过 since=A5 注册")
+            self.assertFalse(reg(Soc.A3, Soc.A5), "A3 < A5 应跳过")
+            # current_soc >= since → 注册
+            self.assertTrue(reg(Soc.A5, Soc.A5), "A5 >= A5 应注册")
+            self.assertTrue(reg(Soc.FUTURE, Soc.A5), "FUTURE >= A5 应注册")
+            # since=None → 不做 gating，恒注册
+            self.assertTrue(reg(Soc.A2, None), "since=None 不 gating，应注册")
+            # current_soc=None（cpu/nothrow 调试模式）→ 不做 gating，恒注册
+            self.assertTrue(reg(None, Soc.A5), "current_soc=None 不 gating，应注册")
+        finally:
+            lc.current_soc = saved
+            lc._LoweringGuard._data.pop(probe, None)  # 清理探针，勿污染其它用例
+
 
 if __name__ == "__main__":
     unittest.main()
