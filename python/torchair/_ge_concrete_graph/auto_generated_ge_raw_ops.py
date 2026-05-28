@@ -78207,7 +78207,7 @@ def AllGatherMatmul(x1: Tensor,
 def AllGatherMatmulV2(x1: Tensor, x2: Tensor, bias: Optional[Tensor], x1_scale: Optional[Tensor],
     x2_scale: Optional[Tensor], quant_scale: Optional[Tensor], *, group: str, is_trans_a: bool = False,
     is_trans_b: bool = False, gather_index: int = 0, comm_turn: int = 0, rank_size: int = 0, block_size: int = 0,
-    group_size: int = 0, is_gather_out: bool = True, is_amax_out: bool = False, y_dtype: int = 0,
+    group_size: int = 0, is_gather_out: bool = True, is_amax_out: bool = False, y_dtype: int = 0, comm_mode: str = "",
     dependencies=[], node_name=None):
     """
     REG_OP(AllGatherMatmulV2)\n
@@ -78231,6 +78231,7 @@ def AllGatherMatmulV2(x1: Tensor, x2: Tensor, bias: Optional[Tensor], x1_scale: 
     .ATTR(is_gather_out, Bool, true)\n
     .ATTR(is_amax_out, Bool, false)\n
     .ATTR(y_dtype, Int, 0)\n
+    .ATTR(comm_mode, String)\n
     """
 
     op = get_default_ge_graph().op.add()
@@ -78295,6 +78296,7 @@ def AllGatherMatmulV2(x1: Tensor, x2: Tensor, bias: Optional[Tensor], x1_scale: 
     op.attr["is_gather_out"].b = is_gather_out
     op.attr["is_amax_out"].b = is_amax_out
     op.attr["y_dtype"].i = y_dtype
+    op.attr["comm_mode"].s = compat_as_bytes(comm_mode)
 
     # process outputs
     output_index = 0
@@ -80534,7 +80536,7 @@ def MoeDistributeCombineV2(expand_x: Tensor, expert_ids: Tensor, assist_info_for
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "x_active_mask"
 
-    # In V2, three unused reserved parameters from V1 have been removed. However, the oprator
+    # In V2, three unused reserved parameters from V1 have been removed. However, the operator
     # prototype on the canndev still retains the original parameters. Additionally, when the
     # input to the torch layer is V2, canndev internalyy selects either the V1 or V2 version
     # of aclnn based on the A2/A3 platform. Therefore, it is necessary to perform a placeholder
@@ -81880,7 +81882,7 @@ def DequantSwigluQuant(x: Tensor,
 @auto_convert_to_tensor([False, False], [False, True], inputs_tensor_type=[TensorType.TT_UNKNOWN, TensorType.TT_INDEX_NUMBER])
 def SwigluMxQuant(x: Tensor,
                   group_index: Optional[Tensor],
-                  *, 
+                  *,
                   activate_dim: int = -1,
                   activate_left: bool = False,
                   swiglu_mode: int = 0,
@@ -81913,13 +81915,13 @@ def SwigluMxQuant(x: Tensor,
     .ATTR(scale_alg, Int, 0)\n
     .ATTR(max_dtype_value, Float, 0.0f)\n
     """
-    
+
     # process inputs
     inputs = {
         "x": x,
         "group_index": group_index,
     }
-    
+
     # process attrs
     attrs = {
         "activate_dim": attr.Int(activate_dim),
@@ -81935,13 +81937,13 @@ def SwigluMxQuant(x: Tensor,
         "scale_alg": attr.Int(scale_alg),
         "max_dtype_value": attr.Float(max_dtype_value),
     }
-    
+
     # process outputs
     outputs = [
     "y",
     "mxscale",
     ]
-    
+
     return ge_op(
         op_type="SwigluMxQuant",
         inputs=inputs,
@@ -81965,7 +81967,7 @@ def SwigluMxQuant(x: Tensor,
         .attr("max_dtype_value", attr.Float(0.000000)) \
         .output("y", "DT_FLOAT4_E2M1, DT_FLOAT4_E1M2, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2") \
         .output("mxscale", "DT_FLOAT8_E8M0")
-    
+
     )
 
 
@@ -83119,7 +83121,7 @@ def QuantBatchMatmulInplaceAdd(x1: Tensor, x2: Tensor, x2_scale: Tensor, y: Tens
         .attr("transpose_x2", attr.Bool(False)) \
         .attr("group_size", attr.Int(0)) \
         .output("y" , "DT_FLOAT")
-    ) 
+    )
 
 
 # This api is auto-generated from IR QuantGroupedMatmulInplaceAdd
@@ -83890,7 +83892,7 @@ def DynamicBlockMxQuant(x: Tensor,
     # process dependencies
     for dependency in dependencies:
         op.input.append(dependency.controller)
-    
+
     # process inputs
     op.input.append(x.tensor)
     op.input_desc.add().CopyFrom(x.desc)
@@ -83925,32 +83927,32 @@ def DynamicBlockMxQuant(x: Tensor,
                          TensorType.TT_UNKNOWN, TensorType.TT_INDEX_NUMBER, TensorType.TT_INDEX_NUMBER,
                          TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN,
                          TensorType.TT_UNKNOWN])
-def AlltoAllvQuantGroupedMatMul(gmm_x: Tensor, 
-                                gmm_weight: Tensor, 
-                                gmm_x_scale: Tensor, 
-                                gmm_weight_scale: Tensor, 
-                                send_counts_tensor: Optional[Tensor], 
-                                recv_counts_tensor: Optional[Tensor], 
-                                mm_x: Optional[Tensor], 
-                                mm_weight: Optional[Tensor], 
-                                mm_x_scale: Optional[Tensor], 
-                                mm_weight_scale: Optional[Tensor], 
-                                *, 
-                                group: str, 
-                                ep_world_size: int, 
-                                send_counts: List[int], 
-                                recv_counts: List[int], 
-                                gmm_x_quant_mode: int, 
-                                gmm_weight_quant_mode: int, 
-                                trans_gmm_weight: bool = False, 
-                                trans_mm_weight: bool = False, 
-                                permute_out_flag: bool = False, 
-                                mm_x_quant_mode: int = 0, 
-                                mm_weight_quant_mode: int = 0, 
-                                group_size: int = 0, 
-                                y_dtype: int = 28, 
-                                mm_dtype: int = 28, 
-                                dependencies=[], 
+def AlltoAllvQuantGroupedMatMul(gmm_x: Tensor,
+                                gmm_weight: Tensor,
+                                gmm_x_scale: Tensor,
+                                gmm_weight_scale: Tensor,
+                                send_counts_tensor: Optional[Tensor],
+                                recv_counts_tensor: Optional[Tensor],
+                                mm_x: Optional[Tensor],
+                                mm_weight: Optional[Tensor],
+                                mm_x_scale: Optional[Tensor],
+                                mm_weight_scale: Optional[Tensor],
+                                *,
+                                group: str,
+                                ep_world_size: int,
+                                send_counts: List[int],
+                                recv_counts: List[int],
+                                gmm_x_quant_mode: int,
+                                gmm_weight_quant_mode: int,
+                                trans_gmm_weight: bool = False,
+                                trans_mm_weight: bool = False,
+                                permute_out_flag: bool = False,
+                                mm_x_quant_mode: int = 0,
+                                mm_weight_quant_mode: int = 0,
+                                group_size: int = 0,
+                                y_dtype: int = 28,
+                                mm_dtype: int = 28,
+                                dependencies=[],
                                 node_name=None):
     """REG_OP(AlltoAllvQuantGroupedMatMul)\n
     .INPUT(gmm_x, TensorType({DT_FLOAT16, DT_BF16, DT_HIFLOAT8, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_FLOAT4_E2M1}))\n
@@ -84089,34 +84091,34 @@ def AlltoAllvQuantGroupedMatMul(gmm_x: Tensor,
                          TensorType.TT_UNKNOWN, TensorType.TT_INDEX_NUMBER, TensorType.TT_INDEX_NUMBER,
                          TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN,
                          TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN])
-def QuantGroupedMatMulAlltoAllv(gmm_x: Tensor, 
-                                gmm_weight: Tensor, 
-                                gmm_x_scale: Tensor, 
-                                gmm_weight_scale: Tensor, 
-                                send_counts_tensor: Optional[Tensor], 
-                                recv_counts_tensor: Optional[Tensor], 
-                                mm_x: Optional[Tensor], 
-                                mm_weight: Optional[Tensor], 
-                                mm_x_scale: Optional[Tensor], 
-                                mm_weight_scale: Optional[Tensor], 
-                                comm_quant_scale: Optional[Tensor], 
-                                *, 
-                                group: str, 
-                                ep_world_size: int, 
-                                send_counts: List[int], 
-                                recv_counts: List[int], 
-                                gmm_x_quant_mode: int, 
-                                gmm_weight_quant_mode: int, 
-                                trans_gmm_weight: bool = False, 
-                                trans_mm_weight: bool = False, 
-                                mm_x_quant_mode: int = 0, 
-                                mm_weight_quant_mode: int = 0, 
-                                comm_quant_mode: int = 0, 
-                                group_size: int = 0,  
-                                y_dtype: int = 28, 
-                                mm_dtype: int = 28, 
+def QuantGroupedMatMulAlltoAllv(gmm_x: Tensor,
+                                gmm_weight: Tensor,
+                                gmm_x_scale: Tensor,
+                                gmm_weight_scale: Tensor,
+                                send_counts_tensor: Optional[Tensor],
+                                recv_counts_tensor: Optional[Tensor],
+                                mm_x: Optional[Tensor],
+                                mm_weight: Optional[Tensor],
+                                mm_x_scale: Optional[Tensor],
+                                mm_weight_scale: Optional[Tensor],
+                                comm_quant_scale: Optional[Tensor],
+                                *,
+                                group: str,
+                                ep_world_size: int,
+                                send_counts: List[int],
+                                recv_counts: List[int],
+                                gmm_x_quant_mode: int,
+                                gmm_weight_quant_mode: int,
+                                trans_gmm_weight: bool = False,
+                                trans_mm_weight: bool = False,
+                                mm_x_quant_mode: int = 0,
+                                mm_weight_quant_mode: int = 0,
+                                comm_quant_mode: int = 0,
+                                group_size: int = 0,
+                                y_dtype: int = 28,
+                                mm_dtype: int = 28,
                                 comm_quant_dtype: int = 0,
-                                dependencies=[], 
+                                dependencies=[],
                                 node_name=None):
     """REG_OP(QuantGroupedMatMulAlltoAllv)\n
     .INPUT(gmm_x, TensorType({DT_FLOAT16, DT_BF16, DT_HIFLOAT8, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_FLOAT4_E2M1}))\n

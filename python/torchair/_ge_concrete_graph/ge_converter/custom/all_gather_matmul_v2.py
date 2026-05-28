@@ -71,6 +71,7 @@ def convert_npu_all_gather_quant_mm(
     x2_dtype: int = None,
     x1_scale_dtype: int = None,
     x2_scale_dtype: int = None,
+    comm_mode: str = "",
     meta_outputs: TensorSpec = None
 ):
     import torch_npu
@@ -132,7 +133,8 @@ def convert_npu_all_gather_quant_mm(
                                                        group_size=group_size,
                                                        is_gather_out=gather_output,
                                                        is_amax_out=amax_output,
-                                                       y_dtype=output_dtype)
+                                                       y_dtype=output_dtype,
+                                                       comm_mode=comm_mode)
     # 对于非原生的torch数据类型需要做类型标注
     out.desc.dtype = torch_dtype_value_to_ge_proto_type(y_dtype)
     gather_out_dtype = DataType.DT_HIFLOAT8 if x1_dtype == torch_npu.hifloat8 else self.dtype
