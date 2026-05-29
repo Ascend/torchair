@@ -1,6 +1,12 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "skills": {
-    "paths": [".claude/skills"]
+  "plugin": ["superpowers@git+https://github.com/obra/superpowers.git"],
+  "permission": {
+    "external_directory": {
+      "~/.config/**": "allow",
+      "/tmp/**": "allow",
+      "~/Ascend/**": "allow",
+      "/usr/local/Ascend/**": "allow"
+    }
   }
 }
