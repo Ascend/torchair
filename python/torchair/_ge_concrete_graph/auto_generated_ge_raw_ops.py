@@ -189,8 +189,8 @@ def MaskedCausalConv1d(input: Tensor, weight: Tensor, mask: Optional[Tensor], *,
 
 
 # This api is auto-generated from IR FusedCausalConv1d
-@auto_convert_to_tensor([False, False, False, False, False, False, False, False], [False, False, False, True, True, True, True, True])
-def FusedCausalConv1d(x: Tensor, weight: Tensor, conv_states: Tensor, query_start_loc: Optional[Tensor], cache_indices: Optional[Tensor], initial_state_mode: Optional[Tensor], bias: Optional[Tensor], num_accepted_tokens: Optional[Tensor], *, activation_mode: int=0, pad_slot_id: int=-1, run_mode: int=0, residual_connection: int=0, dependencies=[], node_name=None):
+@auto_convert_to_tensor([False, False, False, False, False, False, False, False, False, False, False, False], [False, False, False, True, True, True, True, True, True, True, True, True])
+def FusedCausalConv1d(x: Tensor, weight: Tensor, conv_states: Tensor, query_start_loc: Optional[Tensor], cache_indices: Optional[Tensor], initial_state_mode: Optional[Tensor], bias: Optional[Tensor], num_accepted_tokens: Optional[Tensor], num_computed_tokens: Optional[Tensor], block_idx_first_scheduled_token: Optional[Tensor], block_idx_last_scheduled_token: Optional[Tensor], initial_state_idx: Optional[Tensor], *, activation_mode: int=0, pad_slot_id: int=-1, run_mode: int=0, max_query_len: int=-1, residual_connection: int=1, block_size: int=128, conv_mode: int=0, dependencies=[], node_name=None):
     """REG_OP(FusedCausalConv1d)\n
 .INPUT(x, TensorType({DT_BF16, DT_FLOAT16}))\n
 .INPUT(weight, TensorType({DT_BF16, DT_FLOAT16}))\n
@@ -200,12 +200,19 @@ def FusedCausalConv1d(x: Tensor, weight: Tensor, conv_states: Tensor, query_star
 .OPTIONAL_INPUT(initial_state_mode, TensorType({DT_INT32}))\n
 .OPTIONAL_INPUT(bias, TensorType({DT_BF16, DT_FLOAT16}))\n
 .OPTIONAL_INPUT(num_accepted_tokens, TensorType({DT_INT32}))\n
+.OPTIONAL_INPUT(num_computed_tokens, TensorType({DT_INT32}))\n
+.OPTIONAL_INPUT(block_idx_first_scheduled_token, TensorType({DT_INT32}))\n
+.OPTIONAL_INPUT(block_idx_last_scheduled_token, TensorType({DT_INT32}))\n
+.OPTIONAL_INPUT(initial_state_idx, TensorType({DT_INT32}))\n
 .ATTR(activation_mode, Int, 0)\n
 .ATTR(pad_slot_id, Int, -1)\n
 .ATTR(run_mode, Int, 0)\n
-.ATTR(residual_connection, Int, 0)\n
-.OUTPUT(y, TensorType({DT_BF16, DT_FLOAT16}))\n
+.ATTR(max_query_len, Int, -1)\n
+.ATTR(residual_connection, Int, 1)\n
+.ATTR(block_size, Int, 128)\n
+.ATTR(conv_mode, Int, 0)\n
 .OUTPUT(conv_states, TensorType({DT_BF16, DT_FLOAT16}))\n
+.OUTPUT(y, TensorType({DT_BF16, DT_FLOAT16}))\n
 """
 
     # process inputs
@@ -218,6 +225,10 @@ def FusedCausalConv1d(x: Tensor, weight: Tensor, conv_states: Tensor, query_star
         "initial_state_mode": initial_state_mode,
         "bias": bias,
         "num_accepted_tokens": num_accepted_tokens,
+        "num_computed_tokens": num_computed_tokens,
+        "block_idx_first_scheduled_token": block_idx_first_scheduled_token,
+        "block_idx_last_scheduled_token": block_idx_last_scheduled_token,
+        "initial_state_idx": initial_state_idx,
     }
 
     # process attrs
@@ -225,13 +236,16 @@ def FusedCausalConv1d(x: Tensor, weight: Tensor, conv_states: Tensor, query_star
         "activation_mode": attr.Int(activation_mode),
         "pad_slot_id": attr.Int(pad_slot_id),
         "run_mode": attr.Int(run_mode),
+        "max_query_len": attr.Int(max_query_len),
         "residual_connection": attr.Int(residual_connection),
+        "block_size": attr.Int(block_size),
+        "conv_mode": attr.Int(conv_mode),
     }
 
     # process outputs
     outputs = [
-    "y",
     "conv_states",
+    "y",
     ]
 
     return ge_op(
@@ -249,12 +263,110 @@ def FusedCausalConv1d(x: Tensor, weight: Tensor, conv_states: Tensor, query_star
         .optional_input("initial_state_mode", "DT_INT32") \
         .optional_input("bias", "DT_BF16, DT_FLOAT16") \
         .optional_input("num_accepted_tokens", "DT_INT32") \
+        .optional_input("num_computed_tokens", "DT_INT32") \
+        .optional_input("block_idx_first_scheduled_token", "DT_INT32") \
+        .optional_input("block_idx_last_scheduled_token", "DT_INT32") \
+        .optional_input("initial_state_idx", "DT_INT32") \
         .attr("activation_mode", attr.Int(0)) \
         .attr("pad_slot_id", attr.Int(-1)) \
         .attr("run_mode", attr.Int(0)) \
-        .attr("residual_connection", attr.Int(0)) \
-        .output("y" , "DT_BF16, DT_FLOAT16") \
-        .output("conv_states" , "DT_BF16, DT_FLOAT16")
+        .attr("max_query_len", attr.Int(-1)) \
+        .attr("residual_connection", attr.Int(1)) \
+        .attr("block_size", attr.Int(128)) \
+        .attr("conv_mode", attr.Int(0)) \
+        .output("conv_states" , "DT_BF16, DT_FLOAT16") \
+        .output("y" , "DT_BF16, DT_FLOAT16")
+    )
+
+
+# This api is auto-generated from IR InplaceFusedCausalConv1d
+@auto_convert_to_tensor([False, False, False, False, False, False, False, False, False, False, False, False], [False, False, False, True, True, True, True, True, True, True, True, True])
+def InplaceFusedCausalConv1d(x: Tensor, weight: Tensor, conv_states: Tensor, query_start_loc: Optional[Tensor], cache_indices: Optional[Tensor], initial_state_mode: Optional[Tensor], bias: Optional[Tensor], num_accepted_tokens: Optional[Tensor], num_computed_tokens: Optional[Tensor], block_idx_first_scheduled_token: Optional[Tensor], block_idx_last_scheduled_token: Optional[Tensor], initial_state_idx: Optional[Tensor], *, activation_mode: int=0, pad_slot_id: int=-1, run_mode: int=0, max_query_len: int=-1, residual_connection: int=1, block_size: int=128, conv_mode: int=0, dependencies=[], node_name=None):
+    """REG_OP(InplaceFusedCausalConv1d)\n
+.INPUT(x, TensorType({DT_BF16, DT_FLOAT16}))\n
+.INPUT(weight, TensorType({DT_BF16, DT_FLOAT16}))\n
+.INPUT(conv_states, TensorType({DT_BF16, DT_FLOAT16}))\n
+.OPTIONAL_INPUT(query_start_loc, TensorType({DT_INT32}))\n
+.OPTIONAL_INPUT(cache_indices, TensorType({DT_INT32}))\n
+.OPTIONAL_INPUT(initial_state_mode, TensorType({DT_INT32}))\n
+.OPTIONAL_INPUT(bias, TensorType({DT_BF16, DT_FLOAT16}))\n
+.OPTIONAL_INPUT(num_accepted_tokens, TensorType({DT_INT32}))\n
+.OPTIONAL_INPUT(num_computed_tokens, TensorType({DT_INT32}))\n
+.OPTIONAL_INPUT(block_idx_first_scheduled_token, TensorType({DT_INT32}))\n
+.OPTIONAL_INPUT(block_idx_last_scheduled_token, TensorType({DT_INT32}))\n
+.OPTIONAL_INPUT(initial_state_idx, TensorType({DT_INT32}))\n
+.ATTR(activation_mode, Int, 0)\n
+.ATTR(pad_slot_id, Int, -1)\n
+.ATTR(run_mode, Int, 0)\n
+.ATTR(max_query_len, Int, -1)\n
+.ATTR(residual_connection, Int, 1)\n
+.ATTR(block_size, Int, 128)\n
+.ATTR(conv_mode, Int, 0)\n
+.OUTPUT(conv_states, TensorType({DT_BF16, DT_FLOAT16}))\n
+.OUTPUT(x, TensorType({DT_BF16, DT_FLOAT16}))\n
+"""
+
+    # process inputs
+    inputs = {
+        "x": x,
+        "weight": weight,
+        "conv_states": conv_states,
+        "query_start_loc": query_start_loc,
+        "cache_indices": cache_indices,
+        "initial_state_mode": initial_state_mode,
+        "bias": bias,
+        "num_accepted_tokens": num_accepted_tokens,
+        "num_computed_tokens": num_computed_tokens,
+        "block_idx_first_scheduled_token": block_idx_first_scheduled_token,
+        "block_idx_last_scheduled_token": block_idx_last_scheduled_token,
+        "initial_state_idx": initial_state_idx,
+    }
+
+    # process attrs
+    attrs = {
+        "activation_mode": attr.Int(activation_mode),
+        "pad_slot_id": attr.Int(pad_slot_id),
+        "run_mode": attr.Int(run_mode),
+        "max_query_len": attr.Int(max_query_len),
+        "residual_connection": attr.Int(residual_connection),
+        "block_size": attr.Int(block_size),
+        "conv_mode": attr.Int(conv_mode),
+    }
+
+    # process outputs
+    outputs = [
+    "conv_states",
+    "x",
+    ]
+
+    return ge_op(
+        op_type="InplaceFusedCausalConv1d",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("InplaceFusedCausalConv1d") \
+        .input("x", "DT_BF16, DT_FLOAT16") \
+        .input("weight", "DT_BF16, DT_FLOAT16") \
+        .input("conv_states", "DT_BF16, DT_FLOAT16") \
+        .optional_input("query_start_loc", "DT_INT32") \
+        .optional_input("cache_indices", "DT_INT32") \
+        .optional_input("initial_state_mode", "DT_INT32") \
+        .optional_input("bias", "DT_BF16, DT_FLOAT16") \
+        .optional_input("num_accepted_tokens", "DT_INT32") \
+        .optional_input("num_computed_tokens", "DT_INT32") \
+        .optional_input("block_idx_first_scheduled_token", "DT_INT32") \
+        .optional_input("block_idx_last_scheduled_token", "DT_INT32") \
+        .optional_input("initial_state_idx", "DT_INT32") \
+        .attr("activation_mode", attr.Int(0)) \
+        .attr("pad_slot_id", attr.Int(-1)) \
+        .attr("run_mode", attr.Int(0)) \
+        .attr("max_query_len", attr.Int(-1)) \
+        .attr("residual_connection", attr.Int(1)) \
+        .attr("block_size", attr.Int(128)) \
+        .attr("conv_mode", attr.Int(0)) \
+        .output("conv_states" , "DT_BF16, DT_FLOAT16") \
+        .output("x" , "DT_BF16, DT_FLOAT16")
     )
 
 
