@@ -39,7 +39,6 @@ class Soc(IntEnum):
     A2 = 1
     A3 = 2
     A5 = 3
-    FUTURE = 999
 
 
 def _detect_soc():
@@ -53,14 +52,16 @@ def _detect_soc():
         return None
 
     import torch_npu
-    soc_name = torch.npu.get_device_name()
-    if '910B' in soc_name:
-        return Soc.A2
-    if '910_93' in soc_name:
-        return Soc.A3
-    if '910_95' in soc_name or '950' in soc_name:
+    soc_version = torch.npu.get_soc_version()
+    if soc_version >= 260:
         return Soc.A5
-    return Soc.FUTURE
+    if soc_version >= 250:
+        return Soc.A3
+    if soc_version >= 220 and soc_version < 240:
+        return Soc.A2
+    logger.warning("Unknown SoC version %d name %s, SoC-specific check will be disabled",
+                   soc_version, torch.npu.get_device_name())
+    return None
 
 
 current_soc = _detect_soc()

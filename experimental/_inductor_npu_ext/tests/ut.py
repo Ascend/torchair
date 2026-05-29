@@ -463,7 +463,6 @@ class TestInductorNpuExt(unittest.TestCase):
             self.assertFalse(reg(Soc.A3, Soc.A5), "A3 < A5 应跳过")
             # current_soc >= since → 注册
             self.assertTrue(reg(Soc.A5, Soc.A5), "A5 >= A5 应注册")
-            self.assertTrue(reg(Soc.FUTURE, Soc.A5), "FUTURE >= A5 应注册")
             # since=None → 不做 gating，恒注册
             self.assertTrue(reg(Soc.A2, None), "since=None 不 gating，应注册")
             # current_soc=None（cpu/nothrow 调试模式）→ 不做 gating，恒注册
