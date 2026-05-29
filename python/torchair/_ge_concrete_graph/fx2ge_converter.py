@@ -1171,6 +1171,10 @@ class GeConcreteGraph(ConcreteGraphBase):
             Optional[str]: Generated code as a string if successful, otherwise None.
         """
         from torch._inductor.utils import IndentedBuffer
+
+        if self.config.debug.graph_dump.enabled:
+            self.dump(self.config.debug.graph_dump.full_path(f"dynamo_optimized_{self.graph.name}"))
+
         if self._config.experimental_config.enable_ref_data or self.config.export.export_mode \
                 or self.config.aoe_config.aoe_mode.value is not None:
             logger.info(f'Unsupported codegen for graph with config enable_ref_data or export_mode or aoe_mode.')
