@@ -80931,30 +80931,54 @@ def MoeDistributeCombineV2(expand_x: Tensor, expert_ids: Tensor, assist_info_for
         op.input.append(elastic_info.tensor)
         op.input_desc.add().CopyFrom(elastic_info.desc)
         op.input_desc[-1].name = "elastic_info"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "elastic_info"
 
     if ori_x is not None:
         op.input.append(ori_x.tensor)
         op.input_desc.add().CopyFrom(ori_x.desc)
+        op.input_desc[-1].name = "ori_x"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "ori_x"
 
     if const_expert_alpha_1 is not None:
         op.input.append(const_expert_alpha_1.tensor)
         op.input_desc.add().CopyFrom(const_expert_alpha_1.desc)
         op.input_desc[-1].name = "const_expert_alpha_1"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "const_expert_alpha_1"
 
     if const_expert_alpha_2 is not None:
         op.input.append(const_expert_alpha_2.tensor)
         op.input_desc.add().CopyFrom(const_expert_alpha_2.desc)
+        op.input_desc[-1].name = "const_expert_alpha_2"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "const_expert_alpha_2"
 
     if const_expert_v is not None:
         op.input.append(const_expert_v.tensor)
         op.input_desc.add().CopyFrom(const_expert_v.desc)
         op.input_desc[-1].name = "const_expert_v"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "const_expert_v"
 
     if performance_info is not None:
         op.input.append(performance_info.tensor)
         op.input_desc.add().CopyFrom(performance_info.desc)
+        op.input_desc[-1].name = "performance_info"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "performance_info"
 
     # process attrs
@@ -81176,25 +81200,45 @@ def MoeDistributeCombineAddRmsNorm(expand_x: Tensor,
         op.input.append(elastic_info.tensor)
         op.input_desc.add().CopyFrom(elastic_info.desc)
         op.input_desc[-1].name = "elastic_info"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "elastic_info"
 
     if ori_x is not None:
         op.input.append(ori_x.tensor)
         op.input_desc.add().CopyFrom(ori_x.desc)
+        op.input_desc[-1].name = "ori_x"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "ori_x"
 
     if const_expert_alpha_1 is not None:
         op.input.append(const_expert_alpha_1.tensor)
         op.input_desc.add().CopyFrom(const_expert_alpha_1.desc)
         op.input_desc[-1].name = "const_expert_alpha_1"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "const_expert_alpha_1"
 
     if const_expert_alpha_2 is not None:
         op.input.append(const_expert_alpha_2.tensor)
         op.input_desc.add().CopyFrom(const_expert_alpha_2.desc)
         op.input_desc[-1].name = "const_expert_alpha_2"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "const_expert_alpha_2"
 
     if const_expert_v is not None:
         op.input.append(const_expert_v.tensor)
         op.input_desc.add().CopyFrom(const_expert_v.desc)
+        op.input_desc[-1].name = "const_expert_v"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "const_expert_v"
 
     # process attrs
@@ -81494,10 +81538,18 @@ def MoeDistributeDispatchV2(x: Tensor, expert_ids: Tensor, scales: Optional[Tens
         op.input.append(elastic_info.tensor)
         op.input_desc.add().CopyFrom(elastic_info.desc)
         op.input_desc[-1].name = "elastic_info"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "elastic_info"
 
     if performance_info is not None:
         op.input.append(performance_info.tensor)
         op.input_desc.add().CopyFrom(performance_info.desc)
+        op.input_desc[-1].name = "performance_info"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "performance_info"
 
     # process attrs
