@@ -15681,6 +15681,73 @@ def TransposeBatchMatMul(x1: Tensor, x2: Tensor, bias: Optional[Tensor], scale: 
     )
 
 
+# This api is auto-generated from IR TransposeQuantBatchMatMul
+@auto_convert_to_tensor([False, False, False, False, False], [False, False, True, True, True])
+def TransposeQuantBatchMatMul(x1: Tensor, x2: Tensor, bias: Optional[Tensor], x1_scale: Optional[Tensor],
+                              x2_scale: Optional[Tensor], *, dtype: int, group_size: int = 0,
+                              perm_x1: List[int] = [], perm_x2: List[int] = [], perm_y: List[int] = [],
+                              batch_split_factor: int = 1,
+                              dependencies=[], node_name=None):
+    """REG_OP(TransposeQuantBatchMatMul)\n
+    .INPUT(x1, TensorType({DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_HIFLOAT8}))\n
+    .INPUT(x2, TensorType({DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_HIFLOAT8}))\n
+    .OPTIONAL_INPUT(bias, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .OPTIONAL_INPUT(x1_scale, TensorType({DT_FLOAT, DT_FLOAT8_E8M0, DT_UINT64}))\n
+    .OPTIONAL_INPUT(x2_scale, TensorType({DT_FLOAT, DT_FLOAT8_E8M0, DT_UINT64}))\n
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .REQUIRED_ATTR(dtype, Int)\n
+    .ATTR(group_size, Int, 0)\n
+    .ATTR(perm_x1, ListInt, {1, 0, 2})\n
+    .ATTR(perm_x2, ListInt, {0, 1, 2})\n
+    .ATTR(perm_y, ListInt, {1, 0, 2})\n
+    .ATTR(batch_split_factor, Int, 1)\n
+    """
+    # process inputs
+    inputs = {
+        "x1": x1,
+        "x2": x2,
+        "bias": bias,
+        "x1_scale": x1_scale,
+        "x2_scale": x2_scale,
+    }
+
+    # process attrs
+    attrs = {
+        "dtype": attr.Int(dtype),
+        "group_size": attr.Int(group_size),
+        "perm_x1": attr.ListInt(perm_x1),
+        "perm_x2": attr.ListInt(perm_x2),
+        "perm_y": attr.ListInt(perm_y),
+        "batch_split_factor": attr.Int(batch_split_factor),
+    }
+
+    # process outputs
+    outputs = [
+        "y",
+    ]
+
+    return ge_op(
+        op_type="TransposeQuantBatchMatMul",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("TransposeQuantBatchMatMul") \
+        .input("x1", "DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_HIFLOAT8") \
+        .input("x2", "DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_HIFLOAT8") \
+        .optional_input("bias", "DT_FLOAT, DT_FLOAT16, DT_BF16") \
+        .optional_input("x1_scale", "DT_FLOAT, DT_FLOAT8_E8M0, DT_UINT64") \
+        .optional_input("x2_scale", "DT_FLOAT, DT_FLOAT8_E8M0, DT_UINT64") \
+        .required_attr("dtype", attr.Int) \
+        .attr("group_size", attr.Int(0)) \
+        .attr("perm_x1", attr.ListInt([1, 0, 2])) \
+        .attr("perm_x2", attr.ListInt([0, 1, 2])) \
+        .attr("perm_y", attr.ListInt([1, 0, 2])) \
+        .attr("batch_split_factor", attr.Int(1)) \
+        .output("y", "DT_FLOAT16, DT_BF16")
+    )
+
+
 # This api is auto-generated from IR RotatedNMS
 @auto_convert_to_tensor([False, False, False], [False, False, False], inputs_tensor_type=[TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN, TensorType.TT_INDEX_NUMBER])
 def RotatedNMS(boxes: Tensor, scores: Tensor, labels: Tensor, *, iou_threshold: float, dependencies=[], node_name=None):

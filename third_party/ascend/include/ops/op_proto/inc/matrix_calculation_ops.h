@@ -564,6 +564,55 @@ REG_OP(TransposeBatchMatMul)
 .OP_END_FACTORY_REG(TransposeBatchMatMul)
 
 /**
+* @brief TransposeQuantBatchMatMul - This op supports performing the transpose operation on the input and output of batch matmul, as well as supporting quantized inputs.
+*
+* @par Inputs:
+* Six inputs, including:
+* @li x1: A Tensor. Type is: float8_e4m3fn, float8_e5m2, hifloat8. Format is ND.
+*         Shape is (M, Batch, K) or permuted according to perm_x1.
+* @li x2: A Tensor. Type is: float8_e4m3fn, float8_e5m2, hifloat8. Format is ND or NZ.
+*         Shape is (Batch, K, N) or permuted according to perm_x2.
+* @li bias: An optional Tensor. Type is: float32, float16, bfloat16. Format is ND.
+* @li x1_scale: An optional Tensor. Type is: float32, float8_e8m0fn, uint64. Format is ND.
+*               Per-token or per-group scale for x1 quantization.
+* @li x2_scale: An optional Tensor. Type is: float32, float8_e8m0fn, uint64. Format is ND.
+*               Per-token or per-group scale for x2 quantization.
+*
+* @par Attributes:
+* Six attributes, including:
+* @li dtype: A required int. Output data type (0: float16, 1: bfloat16).
+* @li group_size: An optional int. MXFP8 group size. Default is 0 (per-token).
+*                 If > 0, indicates grouped quantization (MXFP8 mode).
+* @li perm_x1: An optional list int. Permutation sequence for x1. Default is [1, 0, 2].
+* @li perm_x2: An optional list int. Permutation sequence for x2. Default is [0, 1, 2].
+* @li perm_y: An optional list int. Permutation sequence for output y. Default is [1, 0, 2].
+* @li batch_split_factor: An optional int. Batch split factor for optimization. Default is 1.
+*
+* @par Outputs:
+* One output, including:
+* @li y: A Tensor. Type is: float16 or bfloat16. Format is ND.
+*        Shape is (M, Batch, N) or permuted according to perm_y.
+*
+* @par Restrictions:
+* Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
+* Supported on Ascend950 and later chips.
+*/
+REG_OP(TransposeQuantBatchMatMul)
+.INPUT(x1, TensorType({DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_HIFLOAT8}))
+.INPUT(x2, TensorType({DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_HIFLOAT8}))
+.OPTIONAL_INPUT(bias, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
+.OPTIONAL_INPUT(x1_scale, TensorType({DT_FLOAT, DT_FLOAT8_E8M0, DT_UINT64}))
+.OPTIONAL_INPUT(x2_scale, TensorType({DT_FLOAT, DT_FLOAT8_E8M0, DT_UINT64}))
+.OUTPUT(y, TensorType({DT_FLOAT16, DT_BF16}))
+.REQUIRED_ATTR(dtype, Int)
+.ATTR(group_size, Int, 0)
+.ATTR(perm_x1, ListInt, {1, 0, 2})
+.ATTR(perm_x2, ListInt, {0, 1, 2})
+.ATTR(perm_y, ListInt, {1, 0, 2})
+.ATTR(batch_split_factor, Int, 1)
+.OP_END_FACTORY_REG(TransposeQuantBatchMatMul)
+
+/**
 * @brief Computes half the L2 norm of a tensor without the sqrt . \n
 
 * @par Inputs:
