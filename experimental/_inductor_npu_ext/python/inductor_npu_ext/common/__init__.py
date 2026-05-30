@@ -1,9 +1,11 @@
 import logging
-import sys
+import multiprocessing
 import os
+import sys
 from enum import IntEnum
 
 import torch
+
 from .. import config
 
 
@@ -33,6 +35,7 @@ from .fused_layout_check import (
     maybe_check_fused_input_layout,
 )
 
+
 class Soc(IntEnum):
     A2 = 1
     A3 = 2
@@ -49,8 +52,11 @@ def _detect_soc():
     if config._debugging_on_cpu:
         return None
 
+    if multiprocessing.get_start_method(allow_none=True) == 'fork':
+        return None
+
     import torch_npu
-    soc_version = torch.npu.get_soc_version()
+    soc_version = torch_npu.npu._backends.get_soc_version()
     if soc_version >= 260:
         return Soc.A5
     if soc_version >= 250:
