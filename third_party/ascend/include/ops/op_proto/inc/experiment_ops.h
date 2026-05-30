@@ -4185,7 +4185,7 @@ REG_OP(QuantReduceScatter)
  * @li y: A matrix Tensor. The type support bfloat16, float16, float. The format supports ND.
  * @par Attributes:
  * @li group: A string. Communication domain identifier.
- * @li world_size: An int. Default: -1.
+ * @li world_size: An int.
  * @li all2all_axes: An ListInt. Indicate the data direction for All2All communication. Default: {-1, -2}.
  * @li y_dtype: An int. Declare the output dtype. Default: static_cast<int64_t>(ge::DT_UNDEFINED) 为28.
  * @li x1_quant_mode: An int. Quantization mode of x1, which support 0(non-quant), 3(pertoken-quant), 6(mx-quant). Default: 0.
@@ -4195,6 +4195,7 @@ REG_OP(QuantReduceScatter)
  * @li transpose_x1: A bool. Whether x1 is transposed. Default: false.
  * @li transpose_x2: A bool. Whether x2 is transposed. Default: false.
  * @li group_size: An int. Default: 0.
+ * @li comm_mode: A string. Communication engine. Default: "".
  */
 REG_OP(MatmulAlltoAll)
     .INPUT(x1, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_FLOAT4_E2M1}))
@@ -4217,6 +4218,7 @@ REG_OP(MatmulAlltoAll)
     .ATTR(transpose_x1, Bool, false)
     .ATTR(transpose_x2, Bool, false)
     .ATTR(group_size, Int, 0)
+    .ATTR(comm_mode, String, "")
     .OP_END_FACTORY_REG(MatmulAlltoAll)
 
 

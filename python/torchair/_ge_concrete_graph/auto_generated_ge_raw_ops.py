@@ -84068,6 +84068,7 @@ def MatmulAlltoAll(x1: Tensor,
                    transpose_x1: bool = False,
                    transpose_x2: bool = False,
                    group_size: int = 0,
+                   comm_mode: Optional[str] = None,
                    dependencies=[],
                    node_name=None):
     """REG_OP(MatmulAlltoAll)\n
@@ -84091,6 +84092,7 @@ def MatmulAlltoAll(x1: Tensor,
     .ATTR(transpose_x1, Bool, false)\n
     .ATTR(transpose_x2, Bool, false)\n
     .ATTR(group_size, Int, 0)\n
+    .ATTR(comm_mode, String, "")\n
     """
 
     # process inputs
@@ -84105,54 +84107,101 @@ def MatmulAlltoAll(x1: Tensor,
         "x2_offset": x2_offset,
     }
 
-    # process attrs
-    attrs = {
-        "group": attr.Str(group),
-        "world_size": attr.Int(world_size),
-        "all2all_axes": attr.ListInt(all2all_axes),
-        "y_dtype": attr.Int(y_dtype),
-        "x1_quant_mode": attr.Int(x1_quant_mode),
-        "x2_quant_mode": attr.Int(x2_quant_mode),
-        "comm_quant_mode": attr.Int(comm_quant_mode),
-        "comm_quant_dtype": attr.Int(comm_quant_dtype),
-        "transpose_x1": attr.Bool(transpose_x1),
-        "transpose_x2": attr.Bool(transpose_x2),
-        "group_size": attr.Int(group_size),
-    }
-
     # process outputs
     outputs = [
         "y",
     ]
 
-    return ge_op(
-        op_type="MatmulAlltoAll",
-        inputs=inputs,
-        attrs=attrs,
-        outputs=outputs,
-        dependencies=dependencies,
-        ir=IrDef("MatmulAlltoAll") \
-        .input("x1", "DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_FLOAT4_E2M1") \
-        .input("x2", "DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_FLOAT4_E2M1") \
-        .optional_input("bias", "DT_BF16, DT_FLOAT16, DT_FLOAT") \
-        .optional_input("x1_scale", "DT_FLOAT, DT_FLOAT8_E8M0") \
-        .optional_input("x2_scale", "DT_FLOAT, DT_FLOAT8_E8M0") \
-        .optional_input("comm_scale", "DT_FLOAT") \
-        .optional_input("x1_offset", "DT_FLOAT") \
-        .optional_input("x2_offset", "DT_FLOAT") \
-        .required_attr("group", attr.Str) \
-        .required_attr("world_size", attr.Int) \
-        .attr("all2all_axes", attr.ListInt([-1, -2])) \
-        .attr("y_dtype", attr.Int(28)) \
-        .attr("x1_quant_mode", attr.Int(0)) \
-        .attr("x2_quant_mode", attr.Int(0)) \
-        .attr("comm_quant_mode", attr.Int(0)) \
-        .attr("comm_quant_dtype", attr.Int(28)) \
-        .attr("transpose_x1", attr.Bool(False)) \
-        .attr("transpose_x2", attr.Bool(False)) \
-        .attr("group_size", attr.Int(0)) \
-        .output("y", "DT_BF16 ,DT_FLOAT16, DT_FLOAT")
-    )
+    if comm_mode is not None:
+        # process attrs
+        attrs = {
+            "group": attr.Str(group),
+            "world_size": attr.Int(world_size),
+            "all2all_axes": attr.ListInt(all2all_axes),
+            "y_dtype": attr.Int(y_dtype),
+            "x1_quant_mode": attr.Int(x1_quant_mode),
+            "x2_quant_mode": attr.Int(x2_quant_mode),
+            "comm_quant_mode": attr.Int(comm_quant_mode),
+            "comm_quant_dtype": attr.Int(comm_quant_dtype),
+            "transpose_x1": attr.Bool(transpose_x1),
+            "transpose_x2": attr.Bool(transpose_x2),
+            "group_size": attr.Int(group_size),
+            "comm_mode": attr.Str(comm_mode),
+        }
+
+        return ge_op(
+            op_type="MatmulAlltoAll",
+            inputs=inputs,
+            attrs=attrs,
+            outputs=outputs,
+            dependencies=dependencies,
+            ir=IrDef("MatmulAlltoAll") \
+            .input("x1", "DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_FLOAT4_E2M1") \
+            .input("x2", "DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_FLOAT4_E2M1") \
+            .optional_input("bias", "DT_BF16, DT_FLOAT16, DT_FLOAT") \
+            .optional_input("x1_scale", "DT_FLOAT, DT_FLOAT8_E8M0") \
+            .optional_input("x2_scale", "DT_FLOAT, DT_FLOAT8_E8M0") \
+            .optional_input("comm_scale", "DT_FLOAT") \
+            .optional_input("x1_offset", "DT_FLOAT") \
+            .optional_input("x2_offset", "DT_FLOAT") \
+            .required_attr("group", attr.Str) \
+            .required_attr("world_size", attr.Int) \
+            .attr("all2all_axes", attr.ListInt([-1, -2])) \
+            .attr("y_dtype", attr.Int(28)) \
+            .attr("x1_quant_mode", attr.Int(0)) \
+            .attr("x2_quant_mode", attr.Int(0)) \
+            .attr("comm_quant_mode", attr.Int(0)) \
+            .attr("comm_quant_dtype", attr.Int(28)) \
+            .attr("transpose_x1", attr.Bool(False)) \
+            .attr("transpose_x2", attr.Bool(False)) \
+            .attr("group_size", attr.Int(0)) \
+            .attr("comm_mode", attr.Str("")) \
+            .output("y", "DT_BF16 ,DT_FLOAT16, DT_FLOAT")
+        )
+    else:
+        # process attrs
+        attrs = {
+            "group": attr.Str(group),
+            "world_size": attr.Int(world_size),
+            "all2all_axes": attr.ListInt(all2all_axes),
+            "y_dtype": attr.Int(y_dtype),
+            "x1_quant_mode": attr.Int(x1_quant_mode),
+            "x2_quant_mode": attr.Int(x2_quant_mode),
+            "comm_quant_mode": attr.Int(comm_quant_mode),
+            "comm_quant_dtype": attr.Int(comm_quant_dtype),
+            "transpose_x1": attr.Bool(transpose_x1),
+            "transpose_x2": attr.Bool(transpose_x2),
+            "group_size": attr.Int(group_size),
+        }
+
+        return ge_op(
+            op_type="MatmulAlltoAll",
+            inputs=inputs,
+            attrs=attrs,
+            outputs=outputs,
+            dependencies=dependencies,
+            ir=IrDef("MatmulAlltoAll") \
+            .input("x1", "DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_FLOAT4_E2M1") \
+            .input("x2", "DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_FLOAT4_E2M1") \
+            .optional_input("bias", "DT_BF16, DT_FLOAT16, DT_FLOAT") \
+            .optional_input("x1_scale", "DT_FLOAT, DT_FLOAT8_E8M0") \
+            .optional_input("x2_scale", "DT_FLOAT, DT_FLOAT8_E8M0") \
+            .optional_input("comm_scale", "DT_FLOAT") \
+            .optional_input("x1_offset", "DT_FLOAT") \
+            .optional_input("x2_offset", "DT_FLOAT") \
+            .required_attr("group", attr.Str) \
+            .required_attr("world_size", attr.Int) \
+            .attr("all2all_axes", attr.ListInt([-1, -2])) \
+            .attr("y_dtype", attr.Int(28)) \
+            .attr("x1_quant_mode", attr.Int(0)) \
+            .attr("x2_quant_mode", attr.Int(0)) \
+            .attr("comm_quant_mode", attr.Int(0)) \
+            .attr("comm_quant_dtype", attr.Int(28)) \
+            .attr("transpose_x1", attr.Bool(False)) \
+            .attr("transpose_x2", attr.Bool(False)) \
+            .attr("group_size", attr.Int(0)) \
+            .output("y", "DT_BF16 ,DT_FLOAT16, DT_FLOAT")
+        )
 
 
 # This api is auto-generated from IR AlltoAllMatmul
