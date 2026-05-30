@@ -2,7 +2,7 @@
 
 ## 项目概述
 
-TorchAir（Torch Ascend Intermediate Representation）是一个 PyTorch 扩展库，支持在昇腾 NPU 上使用图模式进行推理。它集成 PyTorch Dynamo，捕获 FX 图并转换为 GE（Graph Engine）计算图，在昇腾 NPU 上完成编译和执行。
+TorchAir（Torch Ascend Intermediate Representation）是一个 PyTorch 的昇腾　NPU 图模式扩展库，它基于 PyTorch Dynamo 捕获 FX 计算图，并将其转换为 GE（Graph Engine）计算图进行全图编译执行，或通过 ACL（Ascend Computing Language）Graph 以捕获方式执行，从而实现 Pytorch 模型在昇腾 NPU 上的零改动推理加速．
 
 - 仓库地址：https://gitcode.com/ascend/torchair
 - 支持的 PyTorch 版本：2.6.0+（master 主线），2.1.0–2.9.0（已发布版本）
