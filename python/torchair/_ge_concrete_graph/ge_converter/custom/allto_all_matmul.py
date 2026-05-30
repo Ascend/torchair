@@ -7,7 +7,7 @@ X_DTYPE_SUPPORT_LIST = {
     DataType.DT_BF16
 }
 
-
+COMM_MODE_SUPPORT_LIST = ["", "ai_cpu", "ccu"]
 @register_fx_node_ge_converter(torch.ops.npu.npu_all_to_all_matmul.default)
 def convert_npu_all_to_all_matmul(
     x1: Tensor,
@@ -17,6 +17,7 @@ def convert_npu_all_to_all_matmul(
     bias: Optional[Tensor] = None,
     all2all_axes: Optional[List[int]] = None,
     all2all_out_flag: bool = True,
+    comm_mode: Optional[str] = None,
     meta_outputs: TensorSpec = None
 ):
     # transpose_x1 is set to False by default
@@ -36,7 +37,9 @@ def convert_npu_all_to_all_matmul(
     y_dtype_value = x1.dtype
     if all2all_axes is None:
         all2all_axes = [-2, -1]
-    '''NB: npu::npu_all_to_all_matmul(Tensor x1, Tensor x2, str hcom, int world_size, Tensor? bias=None, int[]? all2all_axes=[-2, -1], bool all2all_out_flag=True) -> (Tensor, Tensor)'''
+    if (comm_mode is not None) and (comm_mode not in COMM_MODE_SUPPORT_LIST):
+ 	    raise RuntimeError(f"The comm_mode only supports value in {COMM_MODE_SUPPORT_LIST}, but got {comm_mode}.")
+    '''NB: npu::npu_all_to_all_matmul(Tensor x1, Tensor x2, str hcom, int world_size, Tensor? bias=None, int[]? all2all_axes=[-2, -1], bool all2all_out_flag=True, str? comm_mode=None) -> (Tensor, Tensor)'''
     check_dtype(x1, x2, bias)
     (out, all2all_out) = ge.AlltoAllMatmul(x1=x1,
                                            x2=x2,
@@ -58,6 +61,7 @@ def convert_npu_all_to_all_matmul(
                                            transpose_x1=transpose_x1,
                                            transpose_x2=transpose_x2,
                                            group_size=group_size,
+                                           comm_mode=comm_mode,
                                            alltoall_out_flag=all2all_out_flag)
     out.desc.dtype = _ge_dtype_to_ge_proto_dtype(x1.dtype)
     all2all_out.desc.dtype = _ge_dtype_to_ge_proto_dtype(x1.dtype)

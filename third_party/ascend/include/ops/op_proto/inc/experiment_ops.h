@@ -4252,6 +4252,7 @@ REG_OP(MatmulAlltoAll)
  * @li transpose_x1: A bool. Whether x1 is transposed. Default: false.
  * @li transpose_x2: A bool. Whether x2 is transposed. Default: false.
  * @li group_size: An int. Default: 0.
+* @li comm_mode: A string. Communication engine. Default: "".
  * @li alltoall_out_flag: A bool. Default: true.
  */
 REG_OP(AlltoAllMatmul)
@@ -4277,6 +4278,7 @@ REG_OP(AlltoAllMatmul)
     .ATTR(transpose_x1, Bool, false)
     .ATTR(transpose_x2, Bool, false)
     .ATTR(group_size, Int, 0)
+    .ATTR(comm_mode, String, "")
     .ATTR(alltoall_out_flag, Bool, true)
     .OP_END_FACTORY_REG(AlltoAllMatmul)
 

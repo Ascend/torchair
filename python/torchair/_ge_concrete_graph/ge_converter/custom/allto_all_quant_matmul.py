@@ -4,6 +4,8 @@ torch_dtype_value_to_ge_proto_type, _ge_dtype_to_ge_proto_dtype
 
 WORLD_SIZE_SUPPORT_LIST = [2, 4, 8, 16]
 
+COMM_MODE_SUPPORT_LIST = ["", "ai_cpu", "ccu"]
+
 # kc quant mode
 X1_DTYPE_WITH_KC_SUPPORT_LIST = {
     DataType.DT_FLOAT16,
@@ -57,7 +59,7 @@ X1_MX_QUANT_MODE = 6
 X2_MX_QUANT_MODE = 6
 
 # group size max value is (2^16 - 1)
-GROUP_SIZE_MAX_VALUE = 65535 
+GROUP_SIZE_MAX_VALUE = 65535
 
 
 @register_fx_node_ge_converter(torch.ops.npu.npu_all_to_all_quant_matmul.default)
@@ -87,13 +89,14 @@ def convert_npu_all_to_all_quant_matmul(
     output_scale_dtype: int = None,
     comm_scale_dtype: int = None,
     y_dtype: int = None,
+    comm_mode: Optional[str] = None,
     meta_outputs: TensorSpec = None
 ):
     '''
     NB: npu::npu_quant_all_to_all_matmul(Tensor x1, Tensor x2, str hcom, int world_size, bool all2all_out_flag=True, Tensor? bias=None, Tensor? x1_scale=None,
     Tensor? x2_scale=None, Tensor? common_scale=None, Tensor? x1_offset=None, Tensor? x2_offset=None, int? x1_quant_mode=0, int? x2_quant_mode=0, int? common_quant_mode=0,
     int[]? group_sizes=None, int[]? all2all_axes=[-2, -1], int? comm_quant_dtype=28, int? x1_quant_dtype=28, int? x1_dtype=None, int? x2_dtype=None, int? x1_scale_dtype=None,
-    int? x2_scale_dtype=None, int? output_scale_dtype=None, int? comm_scale_dtype=None, int? y_dtype=None) -> (Tensor, Tensor)
+    int? x2_scale_dtype=None, int? output_scale_dtype=None, int? comm_scale_dtype=None, int? y_dtype=None, str? comm_mode=None) -> (Tensor, Tensor)
     '''
     import torch_npu
 
@@ -105,6 +108,9 @@ def convert_npu_all_to_all_quant_matmul(
 
     if all2all_axes is None:
         all2all_axes = [-2, -1]
+
+    if (comm_mode is not None) and (comm_mode not in COMM_MODE_SUPPORT_LIST):
+        raise RuntimeError(f"The comm_mode only supports value in {COMM_MODE_SUPPORT_LIST}, but got {comm_mode}.")
 
     if world_size not in WORLD_SIZE_SUPPORT_LIST:
         raise RuntimeError(f"The world_size only supports value in {WORLD_SIZE_SUPPORT_LIST}, but got {world_size}.")
@@ -275,6 +281,7 @@ def convert_npu_all_to_all_quant_matmul(
                                            transpose_x1=transpose_x1,
                                            transpose_x2=transpose_x2,
                                            group_size=group_size,
+                                           comm_mode=comm_mode,
                                            alltoall_out_flag=all2all_out_flag)
 
     out.desc.dtype = _ge_dtype_to_ge_proto_dtype(output_dtype)
