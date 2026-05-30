@@ -51,18 +51,26 @@ def replace_stream_event_pass(gm: torch.fx.GraphModule):
             elif is_high_version and node.target == torch.ops.streams.record_event:
                 if len(node.args) > 1 and node.args[1] is not None:
                     stream_obj = torch._dynamo.graph_bytecode_inputs.get_external_object_by_index(node.args[1])
-                    node.target = torch.ops.npugraph_ex.tagged_event_record_on_stream
-                    node.args = (graph_id + event_index_to_node_name[node.args[0]],
-                                    stream_obj.stream_id, stream_obj.device_index, stream_obj.device_type, True)
+                    if default_stream_id is not None and stream_obj.stream_id == default_stream_id:
+                        node.target = torch.ops.npugraph_ex.tagged_event_record
+                        node.args = (graph_id + event_index_to_node_name[node.args[0]], True)
+                    else:
+                        node.target = torch.ops.npugraph_ex.tagged_event_record_on_stream
+                        node.args = (graph_id + event_index_to_node_name[node.args[0]],
+                                   str(stream_obj.stream_id), str(stream_obj.device_index), str(stream_obj.device_type), True)
                 else:
                     node.target = torch.ops.npugraph_ex.tagged_event_record
                     node.args = (graph_id + event_index_to_node_name[node.args[0]], True)
             elif is_high_version and node.target == torch.ops.streams.wait_event:
                 if len(node.args) > 1 and node.args[1] is not None:
                     stream_obj = torch._dynamo.graph_bytecode_inputs.get_external_object_by_index(node.args[1])
-                    node.target = torch.ops.npugraph_ex.tagged_event_wait_on_stream
-                    node.args = (graph_id + event_index_to_node_name[node.args[0]],
-                                    stream_obj.stream_id, stream_obj.device_index, stream_obj.device_type, True)
+                    if default_stream_id is not None and stream_obj.stream_id == default_stream_id:
+                        node.target = torch.ops.npugraph_ex.tagged_event_wait
+                        node.args = (graph_id + event_index_to_node_name[node.args[0]], True)
+                    else:
+                        node.target = torch.ops.npugraph_ex.tagged_event_wait_on_stream
+                        node.args = (graph_id + event_index_to_node_name[node.args[0]],
+                                    str(stream_obj.stream_id), str(stream_obj.device_index), str(stream_obj.device_type), True)
                 else:
                     node.target = torch.ops.npugraph_ex.tagged_event_wait
                     node.args = (graph_id + event_index_to_node_name[node.args[0]], True)
