@@ -79,6 +79,7 @@ def convert_npu_quant_mm_reduce_scatter(
     x2_dtype: int = None,
     x1_scale_dtype: int = None,
     x2_scale_dtype: int = None,
+    comm_mode: str = "",
     meta_outputs: TensorSpec = None
 ):
     transpose_x1 = False
@@ -89,7 +90,7 @@ def convert_npu_quant_mm_reduce_scatter(
                                             Tensor? quant_scale=None, int block_size=0, int comm_turn=0,
                                             int[]? group_sizes=None, bool amax_output=False, int? y_dtype=None,
                                             int? x1_dtype=None, int? x2_dtype=None, int? x1_scale_dtype=None,
-                                            int? x2_scale_dtype=None) -> (Tensor, Tensor)'''
+                                            int? x2_scale_dtype=None, str? comm_mode="") -> (Tensor, Tensor)'''
     check_dtype(self, x2, y_dtype=y_dtype)
     group_max = GROUP_SIZE_MAX_VALUE # 65535是指group_size中的值最大不能超过16位可表示的范围
     group_size = 0
@@ -139,7 +140,8 @@ def convert_npu_quant_mm_reduce_scatter(
                                                block_size=block_size,
                                                group_size=group_size,
                                                is_amax_out=amax_output,
-                                               y_dtype=output_dtype)
+                                               y_dtype=output_dtype,
+                                               comm_mode=comm_mode)
     # 对于非原生的torch数据类型需要做类型标注
     out.desc.dtype = torch_dtype_value_to_ge_proto_type(y_dtype)
     return (out, amax_out)

@@ -78251,7 +78251,7 @@ def MatmulReduceScatter(x1: Tensor,
 def MatmulReduceScatterV2(x1: Tensor, x2: Tensor, bias: Optional[Tensor], x1_scale: Optional[Tensor],
     x2_scale: Optional[Tensor], quant_scale: Optional[Tensor], *, group: str, reduce_op: str = "sum",
     is_trans_a: bool = False, is_trans_b: bool = False, comm_turn: int = 0, rank_size: int = 0, block_size: int = 0,
-    group_size: int = 0, is_amax_out: bool = False, y_dtype: int = 0, dependencies=[], node_name=None):
+    group_size: int = 0, is_amax_out: bool = False, y_dtype: int = 0, comm_mode: str = "", dependencies=[], node_name=None):
     """
     REG_OP(MatmulReduceScatterV2)\n
     .INPUT(x1, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_HIFLOAT8}))\n
@@ -78272,6 +78272,7 @@ def MatmulReduceScatterV2(x1: Tensor, x2: Tensor, bias: Optional[Tensor], x1_sca
     .ATTR(group_size, Int, 0)\n
     .ATTR(is_amax_out, Bool, false)\n
     .ATTR(y_dtype, Int, 28)\n
+    .ATTR(comm_mode, String, "")\n
     """
 
     op = get_default_ge_graph().op.add()
@@ -78336,6 +78337,7 @@ def MatmulReduceScatterV2(x1: Tensor, x2: Tensor, bias: Optional[Tensor], x1_sca
     op.attr["group_size"].i = group_size
     op.attr["is_amax_out"].b = is_amax_out
     op.attr["y_dtype"].i = y_dtype
+    op.attr["comm_mode"].s = compat_as_bytes(comm_mode)
 
     # process outputs
     output_index = 0
