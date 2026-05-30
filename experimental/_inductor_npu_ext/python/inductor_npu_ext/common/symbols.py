@@ -5,7 +5,7 @@ from typing import List
 import sympy
 
 from torch._inductor.virtualized import V
-from inductor_npu_ext.common.utils import StrRep
+from .utils import StrRep
 
 
 class AscExpr:

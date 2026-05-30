@@ -22,16 +22,16 @@ from torch._inductor.utils import sympy_subs
 from torch._inductor.virtualized import V
 from torch._inductor.codegen.common import IndentedBuffer, Kernel, TensorArg
 
-from inductor_npu_ext.common import logger
-from inductor_npu_ext.common import fused_layout_check
-from inductor_npu_ext.common.asc_graph import ASCGraph, FusedASCGraph, ASCIndexing
-from inductor_npu_ext.common.symbols import Axis
-from inductor_npu_ext.common.debug import _left_align_lines, OP_SUMMARY
-from inductor_npu_ext.common.symbols import AscExpr, Loop, DenseLoop
-from inductor_npu_ext.common.asc_graph import _Tensor, _Scalar
-from inductor_npu_ext import asc_ops as ir
-from inductor_npu_ext.asc_overrides import NPUOverrides
-from inductor_npu_ext.config import _debug_options
+from .common import logger
+from .common import fused_layout_check
+from .common.asc_graph import ASCGraph, FusedASCGraph, ASCIndexing
+from .common.symbols import Axis
+from .common.debug import _left_align_lines, OP_SUMMARY
+from .common.symbols import AscExpr, Loop, DenseLoop
+from .common.asc_graph import _Tensor, _Scalar
+from . import asc_ops as ir
+from .asc_overrides import NPUOverrides
+from .config import _debug_options
 
 
 class ASCBuffer:
@@ -224,7 +224,7 @@ class NPUKernel(Kernel):
         arg_defs, call_args, precompile_args, arg_types = self.args.python_argdefs()
         self._fused_graph.args = precompile_args
 
-        from inductor_npu_ext import codegen as npu_codegen
+        from . import codegen as npu_codegen
 
         self._fused_graph.cpp_wrapper = npu_codegen.codegen_cpp_wrapper(self._fused_graph)
         self._fused_graph.asc_graph = self._fused_graph.codegen("cache_hint").getvalue()
@@ -248,7 +248,7 @@ class NPUKernel(Kernel):
         return self._asc_buffer[name]
 
     def codegen(self):
-        from inductor_npu_ext import codegen as npu_codegen
+        from . import codegen as npu_codegen
 
         artifacts = npu_codegen.codegen_kernel_def(self.fused_graph)
         artifacts['cpp_wrapper'] = npu_codegen.codegen_cpp_wrapper(self.fused_graph)

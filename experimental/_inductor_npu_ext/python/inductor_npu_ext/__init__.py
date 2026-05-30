@@ -7,10 +7,10 @@ import torch.utils._pytree as pytree
 from torch._inductor.codegen.common import register_backend_for_device
 from torch._inductor import graph as torch__inductor_graph
 
-from inductor_npu_ext.npu import NPUScheduling, NpuWrapperCodeGen
-from inductor_npu_ext.common import logger, current_soc, Soc
-from inductor_npu_ext.common.utils import patch_fn
-from inductor_npu_ext.config import _debug_options
+from .npu import NPUScheduling, NpuWrapperCodeGen
+from .common import logger, current_soc, Soc
+from .common.utils import patch_fn
+from .config import _debug_options
 
 if sys.modules.setdefault('torch_npu._inductor', None):
     raise ImportError("torch_npu._inductor already registered as codegen backend")
@@ -29,7 +29,7 @@ def _finetune_inductor_config():
     reduction unrolling, size assertions, and device properties. It also restricts operator decompositions
     to a whitelist and sets a custom pre-gradient pass if not already set.
     """
-    from torch._inductor.codegen import cpu_device_op_overrides  # noqa: F401
+    from torch._inductor.codegen import cpu_device_op_overrides
     from torch._dynamo import config as dynamo_config
 
     dynamo_config.recompile_limit = 16  # default 8 is always not enough for per-layer compile
@@ -47,7 +47,7 @@ def _finetune_inductor_config():
 
 def _load_npu_passes():
     from torch._inductor import config as inductor_config
-    from inductor_npu_ext.passes.auto_functionalize_legacy_ops import auto_functionalize_legacy_ops
+    from .passes.auto_functionalize_legacy_ops import auto_functionalize_legacy_ops
 
     if inductor_config.pre_grad_custom_pass is None:
         inductor_config.pre_grad_custom_pass = auto_functionalize_legacy_ops
@@ -58,7 +58,7 @@ def _load_npu_passes():
                 f"registration of `auto_functionalize_legacy_ops` will be skipped. "
                 f"Note that this may introduce extra tensormove operations. "
                 f"You can import `auto_functionalize_legacy_ops` and call it within your custom pass: "
-                f"`from inductor_npu_ext.passes.auto_functionalize_legacy_ops import auto_functionalize_legacy_ops`"
+                f"`from .passes.auto_functionalize_legacy_ops import auto_functionalize_legacy_ops`"
             )
 
 
@@ -89,11 +89,11 @@ def _finetune_decompose():
 
 
 def _finetune_lowering():
-    import inductor_npu_ext.lowering.aten_lowering  # noqa: F401, make sure lowering rules for npu ops are registered  # typos:ignore
+    from .lowering import aten_lowering
 
 
 def _load_npu_lowering():
-    import inductor_npu_ext.lowering.npu_lowering  # noqa: F401, make sure lowering rules for npu ops are registered  # typos:ignore
+    from .lowering import npu_lowering
 
 
 _finetune_inductor_config()
@@ -112,8 +112,8 @@ else:
 
 @patch_fn(torch__inductor_graph, "fallback_node_due_to_unsupported_type")
 def _fallback_node_due_to_unsupported_type(node: torch.fx.Node, allow_cpu_inputs=True, *, orig_fn=None):
-    from inductor_npu_ext.lowering.common import _LoweringGuard, _summary
-    from inductor_npu_ext.common.utils import get_node_meta
+    from .lowering.common import _LoweringGuard, _summary
+    from .common.utils import get_node_meta
 
     if orig_fn(node, allow_cpu_inputs=allow_cpu_inputs):
         _summary.fallback(node, "torch._inductor.lowering.fallback_node_due_to_unsupported_type")

@@ -2,7 +2,7 @@ import torch
 import torch.library
 import torch_npu
 
-from inductor_npu_ext.common import logger
+from ..common import logger
 
 modern = torch.library.Library("modern", "FRAGMENT")
 modern.define("npu_scatter_nd_update_(Tensor(a!) x, Tensor indices, Tensor updates) -> None")

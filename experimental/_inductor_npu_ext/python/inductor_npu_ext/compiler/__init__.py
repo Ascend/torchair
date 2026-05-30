@@ -7,9 +7,9 @@ from concurrent.futures import Future
 
 import torch
 
-from inductor_npu_ext.common import logger
-from inductor_npu_ext.common.utils import validate_lib
-from inductor_npu_ext import config
+from ..common import logger
+from ..common.utils import validate_lib
+from .. import config
 from torch._inductor.async_compile import AsyncCompile
 from . import _compiler
 
@@ -69,7 +69,7 @@ class _NpuInductorKernel:
 def get_lib_dir(artifacts: Dict) -> str:
     name = artifacts.get('name', 'default')
     hash_str = ''.join([v for k, v in artifacts.items() if k != 'name'])
-    lib_dir = os.path.join(config._asc_cache_dir, name, hashlib.md5(hash_str.encode()).hexdigest())
+    lib_dir = os.path.join(config._asc_cache_dir, name, hashlib.sha256(hash_str.encode()).hexdigest())
     return lib_dir
 
 
@@ -86,8 +86,8 @@ class _AscendcFeature(Future):
 
 def async_compile(executor: Optional[AsyncCompile], artifacts: Dict[str, str]):
     from torch._inductor import config as inductor_config
-    from inductor_npu_ext.common.debug import _get_asserts_base
-    from inductor_npu_ext.common.utils import file_lock
+    from ..common.debug import _get_asserts_base
+    from ..common.utils import file_lock
     from pathlib import Path
 
     lib_dir = get_lib_dir(artifacts)
@@ -102,14 +102,26 @@ def async_compile(executor: Optional[AsyncCompile], artifacts: Dict[str, str]):
 
     asserts_base = _get_asserts_base()
     soc_version = 'cpu' if config._debugging_on_cpu else torch.npu.get_device_properties().name
+
+    compile_flags = []
+    if not config._debugging_on_cpu:
+        import torch_npu
+        torch_npu_dir = os.path.dirname(torch_npu.__file__)
+        ascend_dir = os.path.dirname(os.getenv("ASCEND_OPP_PATH", "/usr/local/Ascend/latest/opp"))
+        torch_dir = os.path.dirname(torch.__file__)
+        compile_flags = [f"-I{v}/include" for v in [ascend_dir, torch_dir, torch_npu_dir]]
+        compile_flags.extend([f"-L{ascend_dir}/lib64", f"-lascendcl", f"-lnnopbase"])
+        compile_flags.extend([f"-L{torch_npu_dir}/lib", f"-ltorch_npu"])
+    else:
+        compile_flags = [f"-I{os.path.join(os.path.dirname(__file__), 'cpu_stubs', 'include')}"]
     # Prevent force single-threaded compile by other stubs such as triton
     inductor_config.compile_threads = max(32, inductor_config.compile_threads)
     if inductor_config.compile_threads > 1 and executor is not None and not config._debugging_on_cpu:
         logger.debug("Async compile for %s", launcher)
         future = executor.process_pool().submit(_compiler.compile_ascendc, artifacts,
-                                                lib_dir, asserts_base, soc_version=soc_version)
+                                                lib_dir, asserts_base, soc_version=soc_version, compile_flags=compile_flags)
         return _AscendcFeature(future, launcher)
     else:
         logger.debug("Sync compile for %s", launcher)
-        _compiler.compile_ascendc(artifacts, lib_dir, asserts_base, soc_version=soc_version)
+        _compiler.compile_ascendc(artifacts, lib_dir, asserts_base, soc_version=soc_version, compile_flags=compile_flags)
         return _NpuInductorKernel(launcher)

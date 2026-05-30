@@ -2,10 +2,10 @@ import itertools
 
 from typing import Dict
 from torch._inductor.codegen.common import IndentedBuffer
-from inductor_npu_ext.common.asc_graph import FusedASCGraph
-from inductor_npu_ext.common.debug import save_asserts
-from inductor_npu_ext.common.utils import load_autofuser
-from inductor_npu_ext import config as ext_config
+from ..common.asc_graph import FusedASCGraph
+from ..common.debug import save_asserts
+from ..common.utils import load_autofuser
+from .. import config as ext_config
 
 
 class KernelArg:
@@ -230,7 +230,7 @@ extern "C" int wrapper({signature}) {{
             return -1;
         }}
     }}
-    DLOG() << "Launch args for {graph.name}: block_dim=" << block_dim << " stream=" << current_stream 
+    DLOG() << "Launch args for {graph.name}: block_dim=" << block_dim << " stream=" << current_stream
             << " workspace_size=" << workspace_size << " workspace=" << workspace << std::endl;
 
     {buffer_assign_in_taskqueue1}
@@ -287,7 +287,7 @@ extern "C" int wrapper({signature}) {{
                 return -1;
             }}
         }}
-        DLOG() << "Launch args for {graph.name}: block_dim=" << block_dim << " stream=" << current_stream 
+        DLOG() << "Launch args for {graph.name}: block_dim=" << block_dim << " stream=" << current_stream
                << " workspace_size=" << workspace_size << " workspace=" << workspace << std::endl;
 
         {buffer_assign_in_taskqueue2}

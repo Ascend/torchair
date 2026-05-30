@@ -11,7 +11,7 @@ from contextlib import contextmanager
 
 import torch
 import torch.utils._pytree as pytree
-from inductor_npu_ext import config
+from .. import config
 
 
 class StrRep:
@@ -49,7 +49,7 @@ def is_kernel_need_stub(_):
 def _load_stub_modules(graph_name):
     need_stub = is_kernel_need_stub(graph_name)
     if need_stub:
-        from inductor_npu_ext.common.revert_ascir import PyAutofuseStub, AscCompilerStub
+        from .revert_ascir import PyAutofuseStub, AscCompilerStub
         sys.modules["autofuse"] = types.ModuleType("autofuse")
         sys.modules["autofuse.pyautofuse"] = PyAutofuseStub()
         sys.modules["autofuse.compile_adapter"] = AscCompilerStub()

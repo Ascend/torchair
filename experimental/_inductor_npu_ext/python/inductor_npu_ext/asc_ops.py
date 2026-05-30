@@ -3,7 +3,7 @@ import functools
 
 import torch
 from torch._inductor.virtualized import V
-from inductor_npu_ext.common.asc_graph import _Tensor, _Op, ASCGraph
+from .common.asc_graph import _Tensor, _Op, ASCGraph
 
 
 class _AscOpWrapper:
@@ -813,7 +813,7 @@ def _unsupported_op(*args, _op=None, **kwargs):
 
 
 def _unsupported(*args, _op=None, **kwargs):
-    from inductor_npu_ext.config import _debug_options
+    from .config import _debug_options
 
     if "nothrow" in _debug_options:
         return _unsupported_op(*args, _op=_op, **kwargs)

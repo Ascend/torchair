@@ -9,9 +9,8 @@ from torch._inductor.utils import IndentedBuffer
 from torch._inductor.codegen.common import CSEVariable
 from torch._inductor.virtualized import V
 from torch.utils._sympy.value_ranges import ValueRanges
-from inductor_npu_ext.common.symbols import Loop, AscExpr, DenseLoop
-from inductor_npu_ext.common.utils import StrRep
-from inductor_npu_ext.common.symbols import Loop
+from .symbols import Loop, AscExpr, DenseLoop
+from .utils import StrRep
 
 
 class _Track:
@@ -216,14 +215,14 @@ class ASCGraph:
         outer_name = outer_name or name
         self.inputs.append(name)
         self.inputs_outer.append(outer_name)
-        from inductor_npu_ext import asc_ops as ir
+        from .. import asc_ops as ir
         return ir.data(name=name, dtype=dtype, index=len(self.inputs) - 1)
 
     def output(self, name, dtype, *, src, outer_name=None):
         outer_name = outer_name or name
         self.outputs.append(name)
         self.outputs_outer.append(outer_name)
-        from inductor_npu_ext import asc_ops as ir
+        from .. import asc_ops as ir
         return ir.output(name=name, dtype=dtype, src=src, index=len(self.outputs) - 1)
 
     def size(self, name):
@@ -233,7 +232,7 @@ class ASCGraph:
         self.axis_vars[StrRep(name)] = range_expr
 
     def as_dot(self):
-        from inductor_npu_ext.common.debug import make_graph_dot
+        from .debug import make_graph_dot
         return make_graph_dot(self)
 
     def codegen(self, var_name=None, with_hint=False) -> IndentedBuffer:
@@ -284,7 +283,7 @@ class FusedASCGraph:
         return self._subgraphs
 
     def as_dot(self):
-        from inductor_npu_ext.common.debug import make_fused_graph_dot
+        from .debug import make_fused_graph_dot
         return make_fused_graph_dot(self)
 
     def codegen(self, var_name) -> IndentedBuffer:

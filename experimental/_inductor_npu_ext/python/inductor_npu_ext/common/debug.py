@@ -5,8 +5,11 @@ import contextlib
 
 from collections import defaultdict
 from typing import Dict, List, Set
-from inductor_npu_ext.common.asc_graph import ASCGraph, FusedASCGraph, _Op, _Tensor
-from inductor_npu_ext.common.utils import StrRep
+
+import sympy
+
+from .asc_graph import ASCGraph, FusedASCGraph, _Op, _Tensor
+from .utils import StrRep
 
 
 class _OpVisitor:
@@ -114,10 +117,19 @@ class OpSummary:
             return None
         return self.subs[name]
 
+    @staticmethod
+    def _get_hint_axis_size(axis_size, size_vars, sym_vals):
+        if not isinstance(axis_size, sympy.Expr):
+            return axis_size
+
+        sym_map = dict((sympy.Symbol(str(s)), v) for s, v in zip(size_vars, sym_vals))
+        hint_axis_size = axis_size.subs(sym_map)
+        return int(hint_axis_size) if hint_axis_size.is_integer else hint_axis_size
+
     def record_call_args(self, *args, sym_vals):
         axis_hint_sizes = {}
         for axis, axis_size in self.graph.axis_vars.items():
-            hint_axis_size = eval(f"{axis_size}", dict((str(s), v) for s, v in zip(self.graph.size_vars, sym_vals)))
+            hint_axis_size = self._get_hint_axis_size(axis_size, self.graph.size_vars, sym_vals)
             axis_hint_sizes[axis] = hint_axis_size
         loop_size = functools.reduce(operator.mul, axis_hint_sizes.values(), 1)
         axis_hint_sizes['loop_size'] = loop_size

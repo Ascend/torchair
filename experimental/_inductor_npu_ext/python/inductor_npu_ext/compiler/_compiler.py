@@ -11,9 +11,9 @@ from pathlib import Path
 import torch
 
 from torch._inductor.codegen.common import IndentedBuffer
-from inductor_npu_ext.common.debug import save_asserts
-from inductor_npu_ext.common.utils import load_compiler, validate_lib, file_lock
-from inductor_npu_ext import config
+from ..common.debug import save_asserts
+from ..common.utils import load_compiler, validate_lib, file_lock
+from .. import config
 
 
 @dataclass
@@ -132,76 +132,7 @@ def save_manual_asserts(fn, content):
         f.write(content)
 
 
-class NpuContext:
-    def __init__(self):
-        self.compile_flags = []
-        self.tmp_resource = None
-
-    def __enter__(self):
-        if not config._debugging_on_cpu:
-            import torch_npu
-            torch_npu_dir = os.path.dirname(torch_npu.__file__)
-            ascend_dir = os.path.dirname(os.getenv("ASCEND_OPP_PATH", "/usr/local/Ascend/latest/opp"))
-            torch_dir = os.path.dirname(torch.__file__)
-            self.compile_flags = [f"-I{v}/include" for v in [ascend_dir, torch_dir, torch_npu_dir]]
-            self.compile_flags.extend([f"-L{ascend_dir}/lib64", f"-lascendcl", f"-lnnopbase"])
-            self.compile_flags.extend([f"-L{torch_npu_dir}/lib", f"-ltorch_npu"])
-        else:
-            self.tmp_resource = tempfile.TemporaryDirectory()
-            self.compile_flags = [f"-I{self.tmp_resource.name}/include"]
-            stub_header_dir = os.path.join(self.tmp_resource.name, "include/torch_npu/csrc/core/npu")
-            os.makedirs(stub_header_dir)
-            Path(os.path.join(stub_header_dir, "NPUCachingAllocator.h")).touch()
-            with open(os.path.join(stub_header_dir, "NPUStream.h"), 'w') as f:
-                # stream(bool) 带可选参数 —— wrapper 实际调用是 stream(false)
-                f.write('''
-                        namespace c10_npu {
-                            struct getCurrentNPUStream{
-                                void *stream(bool = false){ return (void*)0x123; }
-                            };
-                            namespace NPUCachingAllocator {
-                                void *raw_alloc_with_stream(size_t size, void *stream) { return (void*)0x456; }
-                                void raw_delete(void *ptr) { return; }
-                            }
-                        }''')
-            # NPUWorkspaceAllocator.h —— wrapper 用 at_npu::native::allocate_workspace
-            # + at::Tensor.storage().data() 申请 workspace；host-only 全打桩成固定地址。
-            # 同时把 aclrtStream / at::Tensor / at::Storage 也桩在这里（wrapper 没 include
-            # at/ATen.h，靠这条链补齐）。
-            with open(os.path.join(stub_header_dir, "NPUWorkspaceAllocator.h"), 'w') as f:
-                f.write('''
-                        #include <cstdint>
-                        #include <cstddef>
-                        typedef void *aclrtStream;
-                        namespace at {
-                            struct Storage { void *data() const { return (void*)0x789; } };
-                            struct Tensor { Storage storage() const { return {}; } };
-                        }
-                        namespace at_npu { namespace native {
-                            inline at::Tensor allocate_workspace(uint64_t size, aclrtStream stream) {
-                                (void)size; (void)stream; return {};
-                            }
-                        }}''')
-            # framework/OpCommand.h —— wrapper 用 OpCommand::RunOpApiV2(name, lambda)
-            # 同步 launch。host-only stub 下直接同步调一次 lambda 模拟"立即执行"。
-            framework_dir = os.path.join(self.tmp_resource.name, "include/torch_npu/csrc/framework")
-            os.makedirs(framework_dir)
-            with open(os.path.join(framework_dir, "OpCommand.h"), 'w') as f:
-                f.write('''
-                        namespace at_npu { namespace native {
-                            struct OpCommand {
-                                template <typename F>
-                                static void RunOpApiV2(const char *name, F &&fn) { (void)name; fn(); }
-                            };
-                        }}''')
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.tmp_resource:
-            self.tmp_resource.cleanup()
-
-
-def compile_ascendc(artifacts: Dict, lib_dir: str, asserts_base: str = None, *, soc_version, force_unknow=False):
+def compile_ascendc(artifacts: Dict, lib_dir: str, asserts_base: str = None, *, soc_version, compile_flags, force_unknow=False):
     kernel_spec = FusedKernelSpec(**artifacts)
     os.makedirs(lib_dir, exist_ok=True)
 
@@ -217,7 +148,7 @@ def compile_ascendc(artifacts: Dict, lib_dir: str, asserts_base: str = None, *, 
         func(cache_file)
         validate_lib(target, change_permissions=True)
 
-    with NpuContext() as ctx, file_lock(Path(lib_dir) / "compile.lock"):
+    with file_lock(Path(lib_dir) / "compile.lock"):
         if os.path.exists(lib_kernel) and os.path.exists(lib_wrapper):
             validate_lib(lib_kernel)
             validate_lib(lib_wrapper)
@@ -230,8 +161,8 @@ def compile_ascendc(artifacts: Dict, lib_dir: str, asserts_base: str = None, *, 
             cache_command(os.path.join(lib_dir, 'asc_kernel.py'), jit_command, build_ascend_lib, lib_kernel)
 
         compile_comments = ' '.join(["//", "g++", "-shared", "-std=c++17", "-fPIC", "-Wall",
-                                     "-O2", "-o", lib_wrapper, "inductor_wrapper.cpp"] + ctx.compile_flags + ['\n'])
+                                     "-O2", "-o", lib_wrapper, "inductor_wrapper.cpp"] + compile_flags + ['\n'])
         cpp_source = compile_comments + codegen_cpp_source(kernel_spec, lib_kernel, lib_dir)
         save_asserts(kernel_spec.name, cpp_source, 'inductor_wrapper.cpp', asserts_base)
-        build_wrapper = functools.partial(_build_cpp, compile_flags=ctx.compile_flags, output_file=lib_wrapper)
+        build_wrapper = functools.partial(_build_cpp, compile_flags=compile_flags, output_file=lib_wrapper)
         cache_command(os.path.join(lib_dir, 'inductor_wrapper.cpp'), cpp_source, build_wrapper, lib_wrapper)

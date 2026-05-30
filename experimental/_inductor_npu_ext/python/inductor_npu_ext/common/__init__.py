@@ -1,12 +1,10 @@
-# pylint: disable=R0401
-# ruff: noqa: E402
 import logging
 import sys
 import os
 from enum import IntEnum
 
 import torch
-from inductor_npu_ext import config
+from .. import config
 
 
 def _setup_logger(name):
@@ -30,7 +28,7 @@ def _setup_logger(name):
 
 logger = _setup_logger("inductor_asc")
 
-from inductor_npu_ext.common.fused_layout_check import (
+from .fused_layout_check import (
     FusedLayoutContractError,
     maybe_check_fused_input_layout,
 )

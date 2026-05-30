@@ -4,12 +4,9 @@ from typing import Dict, Tuple, List, Union
 
 import torch
 
-import torch.utils._pytree as pytree
 from torch._ops import OpOverload, OpOverloadPacket
 
-from inductor_npu_ext.common import logger, current_soc, Soc
-from inductor_npu_ext.common.utils import get_node_meta
-from inductor_npu_ext.config import _debugging_on_cpu
+from ..common import logger, current_soc, Soc
 
 
 class LowerSummary:

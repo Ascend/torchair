@@ -1,5 +1,5 @@
 from typing import Dict
-from inductor_npu_ext.common.asc_graph import FusedASCGraph
+from ..common.asc_graph import FusedASCGraph
 
 
 def codegen_kernel_def(graph: FusedASCGraph) -> Dict[str, str]:

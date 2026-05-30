@@ -6,8 +6,8 @@ from typing import Any, Sequence
 
 import torch
 
-from inductor_npu_ext.config import _check_layout_enabled
-from inductor_npu_ext.common import logger
+from ..config import _check_layout_enabled
+from ..common import logger
 
 
 class FusedLayoutContractError(RuntimeError):

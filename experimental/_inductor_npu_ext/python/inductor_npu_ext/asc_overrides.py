@@ -5,9 +5,9 @@ import torch
 
 from torch._inductor.codegen.common import OpOverrides
 from torch._inductor.ir import ReductionType, StoreMode
-from inductor_npu_ext.common.asc_graph import _Tensor as T
-from inductor_npu_ext.common.asc_graph import ASCIndexing
-from inductor_npu_ext import asc_ops as ir
+from .common.asc_graph import _Tensor as T
+from .common.asc_graph import ASCIndexing
+from . import asc_ops as ir
 
 
 class NPUOverrides(OpOverrides):

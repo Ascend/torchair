@@ -10,6 +10,7 @@ from typing import Dict, List, Tuple
 os.environ.setdefault("TORCH_COMPILE_DEBUG", "1")
 os.environ.setdefault("TORCHINDUCTOR_NPU_EXT_DEBUG", "cpu")
 os.environ.setdefault("TORCHINDUCTOR_FORCE_DISABLE_CACHES", "1")
+os.environ.setdefault("TORCH_DEVICE_BACKEND_AUTOLOAD", "0")
 
 import torch
 from torch._inductor import config

@@ -7,8 +7,8 @@ import torch
 import sympy
 
 from torch._inductor.utils import IndentedBuffer
-from inductor_npu_ext.common import logger
-from inductor_npu_ext.common.asc_graph import ASCGraph, _Track
+from . import logger
+from .asc_graph import ASCGraph, _Track
 
 
 class AscDtypes:
