@@ -4,7 +4,7 @@ import itertools
 
 import torch
 import torch.utils._pytree as pytree
-from torch._inductor.codegen.common import register_backend_for_device
+from torch._inductor.codegen.common import DeviceOpOverrides, register_backend_for_device, register_device_op_overrides
 from torch._inductor import graph as torch__inductor_graph
 
 from .npu import NPUScheduling, NpuWrapperCodeGen
@@ -12,8 +12,28 @@ from .common import logger, current_soc, Soc
 from .common.utils import patch_fn
 from .config import _debug_options
 
-if sys.modules.setdefault('torch_npu._inductor', None):
-    raise ImportError("torch_npu._inductor already registered as codegen backend")
+
+class _NPUDeviceOpOverrides(DeviceOpOverrides):
+    def import_get_raw_stream_as(self, name):
+        return f"from torch_npu._C import _npu_getCurrentRawStream as {name}"
+
+    def set_device(self, device_idx):
+        return f"torch_npu.npu.set_device({device_idx})"
+
+    def synchronize(self):
+        return "torch_npu.npu.synchronize()"
+
+    def device_guard(self, device_idx):
+        return f"torch_npu.npu._DeviceGuard({device_idx})"
+
+if "cpu" not in _debug_options:
+    _dynamo_module = sys.modules.get('torch_npu.utils._dynamo')
+    if _dynamo_module is not None:
+        if _dynamo_module.is_inductor_npu_initialized():
+            raise ImportError("torch_npu._inductor already registered as codegen backend")
+        _dynamo_module.disable_register_inductor_npu()
+        register_device_op_overrides('npu', _NPUDeviceOpOverrides())
+
 register_backend_for_device("npu", NPUScheduling, NpuWrapperCodeGen)
 
 prims = torch.ops.prims
