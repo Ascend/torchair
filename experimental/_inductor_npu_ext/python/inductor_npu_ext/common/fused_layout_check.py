@@ -1,6 +1,3 @@
-# pylint: disable=W1203,R0401
-from __future__ import annotations
-
 import os
 from typing import Any, Sequence
 

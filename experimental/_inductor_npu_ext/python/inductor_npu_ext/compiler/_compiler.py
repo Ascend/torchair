@@ -44,6 +44,8 @@ def codegen_cpp_source(kernel_spec: FusedKernelSpec, kernel_path: str, lib_dir: 
 
     wrapper.splice(kernel_spec.tiling_def)
     wrapper.splice("""
+    const static char* task_queue_enable = std::getenv("TASK_QUEUE_ENABLE");
+    const static int64_t task_queue_mode = (task_queue_enable != nullptr) ? strtol(task_queue_enable, nullptr, 10) : 1;
     const static bool debug = std::getenv("TORCH_COMPILE_DEBUG") != nullptr;
     #undef DLOG
     #define DLOG() if (debug) std::cerr << "[WRAPPER] "
@@ -56,6 +58,12 @@ def codegen_cpp_source(kernel_spec: FusedKernelSpec, kernel_path: str, lib_dir: 
     }
     inline at::Tensor AllocateWorkspaceTensor(int64_t size, void *stream) {
         return at_npu::native::allocate_workspace(uint64_t(size), (aclrtStream)stream);
+    }
+    inline void *MallocWorkspace(int64_t size, void *stream) {
+        return c10_npu::NPUCachingAllocator::raw_alloc_with_stream(size_t(size), stream);
+    }
+    inline void FreeWorkspace(void *ptr) {
+        c10_npu::NPUCachingAllocator::raw_delete(ptr);
     }
     """)
 

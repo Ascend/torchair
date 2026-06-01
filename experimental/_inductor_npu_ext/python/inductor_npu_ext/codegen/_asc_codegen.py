@@ -88,15 +88,13 @@ def codegen_cpp_wrapper(graph: FusedASCGraph):
 
     all_args = tensor_args + symbol_args + [stream]
     signature = ', '.join([v.signature for v in all_args])
+    call_args = ', '.join([v.name for v in all_args])
     buffer_assign = ''
     for in_arg, out_name in zip(inputs + outputs, graph.inputs_outer + graph.outputs_outer):
         buffer_assign += f'\n    auto *{in_arg.name} = {out_name};'
         buffer_assign += f'\n    DLOG() << "{in_arg.name}: " << {in_arg.name} << std::endl;'
-    # One more indent when buffer_assign is emitted inside the TaskQueue lambda
-    if ext_config._enable_taskqueue_mode != 2:
-        buffer_assign_in_taskqueue1 = buffer_assign.replace('\n    ', '\n    ')
-    else:
-        buffer_assign_in_taskqueue2 = buffer_assign.replace('\n    ', '\n        ')
+    buffer_assign_in_taskqueue1 = buffer_assign.replace('\n    ', '\n    ')
+    buffer_assign_in_taskqueue2 = buffer_assign.replace('\n    ', '\n        ')
 
     tiling_args = [v.name for v in symbol_args]
     tiling_signature = [v.signature for v in symbol_args]
@@ -194,9 +192,8 @@ extern "C" int init(const char *kernel_file) {{
 
     # taskqueue=0:同步执行
     # taskqueue=1:静态tiling+动态tiling+workspace 在queue外执行，kernel在queue内执行
-    if ext_config._enable_taskqueue_mode != 2:
-        wrapper.splice(f'''
-extern "C" int wrapper({signature}) {{
+    wrapper.splice(f'''
+extern "C" int wrapper_task_queue01({signature}) {{
     if (tiling_fn == nullptr || launch_fn == nullptr) {{
         if (tiling_fn == nullptr) std::cerr << "{graph.name} tiling func null" << std::endl;
         if (launch_fn == nullptr) std::cerr << "{graph.name} launch func null" << std::endl;
@@ -220,13 +217,11 @@ extern "C" int wrapper({signature}) {{
         }}
     }}
 
-    at::Tensor workspace_tensor;
     void *workspace = nullptr;
     if (workspace_size > 0) {{
-        workspace_tensor = AllocateWorkspaceTensor(workspace_size, current_stream);
-        workspace = const_cast<void *>(workspace_tensor.storage().data());
+        workspace = MallocWorkspace(workspace_size, current_stream);
         if (workspace == nullptr) {{
-            std::cerr << "{graph.name} allocate workspace failed" << std::endl;
+            std::cerr << "{graph.name} kernel malloc workspace failed" << std::endl;
             return -1;
         }}
     }}
@@ -245,14 +240,16 @@ extern "C" int wrapper({signature}) {{
     }};
 
     at_npu::native::OpCommand::RunOpApiV2("{graph.name}", launch_call);
+    if (workspace != nullptr) {{
+        FreeWorkspace(workspace);
+    }}
     return 0;
 }}
     ''')
 
     # taskqueue=2:静态tiling在queue外执行，动态tiling+workspace+kernel在queue内执行
-    else:
-        wrapper.splice(f'''
-extern "C" int wrapper({signature}) {{
+    wrapper.splice(f'''
+extern "C" int wrapper_task_queue2({signature}) {{
     if (tiling_fn == nullptr || launch_fn == nullptr) {{
         if (tiling_fn == nullptr) std::cerr << "{graph.name} tiling func null" << std::endl;
         if (launch_fn == nullptr) std::cerr << "{graph.name} launch func null" << std::endl;
@@ -302,6 +299,15 @@ extern "C" int wrapper({signature}) {{
 
     at_npu::native::OpCommand::RunOpApiV2("{graph.name}", launch_call);
     return 0;
+}}
+    ''')
+
+    wrapper.splice(f'''
+extern "C" int wrapper({signature}) {{
+    if (task_queue_mode == 2) {{
+        return wrapper_task_queue2({call_args});
+    }}
+    return wrapper_task_queue01({call_args});
 }}
     ''')
 

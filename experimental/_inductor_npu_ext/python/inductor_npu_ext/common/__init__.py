@@ -30,12 +30,6 @@ def _setup_logger(name):
 
 logger = _setup_logger("inductor_asc")
 
-from .fused_layout_check import (
-    FusedLayoutContractError,
-    maybe_check_fused_input_layout,
-)
-
-
 class Soc(IntEnum):
     A2 = 1
     A3 = 2
@@ -71,9 +65,7 @@ def _detect_soc():
 current_soc = _detect_soc()
 
 __all__ = [
-    "FusedLayoutContractError",
     "logger",
-    "maybe_check_fused_input_layout",
     "current_soc",
     "Soc",
 ]
