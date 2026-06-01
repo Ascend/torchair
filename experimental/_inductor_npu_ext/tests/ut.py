@@ -8,31 +8,37 @@ from typing import Dict, List, Tuple
 # 兜底：如果 user 没显式调 _stub_debugging_host_only，至少通过 env var 让
 # inductor_npu_ext 进 cpu 模式。这两条必须在 import inductor_npu_ext 之前设。
 os.environ.setdefault("TORCH_COMPILE_DEBUG", "1")
-os.environ.setdefault("TORCHINDUCTOR_NPU_EXT_DEBUG", "cpu")
+os.environ.setdefault("TORCHINDUCTOR_NPU_EXT_DEBUG", "cpu+decompose+lowering")
 os.environ.setdefault("TORCHINDUCTOR_FORCE_DISABLE_CACHES", "1")
 os.environ.setdefault("TORCH_DEVICE_BACKEND_AUTOLOAD", "0")
 
 import torch
 from torch._inductor import config
+
 import inductor_npu_ext
 
-# 老分支提供的 host-only stub 入口，没有就走 env var 路径。
-if hasattr(inductor_npu_ext, "_stub_debugging_host_only"):
-    inductor_npu_ext._stub_debugging_host_only()
-
-
-# ---- asc_graph.py 解析工具 ----
-# 落盘格式形如：
-#   load1 = ascir.ops.Load('graph0_hint/load1', graph0_hint)
-#   load1.x = data1.y
-#   load1.y.axis = [p1, p0, p2, p3]
-#   load1.y.size = [64, 32, 5, 1]
-#   load1.y.strides = [320, 5, 1, 0]
-# AST 抓 op 类型 + 输入绑定 + .y.size / .y.strides / .y.axis。
-
-_BINARY_OPS = {"Add", "Sub", "Mul", "Div", "TrueDiv", "FloorDiv", "Mod", "Maximum",
-               "Minimum", "Pow", "Ge", "Gt", "Le", "Lt", "Eq", "Ne",
-               "BitwiseAnd", "BitwiseOr", "BitwiseXor", "LogicalAnd", "LogicalOr"}
+# AscIR op 分类：
+# - SHAPE_CHANGING：reduce/broadcast/transpose 等，输出 shape 允许跟输入不同。
+# - ELEMENTWISE_BINARY：x1.size 必须等于 x2.size。
+# - ELEMENTWISE_UNARY：x.size 必须等于 y.size。
+SHAPE_CHANGING = {
+    "Sum", "Max", "Min", "Mean", "Prod", "Argmax", "Argmin",
+    "Broadcast", "Transpose", "Reshape", "Squeeze", "Unsqueeze",
+    "Data", "Load", "Store", "Output", "Workspace", "Scalar",
+    "IndirectLoad", "IndirectIndexing", "CheckBounds",
+}
+ELEMENTWISE_BINARY = {
+    "Mul", "Add", "Sub", "TrueDiv", "Div", "FloorDiv", "Mod", "FMod",
+    "Pow", "Maximum", "Minimum", "Eq", "Ne", "Lt", "Gt", "Le", "Ge",
+    "BitwiseAnd", "BitwiseOr", "LogicalAnd", "LogicalOr", "Where",
+    "Copysign", "Nextafter", "Remainder",
+}
+ELEMENTWISE_UNARY = {
+    "Cast", "Abs", "Exp", "Sqrt", "Rsqrt", "Sigmoid", "Sign",
+    "Log", "Ln", "Neg", "Reciprocal", "Square", "Silu", "Floor",
+    "Ceil", "Round", "Trunc", "BitwiseNot", "LogicalNot", "Signbit",
+    "Sin", "Cos", "Tan", "Tanh", "Asin", "Acos", "Atan",
+}
 
 
 def _eval_int_list(node):
@@ -95,12 +101,49 @@ def _parse_asc_graph(path: Path) -> Dict[str, dict]:
                 ops[op_name]["axis"] = _eval_int_list(node.value)
     return ops
 
+def _check_consistency(ops: Dict[str, dict]) -> List[str]:
+    """检查 binary op 两路输入 size 是否一致、unary elementwise op 输入输出 size 是否一致。"""
+    issues: List[str] = []
+    for name, info in ops.items():
+        op_type = info["type"]
+        inputs = info["inputs"]
+
+        if op_type in ELEMENTWISE_BINARY and len(inputs) >= 2:
+            sized: List[Tuple[str, str, list]] = []
+            for slot, src_name in inputs.items():
+                src = ops.get(src_name)
+                if src and src["size"] is not None:
+                    sized.append((slot, src_name, src["size"]))
+            if len(sized) >= 2:
+                base = tuple(sized[0][2])
+                for slot, src_name, size in sized[1:]:
+                    if tuple(size) != base:
+                        issues.append(
+                            f"{name}({op_type}) 输入 shape 不一致: "
+                            f"{sized[0][0]}<-{sized[0][1]} size={list(base)} vs "
+                            f"{slot}<-{src_name} size={list(size)}"
+                        )
+                        break
+
+        if op_type in ELEMENTWISE_UNARY and "x" in inputs:
+            src = ops.get(inputs["x"])
+            out = info["size"]
+            if src and src["size"] is not None and out is not None:
+                if tuple(src["size"]) != tuple(out):
+                    issues.append(
+                        f"{name}({op_type}) 输入输出 shape 跳变: "
+                        f"x<-{inputs['x']} size={src['size']} -> y size={out}"
+                    )
+    return issues
+
 
 def _collect_asc_graphs() -> List[Tuple[Path, Dict[str, dict]]]:
-    root = Path.cwd() / "torch_compile_debug"
-    if not root.exists():
+    """扫 torch_compile_debug 下所有 asc_graph.py 并解析。"""
+    debug_root = Path.cwd() / "torch_compile_debug"
+    if not debug_root.exists():
         return []
-    return [(p, _parse_asc_graph(p)) for p in sorted(root.rglob("asc_graph.py"))]
+    paths = sorted(debug_root.rglob("asc_graph.py"))
+    return [(p, _parse_asc_graph(p)) for p in paths]
 
 
 def _contig_stride(size):
@@ -162,7 +205,7 @@ class TestInductorNpuExt(unittest.TestCase):
         issues = []
         for path, ops in graphs:
             for name, info in ops.items():
-                if info["type"] not in _BINARY_OPS:
+                if info["type"] not in ELEMENTWISE_BINARY:
                     continue
                 src_axes = []
                 for slot in ("x1", "x2"):
@@ -191,18 +234,23 @@ class TestInductorNpuExt(unittest.TestCase):
         self.assertGreater(len(graphs), 0, "未生成任何 asc_graph.py")
         return graphs
 
-    def test_add(self):
-        # Test that compilation and execution do not raise any exceptions
-        try:
-            @torch.compile
-            def func(x, y):
-                return x + y
+    def _assert_fused_in_one_graph(self, graphs, required_ops, hint=""):
+        """断言 required_ops 中所有类型在同一张 asc_graph 中出现。"""
+        for path, ops in graphs:
+            present = {o["type"] for o in ops.values()}
+            if all(t in present for t in required_ops):
+                return path, ops
+        kernels = [(p.parent.name, sorted({o["type"] for o in ops.values()}))
+                   for p, ops in graphs]
+        self.fail(f"未找到同时包含 {required_ops} 的 kernel ({hint})；"
+                  f"现有 kernels: {kernels}")
 
-            x = torch.randn(2)
-            y = torch.randn(2)
-            func(x, y)
-        except Exception as e:
-            self.fail(f"test_add raised an exception: {e}")
+    def _assert_all_consistent(self, graphs):
+        all_issues = []
+        for path, ops in graphs:
+            for issue in _check_consistency(ops):
+                all_issues.append(f"[{path.parent.name}] {issue}")
+        self.assertEqual(all_issues, [], "asc_graph 形状不一致:\n  " + "\n  ".join(all_issues))
 
     def test_benchmark_generation(self):
 
@@ -237,13 +285,15 @@ class TestInductorNpuExt(unittest.TestCase):
             self.assertIn(element, content, f"benchmark.py should contain {element}")
 
         e2e_section = content[content.find("if sys.argv[-1] == 'e2e':"):content.find("else:")]
-        self.assertIn("tiling_def, host_impl, device_impl = fuser.codegen(", e2e_section, "e2e mode should open asc_graph.py")
+        self.assertIn("tiling_def, host_impl, device_impl = fuser.codegen(",
+                      e2e_section, "e2e mode should open asc_graph.py")
 
         default_section = content[content.find("else:"):]
         self.assertIn("tiling_def", default_section, "Default mode should have tiling_def")
         self.assertIn("host_impl", default_section, "Default mode should have host_impl")
         self.assertIn("device_impl", default_section, "Default mode should have device_impl")
-        self.assertNotIn("tiling_def, host_impl, device_impl = fuser.codegen(", default_section, "default mode should not open asc_graph.py")
+        self.assertNotIn("tiling_def, host_impl, device_impl = fuser.codegen(",
+                         default_section, "default mode should not open asc_graph.py")
 
         benchmark_path.unlink()
 
@@ -472,6 +522,106 @@ class TestInductorNpuExt(unittest.TestCase):
             lc.current_soc = saved
             lc._LoweringGuard._data.pop(probe, None)  # 清理探针，勿污染其它用例
 
+    def test_axis_merge_reduce_then_cast(self):
+        """sum(dim=-1) → cast 到 fp16；cast 是 1D 节点，应跟 2D Sum 融到同一 kernel。"""
+        @torch.compile
+        def func(x):
+            return x.sum(dim=-1).to(torch.float16)
+
+        graphs = self._run_and_collect(func, torch.randn(8, 32, dtype=torch.float32))
+        self._assert_fused_in_one_graph(graphs, ["Sum", "Cast"], "reduce_then_cast")
+        self._assert_all_consistent(graphs)
+
+    def test_axis_merge_reduce_then_pointwise(self):
+        """sum(dim=-1) → cast → mul → add；多个 1D pointwise 串在 2D reduce 后。"""
+        @torch.compile
+        def func(x):
+            return (x.sum(dim=-1).to(torch.float16) * 2 + 1)
+
+        graphs = self._run_and_collect(func, torch.randn(8, 32, dtype=torch.float32))
+        self._assert_fused_in_one_graph(graphs, ["Sum", "Mul", "Add"],
+                                        "reduce_then_pointwise")
+        self._assert_all_consistent(graphs)
+
+    def test_axis_merge_mean(self):
+        """mean = sum / N，post-reduce 上有 1D 除法节点。"""
+        @torch.compile
+        def func(x):
+            return x.mean(dim=-1)
+
+        graphs = self._run_and_collect(func, torch.randn(8, 32, dtype=torch.float32))
+        # 必含 Sum；除法可能被 inductor 折成乘以 1/N，所以放宽不强制 TrueDiv。
+        self._assert_fused_in_one_graph(graphs, ["Sum"], "mean")
+        self._assert_all_consistent(graphs)
+
+    # --- softmax / log_softmax：两次 reduce + 中间 broadcast，非常典型 ---
+    def test_axis_merge_softmax(self):
+        """softmax: Max → Sub → Exp → Sum → TrueDiv，理想下融到一个 kernel 里。"""
+        @torch.compile
+        def func(x):
+            return torch.softmax(x, dim=-1)
+
+        graphs = self._run_and_collect(func, torch.randn(8, 64, dtype=torch.float32))
+        self._assert_fused_in_one_graph(graphs, ["Max", "Sum", "Exp", "TrueDiv"],
+                                        "softmax")
+        self._assert_all_consistent(graphs)
+
+    def test_axis_merge_log_softmax(self):
+        """log_softmax: Max + Sub + Exp + Sum + Log + Sub。"""
+        @torch.compile
+        def func(x):
+            return torch.log_softmax(x, dim=-1)
+
+        graphs = self._run_and_collect(func, torch.randn(8, 64, dtype=torch.float32))
+        self._assert_fused_in_one_graph(graphs, ["Max", "Sum", "Exp"], "log_softmax")
+        self._assert_all_consistent(graphs)
+
+    # --- 水平融合：两个独立 reduce 进同一个 kernel ---
+    def test_axis_merge_sum_horizontal_fusion(self):
+        """两个独立 input 的 sum + 后续 add，scheduler 水平融合。"""
+        @torch.compile
+        def func(x, y):
+            return x.sum(dim=-1) + y.sum(dim=-1)
+
+        graphs = self._run_and_collect(func,
+                                       torch.randn(16, 32, dtype=torch.float32),
+                                       torch.randn(16, 32, dtype=torch.float32))
+        # 期望两个 Sum 都在同一个 kernel；count 一下。
+        path, ops = self._assert_fused_in_one_graph(graphs, ["Sum", "Add"],
+                                                    "sum_horizontal_fusion")
+        sum_count = sum(1 for o in ops.values() if o["type"] == "Sum")
+        self.assertGreaterEqual(sum_count, 2,
+                                f"水平融合预期 ≥2 个 Sum，实际 {sum_count}（{path.parent.name}）")
+        self._assert_all_consistent(graphs)
+
+    # --- 水平融合2：两个独立 reduce 进同一个 kernel ---
+    def test_axis_merge_sum_horizontal_fusion2(self):
+        """两个独立 input 的 sum + 后续 add，scheduler 水平融合。"""
+        @torch.compile
+        def func(x):
+            return x.abs().sum(dim=-1), x.mul(3).sum(dim=-1)
+
+        graphs = self._run_and_collect(func,
+                                       torch.randn(16, 32, dtype=torch.float32))
+        # 期望两个 Sum 都在同一个 kernel；count 一下。
+        path, ops = self._assert_fused_in_one_graph(graphs, ["Sum", "Abs", "Mul"],
+                                                    "sum_horizontal_fusion")
+        sum_count = sum(1 for o in ops.values() if o["type"] == "Sum")
+        self.assertGreaterEqual(sum_count, 2,
+                                f"水平融合预期 ≥2 个 Sum，实际 {sum_count}（{path.parent.name}）")
+        self._assert_all_consistent(graphs)
+
+    def test_axis_merge_sum_two_outputs(self):
+        """两个 sum 都作为输出返回。"""
+        @torch.compile
+        def func(x, y):
+            return x.sum(dim=-1), y.sum(dim=-1)
+
+        graphs = self._run_and_collect(func,
+                                       torch.randn(16, 32, dtype=torch.float32),
+                                       torch.randn(16, 32, dtype=torch.float32))
+        # 两个独立 sum 没共同消费者，scheduler 不一定融合，只校验一致性。
+        self._assert_all_consistent(graphs)
 
 if __name__ == "__main__":
     unittest.main()

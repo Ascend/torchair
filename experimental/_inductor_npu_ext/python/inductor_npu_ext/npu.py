@@ -28,7 +28,7 @@ from .common.asc_graph import ASCGraph, FusedASCGraph, ASCIndexing
 from .common.symbols import Axis
 from .common.debug import _left_align_lines, OP_SUMMARY
 from .common.symbols import AscExpr, Loop, DenseLoop
-from .common.asc_graph import _Tensor, _Scalar
+from .common.asc_graph import _Tensor
 from . import asc_ops as ir
 from .asc_overrides import NPUOverrides
 from .config import _debug_options
@@ -108,17 +108,19 @@ class NPUKernel(Kernel):
         super().__init__()
         self._comments: List[str] = comments
         self._artifacts: NPUKernel.Artifacts = None
-        self._subgraphs: List[ASCGraph] = []
-        self._indirect_to_scalar: Dict[str, _Scalar] = dict()
+        self._graph: ASCGraph = None  # 单图：所有节点共用一个 ASCGraph
         self._current_loop = None
         self._asc_buffer: Dict[str, ASCBuffer] = {}
         self._torch_arg_wrappers = dict()
         self._nodes = nodes
         self._outputs = _get_nodes_outputs(nodes)
+        # name -> (value tensor, loop)，记录 fused 内部已 store 的 buffer，下次 load 直接复用，避免在同图中
+        # 同时出现 Data+Output 形成 FusedGraph 自环。
+        self._local_stores: Dict[str, tuple] = {}
 
     @property
     def graph(self):
-        return self._subgraphs[-1]
+        return self._graph
 
     @property
     def fused_graph(self):
@@ -163,58 +165,127 @@ class NPUKernel(Kernel):
         logger.debug("Finally transposed order is %s with score %s", min_transpose_order, min_score)
         return min_transpose_order
 
-    @contextlib.contextmanager
-    def new_subgraph(self, asc_axis: List[sympy.Symbol], asc_axis_range: List[sympy.Expr], *, hint_str=None):
-        if not asc_axis:
-            asc_axis = [sympy.Symbol("z0")]
-            asc_axis_range = [1]
-        loop = DenseLoop(axis=asc_axis, size=asc_axis_range)
-        self._subgraphs.append(ASCGraph(name=f"graph{len(self._subgraphs)}", hint_str=hint_str))
-        self.graph.set_current_loop(loop)
-        for axis, axis_range in zip(asc_axis, asc_axis_range):
-            self.graph.axis(axis.name, axis_range)
-        prior = self._current_loop
-        self._current_loop = loop
-        try:
-            yield
-        finally:
-            self._current_loop = prior
+    def _canonical_axes_for_kernel(self):
+        """选择 axis 数量最多（最细分）的节点作为 canonical，统一改名为 a0/a1/...
+        以避免和其他节点 var 同名冲突。其他节点会通过 contiguous flatten 多项式
+        映射到这组 canonical 轴。"""
+        chosen_sizes: List[sympy.Expr] = []
+        for node in self._nodes:
+            body: LoopBody = getattr(node, '_body')
+            order = self._get_minimal_transpose_order(node)
+            sizes = [self.rename_indexing(body.var_ranges[v]) for v in order]
+            if len(sizes) > len(chosen_sizes):
+                chosen_sizes = sizes
+        if not chosen_sizes:
+            return ["a0"], [sympy.S.One]
+        names = [f"a{i}" for i in range(len(chosen_sizes))]
+        return names, chosen_sizes
+
+    @staticmethod
+    def _flatten_expr(group_axes, group_sizes):
+        """对一组连续 canonical 轴，按 contiguous 顺序生成 flatten 多项式：
+        a0 * (s1 * s2 * ...) + a1 * (s2 * ...) + ... + a_{n-1}"""
+        expr = sympy.S.Zero
+        for j, axis in enumerate(group_axes):
+            inner_prod = sympy.S.One
+            for k in range(j + 1, len(group_sizes)):
+                inner_prod = inner_prod * group_sizes[k]
+            expr = expr + axis * inner_prod
+        return expr
+
+    def _node_axis_indexings(self, node, canonical_axes, canonical_ranges):
+        """计算 node.run() 的 axis_indexings：把每个 node 轴映射成一组连续 canonical
+        轴的 flatten 多项式。允许节点比 canonical 轴少（pointwise collapse 场景），
+        通过把单个 node 轴展开成多个 canonical 轴的线性组合来对齐。
+        如果 node 的总迭代量比 canonical 还少（典型场景：reduce 之后接 pointwise，
+        被 scheduler 融到了 reduce kernel），剩余 canonical 轴对该 node 等价于 broadcast，
+        load/store 在这些轴上 stride=0，AscIR 由 size 推导出实际 tile。"""
+        body: LoopBody = getattr(node, '_body')
+        transpose_order = self._get_minimal_transpose_order(node)
+        node_sizes = [self.rename_indexing(body.var_ranges[v]) for v in transpose_order]
+
+        var_to_expr: Dict[sympy.Symbol, sympy.Expr] = {}
+        canonical_idx = 0
+        for node_var, node_size in zip(transpose_order, node_sizes):
+            group_axes: List[sympy.Symbol] = []
+            group_sizes: List[sympy.Expr] = []
+            product = sympy.S.One
+            while canonical_idx < len(canonical_axes):
+                group_axes.append(canonical_axes[canonical_idx])
+                group_sizes.append(canonical_ranges[canonical_idx])
+                product = product * canonical_ranges[canonical_idx]
+                canonical_idx += 1
+                if sympy.simplify(product - node_size) == 0:
+                    break
+            if sympy.simplify(product - node_size) != 0:
+                raise RuntimeError(
+                    f"Cannot map node axis {node_var}(size={node_size}) into canonical axes "
+                    f"with sizes {canonical_ranges}")
+            var_to_expr[node_var] = self._flatten_expr(group_axes, group_sizes)
+
+        axis_indexings: List[List[sympy.Expr]] = []
+        for var in body.var_ranges.keys():
+            expr = var_to_expr.get(var)
+            if expr is None:
+                expr = sympy.Symbol(var.name)
+            axis_indexings.append([expr])
+        return axis_indexings
+
+    @staticmethod
+    def _node_loop_sizes(axis_indexings, canonical_axes, canonical_ranges):
+        """根据 node 实际用到的 canonical 轴推导 per-node contiguous_loop 的 size。
+        没有被 axis_indexings 引用的 canonical 轴，对该 node 等价于广播——size 设为 1，
+        DenseLoop 会自动给出 stride=0。这样像 to_dtype 这类没有显式传 loop 的算子，
+        默认拿到的形状就和后续基于 index 推导出的 store loop 一致，不会出现 Cast 输入/输出
+        size 不匹配的非法图。"""
+        used: Set[str] = set()
+        for expr_list in axis_indexings:
+            for expr in expr_list:
+                if isinstance(expr, sympy.Expr):
+                    for sym in expr.free_symbols:
+                        used.add(sym.name)
+        return [canonical_ranges[i] if axis.name in used else sympy.S.One
+                for i, axis in enumerate(canonical_axes)]
 
     def tracing_asc(self):
         with self:
-            for i, node in enumerate(self._nodes):
-                logger.debug("Codegen [%s] %s", f"{i + 1}/{len(self._nodes)}", node.debug_str())
-                body: LoopBody = getattr(node, '_body')
+            canonical_names, canonical_ranges = self._canonical_axes_for_kernel()
+            canonical_axes = [sympy.Symbol(n) for n in canonical_names]
+            canonical_loop = DenseLoop(axis=canonical_axes, size=canonical_ranges)
 
-                var_to_asc_axis = {}
-                axis_indexings = []
-                for var in body.var_ranges.keys():
-                    var_to_asc_axis[var] = sympy.Symbol(var.name)
-                    axis_indexings.append([var_to_asc_axis[var]])
+            hint_lines = []
+            for node in self._nodes:
+                hint_lines.extend(_node_label(node))
+                hint_lines.append('-' * 20)
+            hint_str = '\n'.join(hint_lines).rstrip('-\n')
 
-                asc_axis = []
-                asc_axis_range = []
-                for var in self._get_minimal_transpose_order(node):
-                    asc_axis.append(var_to_asc_axis[var])
-                    asc_axis_range.append(self.rename_indexing(body.var_ranges[var]))
+            self._graph = ASCGraph(name="graph", hint_str=hint_str)
+            for axis, axis_range in zip(canonical_axes, canonical_ranges):
+                self._graph.axis(axis.name, axis_range)
+            self._graph.set_current_loop(canonical_loop)
 
-                with (
-                    self.set_current_node(node),
-                    self.new_subgraph(asc_axis, asc_axis_range, hint_str='\n'.join(_node_label(node))),
-                ):
-                    node.run(*axis_indexings)
-                    logger.debug(f"{self.graph.name} reads {self.graph.inputs} and writes {self.graph.outputs}")  # noqa
+            prior_loop = self._current_loop
+            try:
+                for i, node in enumerate(self._nodes):
+                    logger.debug("Codegen [%s] %s", f"{i+1}/{len(self._nodes)}", node.debug_str())
+                    axis_indexings = self._node_axis_indexings(node, canonical_axes, canonical_ranges)
+                    node_sizes = self._node_loop_sizes(axis_indexings, canonical_axes, canonical_ranges)
+                    self._current_loop = DenseLoop(axis=canonical_axes, size=node_sizes)
+                    with self.set_current_node(node):
+                        node.run(*axis_indexings)
+                    logger.debug(f"{self._graph.name} reads {self._graph.inputs} and writes {self._graph.outputs}")
+            finally:
+                self._current_loop = prior_loop
 
         if hasattr(self, 'removed_buffers') and hasattr(V.graph, 'removed_buffers'):
             V.graph.removed_buffers |= self.removed_buffers
         if hasattr(self, 'inplaced_to_remove') and hasattr(V.graph, 'inplaced_to_remove'):
             V.graph.inplaced_to_remove |= self.inplaced_to_remove
 
-        for subgraph in self._subgraphs:
-            for sym, sym_renamed in self.args.sizevars.items():
-                subgraph.size(sym_renamed)
+        for sym, sym_renamed in self.args.sizevars.items():
+            self._graph.size(sym_renamed)
 
-        self._fused_graph = FusedASCGraph(subgraphs=self._subgraphs, outputs=self._outputs)
+        self._fused_graph = FusedASCGraph(graph=self._graph, outputs=self._outputs)
         # 对于输出复用输入的场景，可能出现多个asc graph上的buffer（Data/Output）对应同一个python kernel入参的情况，
         # outer是python kernel层的入参名，而inputs/outputs，则是asc graph上的buffer名，也对应rt层kernel的args
         self._fused_graph.inputs_outer = [self.args.input(read) for read in self._fused_graph.inputs]
@@ -231,9 +302,7 @@ class NPUKernel(Kernel):
         md5 = hashlib.md5(f"{self._fused_graph.asc_graph}_{self._fused_graph.cpp_wrapper}".encode()).hexdigest()  # nosec B324
         self._fused_graph.name = f"auto{get_fused_kernel_name(self._nodes, 'original_aten')}_{md5}"
 
-        unsupported_ops = set()
-        for subgraph in self._subgraphs:
-            unsupported_ops |= subgraph.unsupported_ops
+        unsupported_ops = set(self._graph.unsupported_ops)
 
         if unsupported_ops:
             self._fused_graph.name = f"unsupported_{'_'.join(sorted(unsupported_ops))}_{self._fused_graph.name}"
@@ -272,9 +341,12 @@ class NPUKernel(Kernel):
         return kernel_def.getvalue()
 
     def record_summary(self, nodes, model_path=None):
-        for i, graph in enumerate(self._subgraphs):
-            loop_body = _node_label(nodes[i]) if i < len(nodes) else ""
-            OP_SUMMARY.add_graph_summary(graph, loop=loop_body, model_path=model_path)
+        loop_body_lines = []
+        for node in nodes:
+            loop_body_lines.extend(_node_label(node))
+            loop_body_lines.append('-' * 20)
+        OP_SUMMARY.add_graph_summary(self._graph, loop='\n'.join(loop_body_lines).rstrip('-\n'),
+                                     model_path=model_path)
 
     def view_dot(self, nodes, svg_path=None):
         try:
@@ -401,6 +473,12 @@ class NPUKernel(Kernel):
         index = self.rename_indexing(index)
         sizes = self.contiguous_loop.size
 
+        # 本地融合：当前 fused kernel 内已经 store 过 name，直接复用值，避免在同一图中
+        # 同时存在 Data 和 Output 形成 FusedGraph 自环。
+        if name in self._local_stores:
+            value, src_loop = self._local_stores[name]
+            return self._reshape_local_value(value, src_loop, sizes)
+
         data, loop = self._load_buffer(name, self._index_to_loop(index, sizes=sizes))
         offset = loop.zero_offset_()
         road = self._get_view_road(loop, DenseLoop(axis=loop.axis, size=sizes))
@@ -424,6 +502,17 @@ class NPUKernel(Kernel):
             load = getattr(ir, op.kind)(load, loop=op.dst)
         return load
 
+    def _reshape_local_value(self, value: _Tensor, src_loop: Loop, dst_sizes):
+        """把上游 store 的 value 调整到当前请求的形状（必要时插入 broadcast/transpose）。"""
+        dst_loop = DenseLoop(axis=src_loop.axis, size=dst_sizes)
+        road = self._get_view_road(src_loop.copy(), dst_loop)
+        if not road:
+            return value
+        result = value
+        for op in road:
+            result = getattr(ir, op.kind)(result, loop=op.dst)
+        return result
+
     def store(self, name, index, value, mode=None):
         index = self.rename_indexing(index)
         dtype = self.get_asc_buffer(name).dtype
@@ -431,10 +520,9 @@ class NPUKernel(Kernel):
         if dtype in {torch.bfloat16, torch.float16}:
             value = ir.cast(value, dst=torch.float32, loop=loop)
             value = ir.cast(value, dst=dtype, loop=loop)
-        store = ir.store(value, loop=loop)
-        self._store_buffer(name, store)
+        result = self._store_buffer(name, value, loop)
         self.cse.store_cache.pop(name)  # Inductor cse always cache value, but we don't want to cache it
-        return store
+        return result
 
     def reduction(self, dtype, src_dtype, reduction_type, value):
         reduction = ir.reduction(value, reduce_type=reduction_type)
@@ -449,10 +537,9 @@ class NPUKernel(Kernel):
         if dtype in {torch.bfloat16, torch.float16}:
             reduction = ir.cast(reduction, dst=torch.float32, loop=loop)
             reduction = ir.cast(reduction, dst=dtype, loop=loop)
-        store = ir.store(reduction, loop=loop)
-        self._store_buffer(name, store)
+        result = self._store_buffer(name, reduction, loop)
         self.cse.store_cache.pop(name)  # Inductor cse always cache value, but we don't want to cache it
-        return store
+        return result
 
     def rename_indexing(self, index) -> sympy.Expr:
         return super().rename_indexing(index)
@@ -484,9 +571,16 @@ class NPUKernel(Kernel):
             return exist_tensor, loop
         return buf.bind(self.graph.input(name, buf.dtype)), loop
 
-    def _store_buffer(self, name, src):
+    def _store_buffer(self, name, value, loop: Loop):
+        # 单图模式下，先记录本地值；如果当前 buffer 不属于 kernel 的最终输出，就完全跳过
+        # Store/Output，避免无谓的 workspace 内存来回；属于最终输出时仍然 emit Store+Output。
+        self._local_stores[name] = (value, loop.copy())
+        if name not in self._outputs:
+            return value
+        store = ir.store(value, loop=loop)
         buf: ASCBuffer = self.get_asc_buffer(name)
-        return buf.bind(self.graph.output(name, buf.dtype, src=src))
+        buf.bind(self.graph.output(name, buf.dtype, src=store))
+        return store
 
     def _get_reduce_dims_and_loop(self, index: sympy.Expr):
         loop = self._index_to_loop(index)
@@ -505,13 +599,6 @@ class NPUKernel(Kernel):
         loop.size = [sympy.S.One if str(loop.stride[i]) == "0" else s for i, s in enumerate(sizes)]
 
         return loop
-
-    def _get_npu_scalar(self, index: sympy.Expr):
-        scalars = dict()
-        for s in index.free_symbols:
-            if str(s) in self._indirect_to_scalar:
-                scalars[s] = self._indirect_to_scalar[str(s)]
-        return scalars
 
     def _get_view_road(self, src: Loop, dst: DenseLoop):
         """求出从 src loop 形变到 dst loop 的 op 序列，按 list 顺序依次 apply。
@@ -686,22 +773,19 @@ class NPUScheduling(BaseScheduling):
         self._fused_layout_import_emitted: bool = False
 
     def can_fuse_vertical(self, node1: BaseSchedulerNode, node2: BaseSchedulerNode):
-        if "canfuse" in _debug_options:
-            return self._fuse_judge.can_fuse_vertical(node1, node2)
-
-        return False  # disable until reliable evaluation algorithm is implemented.
+        return self._fuse_judge.can_fuse_vertical(node1, node2)
 
     def can_fuse_horizontal(self, node1: BaseSchedulerNode, node2: BaseSchedulerNode):
-        if "canfuse" in _debug_options:
-            return self._fuse_judge.can_fuse_horizontal(node1, node2)
-
-        return False  # disable until reliable evaluation algorithm is implemented.
+        return self._fuse_judge.can_fuse_horizontal(node1, node2)
 
     def group_fn(self, sizes):
         return self._fuse_judge.group_fn(sizes)
 
     def get_backend_features(self, device: torch.device) -> OrderedSet[BackendFeature]:
-        return OrderedSet([BackendFeature.REDUCE_TO_SINGLE_ELEMENT, BackendFeature.INPLACE_BUFFERS])
+        return OrderedSet([
+            BackendFeature.REDUCE_TO_SINGLE_ELEMENT,
+            BackendFeature.INPLACE_BUFFERS,
+        ])
 
     def codegen_template(self, template_node: SchedulerNode, epilogue_nodes: List[SchedulerNode]):
         raise NotImplementedError()

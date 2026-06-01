@@ -54,6 +54,9 @@ class _Tensor(CSEVariable):
         self._v = v
 
     def as_loop(self, loop: Loop):
+        if self.is_scalar():
+            return self
+
         self._v.axis = loop.asc_axis
         self._v.size = loop.asc_size
         self._v.strides = loop.asc_stride
@@ -68,18 +71,14 @@ class _Tensor(CSEVariable):
         self.op.set_private_attr(f'{private_name}.offset', loop.hint_offset)
         return self
 
+    def is_scalar(self):
+        return self.op.op_type == "Scalar"
+
     def __str__(self):
         return self.name
 
     def __repr__(self):
         return self.name
-
-
-class _Scalar:
-    def __init__(self, cse: _Tensor, max_value: sympy.Symbol, check: bool = True):
-        self.cse = cse
-        self.max_value = max_value
-        self.check = check
 
 
 class _Op(_Track):
@@ -258,29 +257,31 @@ class ASCGraph:
 
 
 class FusedASCGraph:
-    def __init__(self, *, subgraphs: List[ASCGraph], outputs: List[str]):
+    def __init__(self, *, graph: ASCGraph, outputs: List[str]):
         super().__init__()
-        self._subgraphs: List[ASCGraph] = subgraphs
-        buffer_writes = sum([g.outputs for g in subgraphs], [])
-        buffer_reads = sum([g.inputs for g in subgraphs], [])
+        # 单图模式：所有 SchedulerNode 的算子都落在同一个 ASCGraph 下，共享一组循环轴
+        self._graph: ASCGraph = graph
 
-        self.inputs: List[str] = [buf for buf in list(dict.fromkeys(
-            buffer_reads)) if buf not in buffer_writes]  # kernel输入地址
-        self.outputs: List[str] = outputs  # kernel输出地址
-        # Tiling使用的symbols，与外部传参的顺序一致
-        self.size_vars = sorted(set(sum([list(g.size_vars) for g in subgraphs], [])))
+        self.inputs: List[str] = [buf for buf in list(dict.fromkeys(graph.inputs)) if buf not in graph.outputs]
+        self.outputs: List[str] = outputs
+        self.size_vars = sorted(graph.size_vars)
 
-        self.inputs_outer: List[str] = []  # 输入地址对应的外部fbuffer名，多个地址可能对应一个外部buffer
-        self.outputs_outer: List[str] = []  # 输出地址对应的外部fbuffer名，多个地址可能对应一个外部buffer
-        self.args: List[str] = []  # 外部buffer的传参顺序
+        self.inputs_outer: List[str] = []
+        self.outputs_outer: List[str] = []
+        self.args: List[str] = []
 
-        self.cpp_wrapper: Optional[str] = None  # kernel的cpp_wrapper代码，相同的图结构可能对应不同的cpp_wrapper（inplace导致）
-        self.asc_graph: Optional[str] = None  # kernel的asc_graph代码
-        self.name: Optional[str] = None  # kernel的唯一名称
+        self.cpp_wrapper: Optional[str] = None
+        self.asc_graph: Optional[str] = None
+        self.name: Optional[str] = None
+
+    @property
+    def graph(self):
+        return self._graph
 
     @property
     def subgraphs(self):
-        return self._subgraphs
+        # 兼容老接口：调试/统计代码可能仍按 subgraphs 列表枚举
+        return [self._graph]
 
     def as_dot(self):
         from .debug import make_fused_graph_dot
@@ -289,22 +290,22 @@ class FusedASCGraph:
     def codegen(self, var_name) -> IndentedBuffer:
         fused_graph = IndentedBuffer()
 
-        for graph in self._subgraphs:
-            fused_graph.writeline(f"# {'-' * 20 + graph.name + '-' * 20}")
-            graph_def = graph.codegen(f'{graph.name}_hint', with_hint=var_name != "cache_hint")
-            fused_graph.splice(graph_def)
+        graph = self._graph
+        fused_graph.writeline(f"# {'-' * 20 + graph.name + '-' * 20}")
+        graph_def = graph.codegen(f'{graph.name}_hint', with_hint=var_name != "cache_hint")
+        fused_graph.splice(graph_def)
 
         fused_graph.writeline(f"# {'-' * 20 + var_name + '-' * 20}")
         fused_graph.writeline(f"{var_name} = ascir.FusedGraph('{var_name}')")
 
-        # 对FusedGraph中的所有buffer做匿名化处理，保证缓存命中率
+        # 对 FusedGraph 中的 buffer 做匿名化处理，保证缓存命中率
         anonymous_buffers = dict()
         for i, read in enumerate(self.inputs):
             anonymous_buffers[read] = f"input{i}"
         for i, write in enumerate(self.outputs):
             anonymous_buffers[write] = f"output{i}"
         workspace_index = 0
-        for buffer in itertools.chain(*[sub.inputs + sub.outputs for sub in self.subgraphs]):
+        for buffer in itertools.chain(graph.inputs, graph.outputs):
             if buffer not in anonymous_buffers:
                 anonymous_buffers[buffer] = f"workspace{workspace_index}"
                 workspace_index += 1
@@ -312,26 +313,17 @@ class FusedASCGraph:
         def replace_buffer(buffers: List[str]) -> List[str]:
             return [anonymous_buffers.get(buf, buf) for buf in buffers]
 
-        buffer_writers: Dict[str, List[tuple[ASCGraph, int]]] = {}
-        for graph in self._subgraphs:
-            fused_graph.writeline(
-                f"{graph.name} = ascir.ops.AscBackend('{graph.name}', {graph.name}_hint, {var_name})")
-            for i, buffer in enumerate(replace_buffer(graph.outputs)):
-                buffer_writers.setdefault(buffer, [])
-                buffer_writers[buffer].append((graph, i))
+        fused_graph.writeline(
+            f"{graph.name} = ascir.ops.AscBackend('{graph.name}', {graph.name}_hint, {var_name})")
 
         for i, buffer in enumerate(replace_buffer(self.inputs)):
             fused_graph.writeline(f"{buffer} = ascir.ops.Data('{buffer}', {var_name})")
             fused_graph.writeline(f"{buffer}.attr.ir_attr.index = {i}")
 
-        for buffer, writers in buffer_writers.items():
-            if len(writers) > 1:
-                fused_graph.writeline(f"{buffer} = [{', '.join([f'{d[0].name}.y[{d[1]}]' for d in writers])}]")
-            elif len(writers) == 1:
-                fused_graph.writeline(f"{buffer} = {', '.join([f'{d[0].name}.y[{d[1]}]' for d in writers])}")
+        for i, buffer in enumerate(replace_buffer(graph.outputs)):
+            fused_graph.writeline(f"{buffer} = {graph.name}.y[{i}]")
 
-        for graph in self._subgraphs:
-            fused_graph.writeline(f"{graph.name}.x = [{', '.join(replace_buffer(graph.inputs))}]")
+        fused_graph.writeline(f"{graph.name}.x = [{', '.join(replace_buffer(graph.inputs))}]")
 
         for i, buffer in enumerate(replace_buffer(self.outputs)):
             output_name = f'graph_output{i}'

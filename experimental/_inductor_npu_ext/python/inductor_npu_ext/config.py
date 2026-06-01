@@ -9,6 +9,13 @@ def _default_asc_cache_dir() -> str:
     return os.path.join(tempfile.gettempdir(), ".npu_kernels_" + sanitized_username)
 
 
+def _get_asc_cache_dir() -> str:
+    cache_dir = os.getenv("TORCHINDUCTOR_NPU_EXT_CACHE_DIR")
+    if cache_dir is None:
+        return _default_asc_cache_dir()
+    return os.path.abspath(os.path.expanduser(cache_dir))
+
+
 # Gen device sync before and after each fused kernel execution
 _sync_around_fuse_kernel = os.getenv("ASCEND_LAUNCH_BLOCKING", None) == "1"
 
@@ -18,7 +25,7 @@ _debugging_on_cpu = "cpu" in _debug_options or "nothrow" in _debug_options
 
 _check_layout_enabled = os.getenv("TORCHINDUCTOR_NPU_EXT_LAYOUT_CHECK", "0") == "1"
 
-_asc_cache_dir = os.getenv("TORCHINDUCTOR_NPU_EXT_CACHE_DIR", _default_asc_cache_dir())
+_asc_cache_dir = _get_asc_cache_dir()
 
 # Enable TaskQueue instead of launching them synchronously from the calling thread
 # Mode 0: synchronous mode (TASK_QUEUE_ENABLE=0)
