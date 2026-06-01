@@ -105,4 +105,4 @@ def maybe_check_fused_input_layout(
     logger.warning(msg)
 
 
-IMPORT_LINE = "from inductor_npu_ext.common.fused_layout_check import maybe_check_fused_input_layout"
+IMPORT_LINE = f"from {__package__}.fused_layout_check import maybe_check_fused_input_layout"

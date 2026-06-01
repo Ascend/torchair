@@ -26,7 +26,7 @@ class _NPUDeviceOpOverrides(DeviceOpOverrides):
     def device_guard(self, device_idx):
         return f"torch_npu.npu._DeviceGuard({device_idx})"
 
-if "cpu" not in _debug_options:
+if "cpu" not in _debug_options and __package__.startswith('inductor_npu_ext'):
     _dynamo_module = sys.modules.get('torch_npu.utils._dynamo')
     if _dynamo_module is not None:
         if _dynamo_module.is_inductor_npu_initialized():

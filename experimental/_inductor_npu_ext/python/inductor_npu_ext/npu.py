@@ -318,7 +318,7 @@ class NPUKernel(Kernel):
             benchmark_code.writeline("import sys")
             benchmark_code.writeline("import torch")
             benchmark_code.writeline("import torch_npu")
-            benchmark_code.writeline("from inductor_npu_ext.compiler import async_compile as async_compile_ascendc")
+            benchmark_code.writeline(f"from {__package__}.compiler import async_compile as async_compile_ascendc")
             kernel_obj = f"{self._artifacts.name}_artifacts"
             benchmark_code.writeline(f"{kernel_obj} = {{}}")
             benchmark_code.splice(f"{kernel_obj}['name'] = r'''{self._artifacts.name}'''")
@@ -762,5 +762,5 @@ class NpuWrapperCodeGen(PythonWrapperCodegen):
     @staticmethod
     def create(*args, **kwargs):
         wrapper_codegen = PythonWrapperCodegen.create(*args, **kwargs)
-        wrapper_codegen.imports.splice("from inductor_npu_ext.compiler import async_compile as async_compile_ascendc")
+        wrapper_codegen.imports.splice(f"from {__package__}.compiler import async_compile as async_compile_ascendc")
         return wrapper_codegen
