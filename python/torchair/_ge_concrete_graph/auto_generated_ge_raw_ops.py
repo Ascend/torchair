@@ -82647,6 +82647,7 @@ def GroupedMatMulAlltoAllv(gmm_x: Tensor, gmm_weight: Tensor,
                            send_counts: List[int], recv_counts: List[int],
                            trans_gmm_weight: bool = False,
                            trans_mm_weight: bool = False,
+                           comm_mode: str = None,
                            dependencies = [], node_name = None):
     """REG_OP(GroupedMatMulAlltoAllv)\n
 .INPUT(gmm_x, TensorType({DT_FLOAT16, DT_BF16}))\n
@@ -82663,6 +82664,7 @@ def GroupedMatMulAlltoAllv(gmm_x: Tensor, gmm_weight: Tensor,
 .REQUIRED_ATTR(recv_counts, ListInt)\n
 .ATTR(trans_gmm_weight, Bool, false)\n
 .ATTR(trans_mm_weight, Bool, false)\n
+.ATTR(comm_mode, String, "")\n
 """
     op = get_default_ge_graph().op.add()
     op.type = "GroupedMatMulAlltoAllv"
@@ -82721,6 +82723,8 @@ def GroupedMatMulAlltoAllv(gmm_x: Tensor, gmm_weight: Tensor,
     op.attr["recv_counts"].list.i.extend(recv_counts)
     op.attr["trans_gmm_weight"].b = trans_gmm_weight
     op.attr["trans_mm_weight"].b = trans_mm_weight
+    if comm_mode is not None:
+        op.attr["comm_mode"].s = compat_as_bytes(comm_mode)
 
     # process outputs
     output_index = 0
@@ -82807,6 +82811,7 @@ def AlltoAllvGroupedMatMul(
     trans_gmm_weight: bool = False,
     trans_mm_weight: bool = False,
     permute_out_flag: bool = False,
+    comm_mode: str = None,
     dependencies=None,
     node_name=None
 ):
@@ -82827,6 +82832,7 @@ def AlltoAllvGroupedMatMul(
 .ATTR(trans_gmm_weight, Bool, false)\n
 .ATTR(trans_mm_weight, Bool, false)\n
 .ATTR(permute_out_flag, Bool, false)\n
+.ATTR(comm_mode, String, "")\n
 """
     if dependencies is None:
         dependencies = []
@@ -82888,6 +82894,8 @@ def AlltoAllvGroupedMatMul(
     op.attr["trans_gmm_weight"].b = trans_gmm_weight
     op.attr["trans_mm_weight"].b = trans_mm_weight
     op.attr["permute_out_flag"].b = permute_out_flag
+    if comm_mode is not None:
+        op.attr["comm_mode"].s = compat_as_bytes(comm_mode)
 
     # process outputs
     output_index = 0
@@ -84466,6 +84474,7 @@ def AlltoAllvQuantGroupedMatMul(gmm_x: Tensor,
                                 group_size: int = 0,
                                 y_dtype: int = 28,
                                 mm_dtype: int = 28,
+                                comm_mode: str = None,
                                 dependencies=[],
                                 node_name=None):
     """REG_OP(AlltoAllvQuantGroupedMatMul)\n
@@ -84496,6 +84505,7 @@ def AlltoAllvQuantGroupedMatMul(gmm_x: Tensor,
     .ATTR(group_size, Int, 0)\n
     .ATTR(y_dtype, Int, 28)\n
     .ATTR(mm_dtype, Int, 28)\n
+    .ATTR(comm_mode, String, "")\n
     """
     op = get_default_ge_graph().op.add()
     op.type = "AlltoAllvQuantGroupedMatMul"
@@ -84584,6 +84594,8 @@ def AlltoAllvQuantGroupedMatMul(gmm_x: Tensor,
     op.attr["group_size"].i = group_size
     op.attr["y_dtype"].i = y_dtype
     op.attr["mm_dtype"].i = mm_dtype
+    if comm_mode is not None:
+        op.attr["comm_mode"].s = compat_as_bytes(comm_mode)
 
     # process outputs
     output_index = 0
@@ -84632,6 +84644,7 @@ def QuantGroupedMatMulAlltoAllv(gmm_x: Tensor,
                                 y_dtype: int = 28,
                                 mm_dtype: int = 28,
                                 comm_quant_dtype: int = 0,
+                                comm_mode: str = None,
                                 dependencies=[],
                                 node_name=None):
     """REG_OP(QuantGroupedMatMulAlltoAllv)\n
@@ -84663,6 +84676,7 @@ def QuantGroupedMatMulAlltoAllv(gmm_x: Tensor,
     .ATTR(y_dtype, Int, 28)\n
     .ATTR(mm_dtype, Int, 28)\n
     .ATTR(comm_quant_dtype, Int, 0)\n
+    .ATTR(comm_mode, String, "")\n
     """
     op = get_default_ge_graph().op.add()
     op.type = "QuantGroupedMatMulAlltoAllv"
@@ -84760,6 +84774,8 @@ def QuantGroupedMatMulAlltoAllv(gmm_x: Tensor,
     op.attr["y_dtype"].i = y_dtype
     op.attr["mm_dtype"].i = mm_dtype
     op.attr["comm_quant_dtype"].i = comm_quant_dtype
+    if comm_mode is not None:
+        op.attr["comm_mode"].s = compat_as_bytes(comm_mode)
 
     # process outputs
     output_index = 0

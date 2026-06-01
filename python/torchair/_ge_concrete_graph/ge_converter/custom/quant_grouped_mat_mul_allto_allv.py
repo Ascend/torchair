@@ -13,8 +13,8 @@ QUANT_MODE_SUPPORT_LIST = {
 }
 
 # group size max value is (2^16 - 1)
-GROUP_SIZE_MAX_VALUE = 65535 
-
+GROUP_SIZE_MAX_VALUE = 65535
+COMM_MODE_SUPPOET_LIST = ["ccu", "ai_cpu", ""]
 
 @register_fx_node_ge_converter(torch.ops.npu.npu_quant_gmm_alltoallv.default)
 def convert_npu_quant_gmm_alltoallv(
@@ -51,17 +51,18 @@ def convert_npu_quant_gmm_alltoallv(
     mm_weight_scale_dtype: int = None,
     comm_quant_dtype: int = None,
     mm_y_dtype: int = None,
+    comm_mode: str = None,
     meta_outputs: TensorSpec = None):
     '''
-    npu_quant_gmm_alltoallv(Tensor gmm_x, Tensor gmm_weight, Tensor gmm_x_scale, Tensor gmm_weight_scale, 
-    str hcom, int ep_world_size, int[] send_counts, int[] recv_counts, int gmm_y_dtype, *, 
-    Tensor? send_counts_tensor=None, Tensor? recv_counts_tensor=None, Tensor? mm_x=None, 
-    Tensor? mm_weight=None, Tensor? mm_x_scale=None, Tensor? mm_weight_scale=None,  
-    Tensor? comm_quant_scale=None, int? gmm_x_quant_mode=None, int? gmm_weight_quant_mode=None, 
-    int? mm_x_quant_mode=None, int? mm_weight_quant_mode=None, int? comm_quant_mode=None, 
-    int[]? group_size=None, int? gmm_x_dtype=None, int? gmm_weight_dtype=None, 
-    int? gmm_x_scale_dtype=None, int? gmm_weight_scale_dtype=None, int? mm_x_dtype=None, 
-    int? mm_weight_dtype=None, int? mm_x_scale_dtype=None, int? mm_weight_scale_dtype=None, 
+    npu_quant_gmm_alltoallv(Tensor gmm_x, Tensor gmm_weight, Tensor gmm_x_scale, Tensor gmm_weight_scale,
+    str hcom, int ep_world_size, int[] send_counts, int[] recv_counts, int gmm_y_dtype, *,
+    Tensor? send_counts_tensor=None, Tensor? recv_counts_tensor=None, Tensor? mm_x=None,
+    Tensor? mm_weight=None, Tensor? mm_x_scale=None, Tensor? mm_weight_scale=None,
+    Tensor? comm_quant_scale=None, int? gmm_x_quant_mode=None, int? gmm_weight_quant_mode=None,
+    int? mm_x_quant_mode=None, int? mm_weight_quant_mode=None, int? comm_quant_mode=None,
+    int[]? group_size=None, int? gmm_x_dtype=None, int? gmm_weight_dtype=None,
+    int? gmm_x_scale_dtype=None, int? gmm_weight_scale_dtype=None, int? mm_x_dtype=None,
+    int? mm_weight_dtype=None, int? mm_x_scale_dtype=None, int? mm_weight_scale_dtype=None,
     int? comm_quant_dtype=None, int? mm_y_dtype=None) -> (Tensor, Tensor)
     '''
     dependencies = []
@@ -154,7 +155,7 @@ def convert_npu_quant_gmm_alltoallv(
             f"mm_y_dtype should be {[d for d in Y_DTYPE_SUPPORT_LIST]}, but got {mm_out_dtype}")
     if mm_out_dtype is None:
         mm_out_dtype = DataType.DT_FLOAT16
-    
+
     group_size_int = 0
     if group_size is not None and isinstance(group_size, List):
         if(len(group_size) != 3):
@@ -171,34 +172,39 @@ def convert_npu_quant_gmm_alltoallv(
     mm_x_quant_mode = gmm_x_quant_mode if mm_x_quant_mode is None else mm_x_quant_mode
     mm_weight_quant_mode = gmm_weight_quant_mode if mm_weight_quant_mode is None else mm_weight_quant_mode
 
+    if comm_mode is None:
+        pass
+    elif comm_mode not in COMM_MODE_SUPPOET_LIST:
+        raise RuntimeError(f"The comm_mode only supports value in {COMM_MODE_SUPPOET_LIST}, but got {comm_mode}.")
     (y, mm_y) = ge.QuantGroupedMatMulAlltoAllv(
-        gmm_x=gmm_x, 
-        gmm_weight=gmm_weight, 
-        gmm_x_scale=gmm_x_scale, 
-        gmm_weight_scale=gmm_weight_scale, 
-        send_counts_tensor=send_counts_tensor, 
-        recv_counts_tensor=recv_counts_tensor, 
-        mm_x=mm_x, 
-        mm_weight=mm_weight, 
-        mm_x_scale=mm_x_scale, 
-        mm_weight_scale=mm_weight_scale, 
-        comm_quant_scale=comm_quant_scale, 
-        group=hcom, 
-        ep_world_size=ep_world_size, 
-        send_counts=send_counts, 
-        recv_counts=recv_counts, 
-        gmm_x_quant_mode=gmm_x_quant_mode, 
-        gmm_weight_quant_mode=gmm_weight_quant_mode, 
-        trans_gmm_weight=trans_gmm_weight, 
-        trans_mm_weight=trans_mm_weight, 
-        mm_x_quant_mode=mm_x_quant_mode, 
-        mm_weight_quant_mode=mm_weight_quant_mode, 
-        comm_quant_mode=comm_quant_mode, 
-        group_size=group_size_int, 
-        y_dtype=output_dtype, 
-        mm_dtype=mm_out_dtype, 
-        comm_quant_dtype=comm_quant_dtype, 
-        dependencies=dependencies, 
+        gmm_x=gmm_x,
+        gmm_weight=gmm_weight,
+        gmm_x_scale=gmm_x_scale,
+        gmm_weight_scale=gmm_weight_scale,
+        send_counts_tensor=send_counts_tensor,
+        recv_counts_tensor=recv_counts_tensor,
+        mm_x=mm_x,
+        mm_weight=mm_weight,
+        mm_x_scale=mm_x_scale,
+        mm_weight_scale=mm_weight_scale,
+        comm_quant_scale=comm_quant_scale,
+        group=hcom,
+        ep_world_size=ep_world_size,
+        send_counts=send_counts,
+        recv_counts=recv_counts,
+        gmm_x_quant_mode=gmm_x_quant_mode,
+        gmm_weight_quant_mode=gmm_weight_quant_mode,
+        trans_gmm_weight=trans_gmm_weight,
+        trans_mm_weight=trans_mm_weight,
+        mm_x_quant_mode=mm_x_quant_mode,
+        mm_weight_quant_mode=mm_weight_quant_mode,
+        comm_quant_mode=comm_quant_mode,
+        group_size=group_size_int,
+        y_dtype=output_dtype,
+        mm_dtype=mm_out_dtype,
+        comm_quant_dtype=comm_quant_dtype,
+        comm_mode=comm_mode,
+        dependencies=dependencies,
         node_name=node_name)
 
     y.desc.dtype = _ge_dtype_to_ge_proto_dtype(output_dtype)
@@ -225,7 +231,7 @@ def cast_to_real_type_single(tensor, dtype):
 
 def check_inputs(tensor_list, dtype_list, quant_mode_list, tensor_names, dtype_names, quant_mode_names):
     """校验输入参数
-    
+
     校验顺序：
     1. 校验必选输入gmm
     2. 校验可选输入mm
@@ -243,8 +249,8 @@ def check_inputs(tensor_list, dtype_list, quant_mode_list, tensor_names, dtype_n
         raise RuntimeError("gmm_x_scale should not be None")
     if gmm_weight_scale is None:
         raise RuntimeError("gmm_weight_scale should not be None")
-    
-    # ========== Step 2: 校验mm输入（可选输入） ==========   
+
+    # ========== Step 2: 校验mm输入（可选输入） ==========
     mm_all_attrs = [
         tensor_list[4], tensor_list[5], tensor_list[6], tensor_list[7],
         dtype_list[4], dtype_list[5], dtype_list[6], dtype_list[7]
@@ -261,12 +267,12 @@ def check_inputs(tensor_list, dtype_list, quant_mode_list, tensor_names, dtype_n
             if attr is not None:
                 raise RuntimeError( \
                     f"When any mm input is None, all mm attributes must be None, but {name} is not None.")
-       
+
     # ========== Step 3: 校验所有tensor的rank不为0 ==========
     for input_tensor, tensor_name in zip(tensor_list, tensor_names):
         if input_tensor is not None and input_tensor.rank == 0:
             raise RuntimeError(f"{tensor_name} dim num should not be 0")
-    
+
     # ========== Step 4: 校验量化模式（仅支持TT和MX） ==========
     for quant_mode, quant_mode_name in zip(quant_mode_list, quant_mode_names):
         if "gmm" in quant_mode_name:
@@ -277,22 +283,22 @@ def check_inputs(tensor_list, dtype_list, quant_mode_list, tensor_names, dtype_n
             if quant_mode not in QUANT_MODE_SUPPORT_LIST:
                 raise RuntimeError( \
                     f"{quant_mode_name} should be {[_ for _ in QUANT_MODE_SUPPORT_LIST]}, but got {quant_mode}")
-    
+
     quant_mode_info = []
     for name, mode in zip(quant_mode_names, quant_mode_list):
         quant_mode_info.append(f"{name}={mode}")
-    
+
     non_none_quant_modes = [qm for qm in quant_mode_list if qm is not None]
     if len(non_none_quant_modes) == 0:
         raise RuntimeError( \
             f"Quant mode must be specified, supported modes are {[_ for _ in QUANT_MODE_SUPPORT_LIST]} (1=TT quant, 6=MX quant)")
-    
+
     first_mode = non_none_quant_modes[0]
     for qm in non_none_quant_modes[1:]:
         if qm != first_mode:
             raise RuntimeError( \
                 f"All quant modes should be the same (either all 1 or all 6), but got mixed modes: {quant_mode_info}.")
-    
+
     # ========== Step 5: 数据类型校验 （x/weight/scale）==========
     def get_tensor_dtype(tensor):
         if tensor is not None:
@@ -303,7 +309,7 @@ def check_inputs(tensor_list, dtype_list, quant_mode_list, tensor_names, dtype_n
         if dtype_param is not None:
             return torch_dtype_value_to_ge_type(dtype_param)
         return None
-    
+
     # 5.1 获取所有x/weight的dtype
     gmm_x_tensor_dtype = get_tensor_dtype(tensor_list[0])
     gmm_weight_tensor_dtype = get_tensor_dtype(tensor_list[1])
@@ -325,7 +331,7 @@ def check_inputs(tensor_list, dtype_list, quant_mode_list, tensor_names, dtype_n
         "mm_x": mm_x_dtypeparam_dtype,
         "mm_weight": mm_weight_dtypeparam_dtype
     }
-    
+
     # 5.2 获取所有scale的dtype
     gmm_x_scale_tensor_dtype = get_tensor_dtype(tensor_list[2])
     gmm_weight_scale_tensor_dtype = get_tensor_dtype(tensor_list[3])
@@ -347,9 +353,9 @@ def check_inputs(tensor_list, dtype_list, quant_mode_list, tensor_names, dtype_n
         "mm_x_scale": mm_x_scale_dtypeparam_dtype,
         "mm_weight_scale": mm_weight_scale_dtypeparam_dtype
     }
-    
+
     # 5.3 根据量化模式校验数据类型
-    quant_mode = non_none_quant_modes[0]   
+    quant_mode = non_none_quant_modes[0]
     if quant_mode == 1:
         # 5.3.1 校验TT量化：x和weight输入数据类型为hifloat8，scale为float32（hifloat8需要uint8包装）
         # 校验x/weight
@@ -359,7 +365,7 @@ def check_inputs(tensor_list, dtype_list, quant_mode_list, tensor_names, dtype_n
                     f"When quant mode is 1 (TT quant), all x/weight must be UINT8 (for HIFLOAT8), \
                         and the {name}_dtype must be specified as HIFLOAT8, but {name} is {torch_dtype_value_to_ge_type(dtype)}, \
                         {name}_dtype is {all_dtypeparam_dtypes[name]}")
-        # 校验scale      
+        # 校验scale
         for name, dtype in all_scale_tensor_dtypes.items():
             if dtype is not None and dtype != DataType.DT_FLOAT:
                 raise RuntimeError( \
@@ -368,10 +374,10 @@ def check_inputs(tensor_list, dtype_list, quant_mode_list, tensor_names, dtype_n
                 raise RuntimeError( \
                     f"When quant mode is 1 (TT quant), {name}_dtype is not necessary, it can be None. \
                         However, if {name}_dtype is not None, the {name}_dtype must be same as the {name} tensor's dtype, \
-                        but now the tensor's dtype is: {dtype}, the {name}_dtype is {all_dtypeparam_dtypes[name]}.")                     
+                        but now the tensor's dtype is: {dtype}, the {name}_dtype is {all_dtypeparam_dtypes[name]}.")
     elif quant_mode == 6:
-        # 5.3.2 校验MX量化：x和weight输入数据类型为fp8_e5m2/fp8_e4m3fn/fp4_e2m1，scale为fp8_e8m0（fp4_e2m1和fp8_e8m0需要uint8包装）      
-        FP8_SUPPORT_DTYPES_LIST = {DataType.DT_FLOAT8_E5M2, DataType.DT_FLOAT8_E4M3FN}       
+        # 5.3.2 校验MX量化：x和weight输入数据类型为fp8_e5m2/fp8_e4m3fn/fp4_e2m1，scale为fp8_e8m0（fp4_e2m1和fp8_e8m0需要uint8包装）
+        FP8_SUPPORT_DTYPES_LIST = {DataType.DT_FLOAT8_E5M2, DataType.DT_FLOAT8_E4M3FN}
         # 校验x/weight
         uint8_tensors = []
         fp8_tensors = []
@@ -384,7 +390,7 @@ def check_inputs(tensor_list, dtype_list, quant_mode_list, tensor_names, dtype_n
                 pass
             else:
                 raise RuntimeError( \
-                    f"When quant mode is 6 (MX quant), tensor {name} dtype must be UINT8 (for FP4_E2M1) or FP8 (FP8_E5M2 or FP8_E4M3FN), but got {dtype}.")         
+                    f"When quant mode is 6 (MX quant), tensor {name} dtype must be UINT8 (for FP4_E2M1) or FP8 (FP8_E5M2 or FP8_E4M3FN), but got {dtype}.")
         # FP4场景校验：tensor为uint8时，dtype必须为fp4_e2m1
         for name in uint8_tensors:
             dtype_param = all_dtypeparam_dtypes[name]
@@ -393,7 +399,7 @@ def check_inputs(tensor_list, dtype_list, quant_mode_list, tensor_names, dtype_n
                     f"When quant mode is 6 (MX quant) and tensor {name} is UINT8 (for FP4_E2M1), the {name}_dtype must be specified as FP4_E2M1, but got None.")
             if dtype_param != DataType.DT_FLOAT4_E2M1:
                 raise RuntimeError( \
-                    f"When quant mode is 6 (MX quant) and tensor {name} is UINT8 (for FP4_E2M1), the {name}_dtype must be specified as FLOAT4_E2M1, but got {dtype_param}.")       
+                    f"When quant mode is 6 (MX quant) and tensor {name} is UINT8 (for FP4_E2M1), the {name}_dtype must be specified as FLOAT4_E2M1, but got {dtype_param}.")
         # 一致性校验：如果有任何输入为fp4_e2m1，则所有输入都应该是fp4_e2m1
         has_fp4 = any(dtype == DataType.DT_FLOAT4_E2M1 for dtype in all_dtypeparam_dtypes.values() if dtype is not None)
         if has_fp4:
@@ -408,15 +414,15 @@ def check_inputs(tensor_list, dtype_list, quant_mode_list, tensor_names, dtype_n
                 raise RuntimeError( \
                     f"When quant mode is 6 (MX quant) and tensor {name} is FP8, {name}_dtype is not necessary, it can be None. \
                         However, if {name}_dtype is not None, the {name}_dtype must be same as the {name} tensor's dtype, \
-                        but now the tensor's dtype is: {all_tensor_dtypes[name]}, the {name}_dtype is {dtype_param}.")                   
+                        but now the tensor's dtype is: {all_tensor_dtypes[name]}, the {name}_dtype is {dtype_param}.")
         # scale校验
-        for name, dtype in all_scale_tensor_dtypes.items():            
+        for name, dtype in all_scale_tensor_dtypes.items():
             if dtype is not None and dtype != DataType.DT_UINT8 and all_scale_dtypeparam_dtypes[name] != DataType.DT_FLOAT8_E8M0:
                 raise RuntimeError( \
                     f"When quant mode is 6 (MX quant), all scale must be UINT8 (for FP8_E8M0), \
                         and the {name}_dtype must be specified as FP8_E8M0, but {name} is {torch_dtype_value_to_ge_type(dtype)}, \
-                        {name}_dtype is {all_scale_dtypeparam_dtypes[name]}")            
-    
+                        {name}_dtype is {all_scale_dtypeparam_dtypes[name]}")
+
     # 5.4 校验gmm和mm的x/weight dtype一致性
     if not has_any_none_mm_input:
         if all_tensor_dtypes["mm_x"] != all_tensor_dtypes["gmm_x"]:
