@@ -67,8 +67,8 @@ torch.compile参数配置说明参见[表1](#fig1)。
 |[FX图优化Pass配置功能](./basic/inplace_pass.md)|是否开启FX图优化优化能力。以减少计算过程中的内存搬运，从而提升性能。|
 |[FX图算子融合Pass配置功能](./basic/pattern_fusion_pass.md)|是否开启FX图算子融合Pass。该Pass基于已有Aten IR进行融合，从而提升性能。|
 |[aclgraph间内存复用功能](./basic/memory_reuse.md)|aclgraph间内存复用功能，支持多种模式。|
-|[静态Kernel编译功能](./basic/static_kernel_compile.md)|是否开启静态Kernel编译|
-|[冗余算子消除功能](./basic/remove_noop_ops.md)|是否对冗余Kernel进行优化处理|
+|[静态Kernel编译功能](./basic/static_kernel_compile.md)|是否开启静态Kernel编译。|
+|[冗余算子消除功能](./basic/remove_noop_ops.md)|是否对冗余Kernel进行优化处理。|
 |[固定权重类输入地址功能](./basic/frozen_parameter.md)|图执行时是否固定权重类输入地址。|
 |[重捕获次数限制功能](./basic/capture_limit.md)|设置重捕获次数。|
 |[集合通信入图](./basic/communication_graph.md)|实现集合通信算子Ascend Converter，调用torch.compile时默认已支持集合通信算子入图。|
