@@ -54,14 +54,7 @@ def conveter_aten_div_Tensor_mode(
     if rounding_mode == "floor":
         output = ge.FloorDiv(self, other)
     elif rounding_mode == "trunc":
-        output = ge.RealDiv(self, other)
-        dtype = meta_outputs.dtype
-        if dtype in [DataType.DT_INT64, DataType.DT_BOOL, DataType.DT_INT16]:
-            output = ge.Cast(output, dst_type=DataType.DT_FLOAT)
-            output = ge.Trunc(output)
-            output = ge.Cast(output, dst_type=dtype)
-        else:
-            output = ge.Trunc(output)
+        output = ge.TruncateDiv(self, other)
     else:
         output = ge.RealDiv(self, other)
     return output
