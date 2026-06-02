@@ -12,6 +12,9 @@ from torchair._ge_concrete_graph.utils import Placement, update_op_input_name_fr
 
 from . import ge_apis as ge
 
+TRANSPOSE_NODE_POS = 2
+WEIGHT_INPUT_IDX = 3
+SCALE_INPUT_IDX = 4
 
 def _find_pack_and_data_ops(graph: GraphDef):
     host_data_ops: Dict[str, int] = {}
@@ -574,6 +577,72 @@ def move_transpose_into_mm(graph: GeGraph):
             remove_transpose_node(*w_relate_nodes)
             remove_transpose_node(*scale_relate_nodes)
             logger.debug('set attr transpose_w to True in %s.', gmmfr_node.name)
+
+    def analyze_pattern(gmmsgq_node, input_idx):
+        """只分析模式是否存在，不修改图，返回是否匹配成功及相关节点信息"""
+        # 模式1: Bitcast -> Reshape -> Transpose -> Reshape
+        rtr_nodes = find_nodes(gmmsgq_node, (('Bitcast', input_idx), ('Reshape', 0), ('Transpose', 0), ('Reshape', 0)))
+        if rtr_nodes:
+            transpose_node = rtr_nodes[2]  # TRANSPOSE_NODE_POS
+            const_node = name_to_op.get(transpose_node.input[1].split(":")[0])
+            if const_node and const_node.type == "Const":
+                return ('rtr', rtr_nodes)  # 返回模式类型和节点列表
+
+        # 模式2: Bitcast -> Reshape
+        reshape_nodes = find_nodes(gmmsgq_node, (('Bitcast', input_idx), ('Reshape', 0)))
+        if reshape_nodes:
+            return ('reshape', reshape_nodes)
+
+        # 模式3: Bitcast -> Transpose -> Const
+        transpose_nodes = find_nodes(gmmsgq_node, (('Bitcast', input_idx), ('Transpose', 0), ('Const', 1)))
+        if transpose_nodes:
+            return ('transpose', transpose_nodes)
+
+        return None
+
+    def remove_pattern_nodes(pattern_info, gmmsgq_node):
+        """根据模式信息删除节点"""
+        if not pattern_info:
+            return
+
+        pattern_type, nodes = pattern_info
+
+        if pattern_type == 'rtr':
+            bitcast_node, reshape_after, transpose_node, reshape_before = nodes
+            const_node = name_to_op[transpose_node.input[1].split(":")[0]]
+            bitcast_node.input[0] = reshape_before.input[0]
+            for node in [reshape_after, transpose_node, const_node, reshape_before]:
+                graph.op.remove(node)
+            logger.debug('removed reshape-transpose-reshape pattern')
+
+        elif pattern_type == 'reshape':
+            bitcast_node, reshape_node = nodes
+            bitcast_node.input[0] = reshape_node.input[0]
+            graph.op.remove(reshape_node)
+            logger.debug('removed reshape pattern')
+
+        elif pattern_type == 'transpose':
+            remove_transpose_node(*nodes)  # 假设原函数可用
+            logger.debug('removed transpose pattern')
+
+
+    # 主处理逻辑
+    gmmsgq_nodes = [node for node in graph.op if node.type == "GroupedMatmulSwigluQuantV2"]
+    for gmmsgq_node in gmmsgq_nodes:
+        # 先分析两个输入的模式，不修改图
+        weight_pattern = analyze_pattern(gmmsgq_node, WEIGHT_INPUT_IDX)
+        scale_pattern = analyze_pattern(gmmsgq_node, SCALE_INPUT_IDX)
+
+        if weight_pattern and scale_pattern:
+            # 只有两者都成功时才删除节点
+            remove_pattern_nodes(weight_pattern, gmmsgq_node)
+            remove_pattern_nodes(scale_pattern, gmmsgq_node)
+            gmmsgq_node.attr['transpose_weight'].b = True
+            logger.debug('set attr transpose_weight to True in %s.', gmmsgq_node.name)
+        else:
+            # 可选：记录失败原因
+            logger.debug('skip %s: weight_pattern=%s, scale_pattern=%s',
+                        gmmsgq_node.name, weight_pattern is not None, scale_pattern is not None)
 
 
 def move_mm_weight_transpose_after_bitcast(graph: GeGraph):

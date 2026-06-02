@@ -17,6 +17,7 @@ from torchair._ge_concrete_graph.ge_ir_pb2 import DataType as ProtoDataType
 Y_RANK = 2
 TORCH_INT8 = 1
 FLOAT4_E2M1 = 296
+FLOAT4_E1M2 = 297
 TORCH_HIFLOAT8 = 290
 TORCH_FLOAT8E4M3 = 23
 TORCH_FLOAT8E5M2 = 24
@@ -30,21 +31,10 @@ def fill_empty_tensorlist(input_data, desired_dtype):
 
 
 def convert_tensorlist_to_mxfp4_item(input_data: Tensor, x_dtype, trans=False):
-    FP4_IN_INT8 = 2
     x_ge_dtype = 0
     if x_dtype is not None:
         x_ge_dtype = torch_dtype_value_to_ge_type(x_dtype)
-    const_x = ge.Const([1] * (input_data.rank - 1) + [FP4_IN_INT8])
-    perm = [i for i in range(input_data.rank)]
-    perm[-1], perm[-2] = perm[-2], perm[-1]
-    if trans:
-        input_data = ge.Transpose(input_data, perm)
-    shape_x = ge.Shape(input_data)
-    shape_x = ge.Mul(shape_x, const_x)
-    input_data = ge.Bitcast(input_data, type=x_ge_dtype)
-    input_data = ge.Reshape(input_data, shape_x)
-    if trans:
-        input_data = ge.Transpose(input_data, perm)
+    input_data = ge.Bitcast(input_data, type=x_ge_dtype, keep_dim=True)
     return input_data
 
 
@@ -65,7 +55,7 @@ def pack_mxfp4_tensor_to_uint8(y: Tensor) -> Tensor:
     bit_shape.append(2)
     div_x2 = ge.Cast(ge.Const(bit_shape), dst_type=DataType.DT_INT32)
     y_shape_int4 = ge.Shape(y)
-    y_shape_uint8 = ge.Div(y_shape_int4, div_x2) 
+    y_shape_uint8 = ge.Div(y_shape_int4, div_x2)
     y_shape_int4_2bit = ge.ConcatV2([y_shape_uint8, ge.Cast(ge.Const([2]), dst_type=DataType.DT_INT32)],
                                         concat_dim=0, N=2)
     y = ge.Bitcast(ge.Reshape(y, y_shape_int4_2bit), type=DataType.DT_UINT8)
@@ -78,7 +68,7 @@ def is_mxfp4(dtype):
     except ImportError as e:
         raise RuntimeError("Couldn't import torch_npu. When the CompilerConfig.mode is reduce-overhead, "
                            "it is necessary to use torch_npu.npu.NPUGraph(), so importing torch_npu is essential. ") from e
-    return dtype == torch_npu.float4_e2m1fn_x2
+    return dtype == torch_npu.float4_e2m1fn_x2 or dtype == torch_npu.float4_e1m2fn_x2
 
 
 @declare_supported([
@@ -126,11 +116,11 @@ def conveter_npu_grouped_matmul_swiglu_quant_v2(
         x_scale = ge.Bitcast(x_scale, type=torch_dtype_value_to_ge_type(x_scale_dtype))
         x_scale.desc.dtype = torch_dtype_value_to_ge_proto_type(x_scale_dtype)
     if x_dtype is not None:
-        if x_dtype != torch_npu.float4_e2m1fn_x2:
+        if x_dtype != torch_npu.float4_e2m1fn_x2 and x_dtype != torch_npu.float4_e1m2fn_x2:
             x = ge.Bitcast(x, type=torch_dtype_value_to_ge_type(x_dtype))
         x.desc.dtype = torch_dtype_value_to_ge_proto_type(x_dtype)
     if weight_dtype is not None:
-        if weight_dtype != torch_npu.float4_e2m1fn_x2:
+        if weight_dtype != torch_npu.float4_e2m1fn_x2 and weight_dtype != torch_npu.float4_e1m2fn_x2:
             weight[0] = ge.Bitcast(weight[0], type=torch_dtype_value_to_ge_type(weight_dtype))
         weight[0].desc.dtype = torch_dtype_value_to_ge_proto_type(weight_dtype)
 
@@ -155,12 +145,14 @@ def conveter_npu_grouped_matmul_swiglu_quant_v2(
     y.desc.dtype = torch_dtype_value_to_ge_proto_type(quant_dtype)
     if quant_dtype != TORCH_INT8: # not torch.int8
         y_scale.desc.dtype = ProtoDataType.DT_FLOAT8_E8M0
-    if quant_dtype in (TORCH_INT8, TORCH_HIFLOAT8, TORCH_FLOAT8E4M3, TORCH_FLOAT8E5M2) and quant_mode == 0: 
+    if quant_dtype in (TORCH_INT8, TORCH_HIFLOAT8, TORCH_FLOAT8E4M3, TORCH_FLOAT8E5M2) and quant_mode == 0:
         y_scale.desc.dtype = ProtoDataType.DT_FLOAT
     if hasattr(torch, "float4_e2m1fn_x2"): # torch2.8.0 support torch.float4_e2m1fn_x2
+        if quant_dtype == FLOAT4_E1M2:
+            y = pack_mxfp4_tensor_to_uint8(y)
         if quant_dtype == FLOAT4_E2M1:
             y.desc.dtype = torch_dtype_value_to_ge_proto_type(quant_dtype)
     else:
-        if quant_dtype == FLOAT4_E2M1: # torch_npu.float4_e2m1fn_x2
+        if quant_dtype in (FLOAT4_E2M1, FLOAT4_E1M2): # torch_npu.float4_e2m1fn_x2 or torch_npu.float4_e1m2fn_x2
             y = pack_mxfp4_tensor_to_uint8(y)
     return y, y_scale
