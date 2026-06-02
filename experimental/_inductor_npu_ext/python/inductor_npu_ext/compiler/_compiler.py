@@ -118,9 +118,9 @@ def setup_asc_jit_command(spec, **kwargs):
     command_args = [f'--{k}={v}' for k, v in kwargs.items()]
     py_code = IndentedBuffer()
     py_code.splice(f"from autofuse.compile_adapter import jit_compile")
-    py_code.splice(f"tiling_def = '''{spec.tiling_def}'''")
-    py_code.splice(f"host_impl = '''{spec.host_impl}'''")
-    py_code.splice(f"device_impl = '''{spec.device_impl}'''")
+    py_code.splice(f"tiling_def = r'''{spec.tiling_def}'''")
+    py_code.splice(f"host_impl = r'''{spec.host_impl}'''")
+    py_code.splice(f"device_impl = r'''{spec.device_impl}'''")
     py_code.writeline(
         f"jit_compile(tiling_def, host_impl, device_impl, {command_args})")
     return py_code.getvalue()
