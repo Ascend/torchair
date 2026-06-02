@@ -114,7 +114,7 @@ torch.compile参数配置说明参见[表1](#fig1)。
     torch.compile(backend="npugraph_ex", fullgraph=True, options={"force_eager": True})
     ```
 
-    如果用户脚本使用force\_eager运行正常，则可能是npugraph\_ex存在问题，否则可能是aclgraph的Runtime底层问题。
+    如果用户脚本使用force\_eager运行异常，则可能是npugraph\_ex存在问题，否则可能是aclgraph的Runtime底层问题。
 
 3. 定界是否是图捕获问题。
 
