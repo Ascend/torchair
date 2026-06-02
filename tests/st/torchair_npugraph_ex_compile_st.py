@@ -2264,5 +2264,60 @@ class NpugraphExSt(unittest.TestCase):
         except Exception as e:
             assert str(e).__contains__("not in optional list ['global', 'thread_local', 'relaxed']")
 
+    def test_record_statistics_debug_info_enabled(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear = torch.nn.Linear(2, 2)
+
+            def forward(self, x):
+                return self.linear(x)
+
+        options = {"record_statistics_debug_info": True, "clone_input": False}
+        model = torch.compile(Model(), backend="npugraph_ex", options=options, dynamic=False)
+        x = torch.randn([3, 2])
+        model(x)
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            model(x)
+        combined = " ".join(cm.output)
+        self.assertIn("runtime inputs", combined)
+        self.assertIn("runtime outputs", combined)
+        self.assertTrue(
+            any("statistics_info=[min=" in log for log in cm.output),
+            f"Expected DEBUG log with 'statistics_info=[min=' not found in logs: {cm.output}"
+        )
+        for log in cm.output:
+            if "statistics_info=[" in log:
+                self.assertIn("min=", log)
+                self.assertIn("max=", log)
+                self.assertIn("norm=", log)
+                self.assertIn("mean=", log)
+
+    def test_record_statistics_debug_info_disabled(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear = torch.nn.Linear(2, 2)
+
+            def forward(self, x):
+                return self.linear(x)
+
+        options = {"record_statistics_debug_info": False, "clone_input": False}
+        model = torch.compile(Model(), backend="npugraph_ex", options=options, dynamic=False)
+        x = torch.randn([3, 2])
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            model(x)
+        combined = " ".join(cm.output)
+        self.assertNotIn("min=", combined)
+
+    def test_record_statistics_debug_info_invalid_option(self):
+        options = {"record_statistics_debug_info": "invalid"}
+        try:
+            model = torch.compile(lambda x: x + 1, backend="npugraph_ex", options=options, dynamic=False)
+            model(torch.randn([2, 2]))
+            self.fail("Expected ValueError for invalid record_statistics_debug_info option")
+        except Exception as e:
+            self.assertIn("not in optional list", str(e))
+
 if __name__ == '__main__':
     unittest.main()

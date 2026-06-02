@@ -285,13 +285,17 @@ class _NpuGraphConverter(Interpreter):
         return ValuePack(meta_outputs, npu_outputs)
 
 
-def _summary(v):
+def _summary(record_statistics_debug_info, v):
     if isinstance(v, torch.Tensor):
-        return f'{type(v)}({v.size()}, {v.dtype}, contiguous={v.is_contiguous()}, data_ptr={v.data_ptr()})'
+        base_info = f'{type(v)}({v.size()}, {v.dtype}, contiguous={v.is_contiguous()}, data_ptr={v.data_ptr()}'
+        statistics_info = ''
+        if record_statistics_debug_info:
+            statistics_info = f', statistics_info=[min={v.min()}, max={v.max()}, norm={v.norm()}, mean={v.mean()}]'
+        return base_info + statistics_info + ')'
     return f'{type(v)}({v})'
 
 
-@debug_compare_fx_graphs(pass_name="view_to_reshape")
+@debug_compare_fx_graphs(pass_name="view_to_reshape") # nosec B106
 def _view_to_reshape(graph_module: torch.fx.GraphModule, example_inputs=None, config=None):
     # Replace view ops in the GraphModule to reshape ops.
     for node in graph_module.graph.nodes:
@@ -304,7 +308,7 @@ def _optimize_fx(graph_module: torch.fx.GraphModule, config: CompilerConfig, obs
     observer.gm = graph_module
     pre_func = config.post_grad_custom_pre_pass.value
     if pre_func is not None:
-        observer.apply_gm_pass(debug_compare_fx_graphs(pre_func, pass_name="post_grad_custom_pre_pass"),
+        observer.apply_gm_pass(debug_compare_fx_graphs(pre_func, pass_name="post_grad_custom_pre_pass"), # nosec B106
                      "post_grad_custom_pre_pass",
                                enable_log=True)
 
@@ -312,7 +316,7 @@ def _optimize_fx(graph_module: torch.fx.GraphModule, config: CompilerConfig, obs
         observer.apply_gm_pass(_optimize_noop_ops, "optimize_noop_ops")
 
     from npugraph_ex.patterns._recover_view_inplace_pattern import recover_view_inplace_pattern
-    observer.apply_gm_pass(debug_compare_fx_graphs(recover_view_inplace_pattern, pass_name="recover_view_inplace_pattern"),
+    observer.apply_gm_pass(debug_compare_fx_graphs(recover_view_inplace_pattern, pass_name="recover_view_inplace_pattern"), # nosec B106
                  "recover_view_inplace_pattern")
 
     if config.pattern_fusion_pass:
@@ -322,13 +326,13 @@ def _optimize_fx(graph_module: torch.fx.GraphModule, config: CompilerConfig, obs
 
     post_func = config.post_grad_custom_post_pass.value
     if post_func is not None:
-        observer.apply_gm_pass(debug_compare_fx_graphs(post_func, pass_name="post_grad_custom_post_pass"),
+        observer.apply_gm_pass(debug_compare_fx_graphs(post_func, pass_name="post_grad_custom_post_pass"), # nosec B106
                                "post_grad_custom_post_pass", enable_log=True)
     logger.debug('after fx graph optimization, graph is %s', graph_module.graph)
     return graph_module
 
 
-@debug_compare_fx_graphs(pass_name="optimize_noop_ops")
+@debug_compare_fx_graphs(pass_name="optimize_noop_ops") # nosec B106
 def _optimize_noop_ops(graph_module: torch.fx.GraphModule, example_inputs=None, config=None):
     if remove_noop_ops is None:
         logger.warning("Skip removing noop ops; check if your PyTorch version is above 2.2.0 and ensure"
@@ -337,7 +341,7 @@ def _optimize_noop_ops(graph_module: torch.fx.GraphModule, example_inputs=None, 
         remove_noop_ops(graph_module.graph)
 
 
-@debug_compare_fx_graphs(pass_name="optimize_sym_input")
+@debug_compare_fx_graphs(pass_name="optimize_sym_input") # nosec B106
 def _optimize_sym_input(graph_module: torch.fx.GraphModule, example_inputs=None, config=None):
     logger.debug('begin sym input optimization for graph: %s', id(graph_module.graph))
     sym_input_list = []
@@ -500,16 +504,16 @@ class _CompiledFxGraph:
             if logger.isEnabledFor(logging.DEBUG):
                 logger.debug('runtime inputs')
                 for i, inp in enumerate(args):
-                    logger.debug('  input %s: %s', i, _summary(inp))
+                    logger.debug('  input %s: %s', i, _summary(self.config.record_statistics_debug_info, inp))
                 for k, v in kwargs.items():
-                    logger.debug('  input %s: %s', k, _summary(v))
+                    logger.debug('  input %s: %s', k, _summary(False, v))
 
             gm_result = self.run_kernel(*args, **kwargs)
 
             if logger.isEnabledFor(logging.DEBUG):
                 logger.debug('runtime outputs')
                 for i, inp in enumerate(gm_result):
-                    logger.debug('  output %s: %s', i, _summary(inp))
+                    logger.debug('  output %s: %s', i, _summary(self.config.record_statistics_debug_info, inp))
 
             return gm_result
 

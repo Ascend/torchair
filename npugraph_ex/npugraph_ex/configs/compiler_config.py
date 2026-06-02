@@ -50,7 +50,7 @@ class CompilerConfig(NpuBaseConfig):
         self.capture_error_mode = OptionValue("global", ["global", "thread_local", "relaxed"])
         self.mode = OptionValue("npugraph_ex", ["npugraph_ex"])
         self.force_recapture = OptionValue(False, [True, False])
-
+        self.record_statistics_debug_info = OptionValue(False, [True, False])
         super(CompilerConfig, self).__init__()
         self._fixed_attrs.append("post_grad_custom_pre_pass")
         self._fixed_attrs.append("post_grad_custom_post_pass")
