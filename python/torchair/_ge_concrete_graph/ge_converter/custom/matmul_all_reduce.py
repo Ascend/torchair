@@ -4,11 +4,12 @@ torch_dtype_value_to_ge_proto_type, _ge_dtype_to_ge_proto_dtype
 
 DTYPE_SUPPORT_LIST_QUANT = {DataType.DT_FLOAT8_E4M3FN, DataType.DT_FLOAT8_E5M2, DataType.DT_HIFLOAT8,
                             DataType.DT_UINT8, DataType.DT_INT8}
-DTYPE_SUPPORT_LIST_WEIGHT_QUANT_X2 = {DataType.DT_FLOAT8_E4M3FN, DataType.DT_HIFLOAT8, 
+DTYPE_SUPPORT_LIST_WEIGHT_QUANT_X2 = {DataType.DT_FLOAT8_E4M3FN, DataType.DT_HIFLOAT8,
                             DataType.DT_UINT8, DataType.DT_INT8}
 # A16W16/A16W8/A16w4: x1/bias only support bf16/fp16, and 2 types must be same
 DTYPE_SUPPORT_BIAS = {DataType.DT_BF16, DataType.DT_FLOAT16}
 DTYPE_SUPPORT_X1 = {DataType.DT_BF16, DataType.DT_FLOAT16}
+COMM_MODE_SUPPORT_LIST = {"ccu", "ai_cpu", ""}
 
 
 @declare_supported(
@@ -36,12 +37,13 @@ def convert_npu_mm_all_reduce_base(
     antiquant_group_size: int = 0,
     comm_turn: int = 0,
     group_sizes: Optional[List[int]] = None,
-    y_dtype: int = None, 
-    x1_dtype: int = None, 
-    x2_dtype: int = None, 
-    dequant_scale_dtype: int = None, 
-    pertoken_scale_dtype: int = None, 
+    y_dtype: int = None,
+    x1_dtype: int = None,
+    x2_dtype: int = None,
+    dequant_scale_dtype: int = None,
+    pertoken_scale_dtype: int = None,
     comm_quant_mode: int = 0,
+    comm_mode: str = None,
     meta_outputs: TensorSpec = None
 ):
     # transpose_x1 is set to False by default
@@ -51,9 +53,10 @@ def convert_npu_mm_all_reduce_base(
                                        Tensor? antiquant_scale=None, Tensor? antiquant_offset=None, Tensor? x3=None,
                                        Tensor? dequant_scale=None, Tensor? pertoken_scale=None,
                                        Tensor? comm_quant_scale_1=None, Tensor? comm_quant_scale_2=None,
-                                       int? antiquant_group_size=0, int? comm_turn=0, 
-                                       int[]? group_sizes=None, int? y_dtype=None, int? x1_dtype=None, int? x2_dtype=None, 
-                                       int? dequant_scale_dtype=None, int? pertoken_scale_dtype=None, int? comm_quant_mode=0) -> Tensor'''
+                                       int? antiquant_group_size=0, int? comm_turn=0,
+                                       int[]? group_sizes=None, int? y_dtype=None, int? x1_dtype=None, int? x2_dtype=None,
+                                       int? dequant_scale_dtype=None, int? pertoken_scale_dtype=None, int? comm_quant_mode=0,
+                                       str? comm_mode=None) -> Tensor'''
     import torch_npu
 
     if dequant_scale is not None:
@@ -127,7 +130,10 @@ def convert_npu_mm_all_reduce_base(
     if pertoken_scale_dtype is not None:
         pertoken_scale = ge.Bitcast(pertoken_scale, type=torch_dtype_value_to_ge_type(pertoken_scale_dtype))
         pertoken_scale.desc.dtype = torch_dtype_value_to_ge_proto_type(pertoken_scale_dtype)
-
+    if comm_mode is not None and comm_mode not in COMM_MODE_SUPPORT_LIST:
+        raise RuntimeError("If input comm_mode is not none, it must be 'ccu', 'ai_cpu' or ''(empty string), but now it is: {" + comm_mode + "}.")
+    if comm_mode is None:
+        comm_mode = ""
     out = ge.MatmulAllReduce(x1,
                              x2,
                              bias=bias,
@@ -145,8 +151,9 @@ def convert_npu_mm_all_reduce_base(
                              comm_turn=comm_turn,
                              antiquant_group_size=antiquant_group_size,
                              group_size=group_size,
-                             y_dtype=ge_y_dtype, 
-                             comm_quant_mode=comm_quant_mode)
+                             y_dtype=ge_y_dtype,
+                             comm_quant_mode=comm_quant_mode,
+                             comm_mode=comm_mode)
     out.desc.dtype = _ge_dtype_to_ge_proto_dtype(output_dtype)
     return out
 

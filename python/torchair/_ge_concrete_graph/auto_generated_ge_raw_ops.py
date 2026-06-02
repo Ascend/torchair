@@ -78051,6 +78051,7 @@ def MatmulAllReduce(x1: Tensor,
                     group_size: int = 0,
                     y_dtype: int = 28,
                     comm_quant_mode: int = 0,
+                    comm_mode: str="",
                     dependencies=[],
                     node_name=None):
     """REG_OP(MatmulAllReduce)
@@ -78074,6 +78075,7 @@ def MatmulAllReduce(x1: Tensor,
     .ATTR(group_size, Int, 0)\n
     .ATTR(y_dtype, Int, 28)\n
     .ATTR(comm_quant_mode, Int, 0)\n
+    .ATTR(comm_mode, String, "")\n
     """
 
     op = get_default_ge_graph().op.add()
@@ -78166,6 +78168,7 @@ def MatmulAllReduce(x1: Tensor,
     op.attr["group_size"].i = group_size
     op.attr["y_dtype"].i = y_dtype
     op.attr["comm_quant_mode"].i = comm_quant_mode
+    op.attr["comm_mode"].s = compat_as_bytes(comm_mode)
 
     # process outputs
     output_index = 0
