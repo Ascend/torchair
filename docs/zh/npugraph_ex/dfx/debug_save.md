@@ -57,22 +57,25 @@ python main.py
     运行示例脚本，编译过程中必要的Debug信息产物目录结构如下，仅供参考，具体取决于实际开启的Pass数量。“torch_compile_debug”为PyTorch原生开启环境变量时创建的目录，默认在当前脚本路径下。分布式场景下，运行目录名会在末尾追加`-rank_<rank_id>`（例如`torch_compile_debug/run_<时间>-pid_<进程号>-rank_<rank_id>`）。
 
     ```txt
-    torch_compile_debug/run_<时间>-pid_<进程号>
-    ├── npugraph_ex
-    │   ├── debug.log                                                 # npugraph_ex日志
-    │   ├── model__0                                                  # model__0为模型ID
-    │   │   ├── forward                                               # 前向推理
-    │   │   │   ├── output_code.py                                    # 编译后的图结构文件
-    │   │   │   ├── 000_aot_forward_graph.txt                         # AOT后的GraphModule
-    │   │   │   ├── 001_aot_forward_graph_after_${pass1_name}.txt     # 公共图优化过程中每个Pass的输出FX图
-    │   │   │   ├── 002_aot_forward_graph_after_${pass2_name}.txt
-    │   │   │   ├── 003_aot_forward_graph_after_${pass5_name}.txt     # aclgraph优化中不同pass处理后的FX图
-    │   │   │   ├── 004_aot_forward_graph_after_${pass6_name}.txt
-    │   │   │   ├── ......                                            # 其他Pass优化
-    │   │   ├── dynamo_out_graph.txt                                  # AOT前的GraphModule
-    │   │   ├── graph_1_id_${aclgraph_id}_rank_${rank_id}_pid_${pid}_ts_${timestamp}.json      # 捕获的模型运行实例信息
-    └── torchdynamo
-        └── debug.log                                                 # Torch原生Dynamo日志
+    torch_compile_debug
+    ├── run_<时间>-pid_<进程号>
+    │   ├── npugraph_ex
+    │   │   ├── debug.log                                                 # npugraph_ex日志
+    │   │   ├── model__0                                                  # model__0为模型ID
+    │   │   │   ├── forward                                               # 前向推理
+    │   │   │   │   ├── output_code.py                                    # 编译后的图结构文件
+    │   │   │   │   ├── 000_aot_forward_graph.txt                         # AOT后的GraphModule
+    │   │   │   │   ├── 001_aot_forward_graph_after_${pass1_name}.txt     # 公共图优化过程中每个Pass的输出FX图
+    │   │   │   │   ├── 002_aot_forward_graph_after_${pass2_name}.txt
+    │   │   │   │   ├── 003_aot_forward_graph_after_${pass5_name}.txt     # aclgraph优化中不同pass处理后的FX图
+    │   │   │   │   ├── 004_aot_forward_graph_after_${pass6_name}.txt
+    │   │   │   │   ├── ......                                            # 其他Pass优化
+    │   │   │   ├── dynamo_out_graph.txt                                  # AOT前的GraphModule
+    │   │   │   ├── graph_1_id_${aclgraph_id}_rank_${rank_id}_pid_${pid}_ts_${timestamp}.json      # 捕获的模型运行实例信息
+    │   └── torchdynamo
+    │       └── debug.log                                                 # Torch原生Dynamo日志
+    └── ...                                                               # Torch原生其他产物
+
     ```
 
     > [!NOTE]说明
