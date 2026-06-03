@@ -1558,7 +1558,9 @@ class GeConcreteGraph(ConcreteGraphBase):
 
         fx_node_key = self._converter_ctx.node.name
         graph = get_default_ge_graph()
-        op_count_before = len(graph.op)
+        op_count_before = getattr(self._converter_ctx, 'op_count_before', None)
+        if op_count_before is None:
+            op_count_before = len(graph.op)
 
         if self._can_use_converter(target, args, meta_outputs):
             ge_outputs = self._parse_node_internal(target, args, kwargs, meta_outputs)

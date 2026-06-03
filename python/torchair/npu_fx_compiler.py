@@ -202,8 +202,14 @@ class _NpuGraphConverter(Interpreter):
                 logger.debug("detect_fake_mode returns None, using FakeTensorMode.")
             with fake_mode:
                 meta_outputs = func(target, args_meta, kwargs_meta)
+
+            if getattr(self._graph, '_record_asc_ir', False):
+                from torchair._ge_concrete_graph.fx2ge_converter import get_default_ge_graph
+                self._graph._converter_ctx.op_count_before = len(get_default_ge_graph().op)
             args_npu, kwargs_npu = self._unpack_npu(args, kwargs)
             npu_outputs = self._graph.parse_node(target, args_npu, kwargs_npu, meta_outputs)
+            if getattr(self._graph, '_record_asc_ir', False):
+                self._graph._converter_ctx.op_count_before = None
             return self._get_value_pack(meta_outputs, npu_outputs)
 
         return inner

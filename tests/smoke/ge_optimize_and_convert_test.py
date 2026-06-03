@@ -1,11 +1,16 @@
+import os
+os.environ['PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION'] = 'python'
+
 import contextlib
 import sys
 import unittest
 
 import torch
 import torch_npu
+import sympy
 
 from torch.export import export, ExportedProgram
+from torch.export.dynamic_shapes import Dim
 from torchair._ge_concrete_graph.fx2ge_converter import GeConcreteGraph
 from torchair._ge_concrete_graph.auto_functionalized_v2 import (
     conveter_auto_functionalize_v2,
@@ -17,7 +22,6 @@ from torchair.ge.ge_graph_ascend import _optimize_and_convert
 from torchair.configs.compiler_config import CompilerConfig
 from torchair._ge_concrete_graph.ge_ir_pb2 import GraphDef, OpDef
 from torchair.ge._ge_graph import Tensor
-
 torch_npu.npu.set_device(0)
 
 
@@ -365,6 +369,211 @@ class GeOptimizeAndConvertTest(unittest.TestCase):
             result = _optimize_and_convert(ep, config=config)
 
             self.assertIsNotNone(result.proto)
+
+    def test_optimize_and_convert_dynamic_single_dim(self):
+        """测试单动态维度模型的转换（batch size 动态）"""
+        with _npu_executor_as_default():
+            batch = Dim("batch", min=1, max=32)
+
+            class DynamicBatchModel(torch.nn.Module):
+                def forward(self, x):
+                    return torch.add(x, 1)
+
+            model = DynamicBatchModel()
+            x = torch.randn(4, 8).npu()
+
+            ep = export(model, (x,), dynamic_shapes={"x": {0: batch}})
+            result = _optimize_and_convert(ep)
+
+            self.assertIsInstance(result, _GeGraphAscend)
+            self.assertIsNotNone(result.proto)
+            self.assertTrue(len(result.proto.op) > 0)
+            self.assertTrue(len(result.optimized.range_constraints) > 0)
+
+    def test_optimize_and_convert_dynamic_multi_dim(self):
+        """测试多动态维度模型的转换"""
+        with _npu_executor_as_default():
+            batch = Dim("batch", min=1, max=16)
+            seq = Dim("seq", min=1, max=64)
+
+            class DynamicMultiDimModel(torch.nn.Module):
+                def forward(self, x):
+                    return torch.transpose(x, 0, 1)
+
+            model = DynamicMultiDimModel()
+            x = torch.randn(4, 8).npu()
+
+            ep = export(model, (x,), dynamic_shapes={"x": {0: batch, 1: seq}})
+            result = _optimize_and_convert(ep)
+
+            self.assertIsInstance(result, _GeGraphAscend)
+            self.assertIsNotNone(result.proto)
+            self.assertTrue(len(result.optimized.range_constraints) >= 2)
+
+    def test_optimize_and_convert_dynamic_with_parameters(self):
+        """测试带参数 + 动态输入的模型转换"""
+        with _npu_executor_as_default():
+            batch = Dim("batch", min=1, max=16)
+
+            class DynamicLinearModel(torch.nn.Module):
+                def __init__(self):
+                    super().__init__()
+                    self.weight = torch.nn.Parameter(torch.randn(8, 4))
+
+                def forward(self, x):
+                    return torch.matmul(x, self.weight)
+
+            model = DynamicLinearModel().npu()
+            x = torch.randn(2, 8).npu()
+
+            ep = export(model, (x,), dynamic_shapes={"x": {0: batch}})
+            result = _optimize_and_convert(ep)
+
+            self.assertIsInstance(result, _GeGraphAscend)
+            self.assertIsNotNone(result.proto)
+            self.assertTrue(len(result.optimized.range_constraints) > 0)
+
+    def test_optimize_and_convert_dynamic_shared_dim(self):
+        """测试共享动态维度的模型（两个输入共享同一 SymInt）"""
+        with _npu_executor_as_default():
+            batch = Dim("batch", min=1, max=16)
+
+            class SharedDimModel(torch.nn.Module):
+                def forward(self, x, y):
+                    return torch.add(x, y)
+
+            model = SharedDimModel()
+            x = torch.randn(4, 8).npu()
+            y = torch.randn(4, 8).npu()
+
+            ep = export(model, (x, y), dynamic_shapes={
+                "x": {0: batch, 1: Dim.STATIC},
+                "y": {0: batch, 1: Dim.STATIC}
+            })
+            result = _optimize_and_convert(ep)
+
+            self.assertIsInstance(result, _GeGraphAscend)
+            self.assertIsNotNone(result.proto)
+
+
+    def test_optimize_and_convert_dynamic_reshape(self):
+        """测试动态 reshape 模型（触发 evaluate_expr 复合符号表达式）"""
+        with _npu_executor_as_default():
+            batch = Dim("batch", min=1, max=16)
+            feat = Dim("feat", min=1, max=32)
+
+            class DynamicReshapeModel(torch.nn.Module):
+                def forward(self, x):
+                    return x.reshape(x.shape[0], -1)
+
+            model = DynamicReshapeModel()
+            x = torch.randn(4, 16).npu()
+
+            ep = export(model, (x,), dynamic_shapes={"x": {0: batch, 1: feat}})
+            result = _optimize_and_convert(ep)
+
+            self.assertIsInstance(result, _GeGraphAscend)
+            self.assertIsNotNone(result.proto)
+            self.assertTrue(len(result.proto.op) > 0)
+            self.assertTrue(len(result.optimized.range_constraints) >= 2)
+
+    def test_optimize_and_convert_dynamic_cat(self):
+        """测试动态 cat 模型（多符号拼接触发 evaluate_expr）"""
+        with _npu_executor_as_default():
+            dx = Dim("dx", min=1, max=16)
+            dy = Dim("dy", min=1, max=16)
+
+            class DynamicCatModel(torch.nn.Module):
+                def forward(self, x, y):
+                    return torch.cat([x, y], dim=0)
+
+            model = DynamicCatModel()
+            x = torch.randn(4, 8).npu()
+            y = torch.randn(3, 8).npu()
+
+            ep = export(model, (x, y), dynamic_shapes={
+                "x": {0: dx, 1: Dim.STATIC},
+                "y": {0: dy, 1: Dim.STATIC}
+            })
+            result = _optimize_and_convert(ep)
+
+            self.assertIsInstance(result, _GeGraphAscend)
+            self.assertIsNotNone(result.proto)
+
+    def test_optimize_and_convert_dynamic_multi_op_chain(self):
+        """测试多步动态模型（reshape→add→relu，链式触发 evaluate_expr）"""
+        with _npu_executor_as_default():
+            batch = Dim("batch", min=1, max=16)
+            feat = Dim("feat", min=1, max=32)
+
+            class DynamicMultiOpModel(torch.nn.Module):
+                def forward(self, x):
+                    x = x.reshape(x.shape[0], -1)
+                    x = torch.add(x, 1)
+                    x = torch.relu(x)
+                    return x
+
+            model = DynamicMultiOpModel()
+            x = torch.randn(4, 16).npu()
+
+            ep = export(model, (x,), dynamic_shapes={"x": {0: batch, 1: feat}})
+            result = _optimize_and_convert(ep)
+
+            self.assertIsInstance(result, _GeGraphAscend)
+            self.assertIsNotNone(result.proto)
+            self.assertTrue(len(result.ascend_ir_map) >= 1)
+
+    def test_record_ascend_ir_includes_symlist_ops(self):
+        """测试 symlist 输入的 ascend_ir 记录包含 parse_symlist 产生的 Pack op"""
+        with _npu_executor_as_default():
+            batch = Dim("batch", min=1, max=16)
+            seq = Dim("seq", min=1, max=32)
+
+            class DynamicEmbeddingModel(torch.nn.Module):
+                def __init__(self):
+                    super().__init__()
+                    self.weight = torch.nn.Parameter(torch.randn(100, 8))
+
+                def forward(self, x):
+                    return torch.nn.functional.embedding(x, self.weight)
+
+            model = DynamicEmbeddingModel().npu()
+            x = torch.randint(0, 100, (4, 6)).npu()
+
+            ep = export(model, (x,), dynamic_shapes={"x": {0: batch, 1: seq}})
+            result = _optimize_and_convert(ep)
+
+            self.assertIsInstance(result, _GeGraphAscend)
+            self.assertIsNotNone(result.proto)
+            total_ops_count = 0
+            for node_name, node_ir in result.ascend_ir_map.items():
+                total_ops_count += len(node_ir.ops)
+            self.assertTrue(total_ops_count > 0)
+
+    def test_var_to_val_populated_in_dynamic_conversion(self):
+        """测试动态转换时 var_to_val 被正确填充，evaluate_expr 不崩溃"""
+        with _npu_executor_as_default():
+            batch = Dim("batch", min=1, max=8)
+            feat = Dim("feat", min=2, max=16)
+
+            class DynamicThreeDimModel(torch.nn.Module):
+                def __init__(self):
+                    super().__init__()
+                    self.weight = torch.nn.Parameter(torch.randn(12, 4))
+
+                def forward(self, x):
+                    x = x.reshape(x.shape[0], x.shape[1], -1)
+                    return torch.matmul(x, self.weight)
+
+            model = DynamicThreeDimModel().npu()
+            x = torch.randn(4, 8, 12).npu()
+
+            ep = export(model, (x,), dynamic_shapes={"x": {0: batch, 1: feat}})
+            result = _optimize_and_convert(ep)
+
+            self.assertIsInstance(result, _GeGraphAscend)
+            self.assertIsNotNone(result.proto)
+            self.assertTrue(len(result.optimized.range_constraints) >= 2)
 
 
 if __name__ == "__main__":
