@@ -3,7 +3,7 @@ from typing import Any, Sequence
 
 import torch
 
-from ..config import _check_layout_enabled
+from ..config import check_layout_enabled
 from ..common import logger
 
 
@@ -37,7 +37,7 @@ def maybe_check_fused_input_layout(
     path=None,
 ) -> None:
     debug_log = os.getenv("TORCH_COMPILE_DEBUG", "0") == "1"
-    if not _check_layout_enabled and not debug_log:
+    if not check_layout_enabled and not debug_log:
         return
 
     act_sizes = tuple(_safe_int_convert(t) for t in tensor.size())
@@ -51,7 +51,7 @@ def maybe_check_fused_input_layout(
             f"ndim mismatch kernel={kernel_name!r} buffer={buffer_name!r}: expected {len(exp_sizes)}, got {len(act_sizes)}, "
             f"graph path={path!r}"
         )
-        if _check_layout_enabled:
+        if check_layout_enabled:
             raise FusedLayoutContractError(msg)
         logger.warning(msg)
         return
@@ -97,7 +97,7 @@ def maybe_check_fused_input_layout(
         f"actual size={act_sizes} stride={act_strides} dtype={_dtype_name(tensor.dtype)}, "
         f"graph path={path!r})"
     )
-    if _check_layout_enabled:
+    if check_layout_enabled:
         raise FusedLayoutContractError(msg)
     logger.warning(msg)
 

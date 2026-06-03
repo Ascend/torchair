@@ -1,6 +1,9 @@
 import ast
 import os
 import shutil
+import subprocess
+import sys
+import textwrap
 import unittest
 from pathlib import Path
 from typing import Dict, List, Tuple
@@ -16,6 +19,7 @@ import torch
 from torch._inductor import config
 
 import inductor_npu_ext
+import inductor_npu_ext.npu as npu_ext_npu
 
 # AscIR op 分类：
 # - SHAPE_CHANGING：reduce/broadcast/transpose 等，输出 shape 允许跟输入不同。
@@ -87,10 +91,19 @@ def _parse_asc_graph(path: Path) -> Dict[str, dict]:
         if op_name not in ops:
             continue
         # name.x / name.x1 / name.x2 / name.x3 = something.y
+        # 也支持 name.x = [a.y, b.y, ...] 这种 list 输入（Concat 用）
         if len(chain) == 1 and chain[0] in ("x", "x1", "x2", "x3"):
             val = node.value
             if isinstance(val, ast.Attribute) and val.attr == "y" and isinstance(val.value, ast.Name):
                 ops[op_name]["inputs"][chain[0]] = val.value.id
+            elif isinstance(val, ast.List):
+                src_names = []
+                for elt in val.elts:
+                    if (isinstance(elt, ast.Attribute) and elt.attr == "y"
+                            and isinstance(elt.value, ast.Name)):
+                        src_names.append(elt.value.id)
+                if src_names:
+                    ops[op_name]["inputs"][chain[0]] = src_names
             continue
         if len(chain) == 2 and chain[0] == "y":
             if chain[1] == "size":
@@ -100,6 +113,61 @@ def _parse_asc_graph(path: Path) -> Dict[str, dict]:
             elif chain[1] == "axis":
                 ops[op_name]["axis"] = _eval_int_list(node.value)
     return ops
+
+def _check_concat(ops: Dict[str, dict]) -> List[str]:
+    """检查 Concat：
+    - 所有输入除 concat 轴外 size 与输出一致；
+    - concat 轴上 sum(input_sizes) == output_size。
+    concat 轴通过 "输入跟输出不同的那一维" 反推（parser 没解 attr）。
+    """
+    issues: List[str] = []
+    for name, info in ops.items():
+        if info["type"] != "Concat":
+            continue
+        srcs = info["inputs"].get("x")
+        out_size = info["size"]
+        if not isinstance(srcs, list) or out_size is None:
+            continue
+        in_sizes = []
+        skip = False
+        for s in srcs:
+            src = ops.get(s)
+            if src is None or src["size"] is None:
+                skip = True
+                break
+            in_sizes.append(src["size"])
+        if skip:
+            continue
+        ndim = len(out_size)
+        diff_axes = set()
+        for in_sz in in_sizes:
+            if len(in_sz) != ndim:
+                issues.append(f"{name}(Concat) input rank {len(in_sz)} != output rank {ndim}")
+                break
+            for i in range(ndim):
+                if str(in_sz[i]) != str(out_size[i]):
+                    diff_axes.add(i)
+        if len(diff_axes) != 1:
+            issues.append(f"{name}(Concat) 找不到唯一的 concat 轴，diff_axes={sorted(diff_axes)}")
+            continue
+        concat_axis = diff_axes.pop()
+        for in_sz in in_sizes:
+            for i in range(ndim):
+                if i == concat_axis:
+                    continue
+                if str(in_sz[i]) != str(out_size[i]):
+                    issues.append(
+                        f"{name}(Concat) 非 concat 轴 size 不一致: "
+                        f"input[{i}]={in_sz[i]} vs out[{i}]={out_size[i]}")
+        try:
+            total = sum(int(in_sz[concat_axis]) for in_sz in in_sizes)
+            if isinstance(out_size[concat_axis], int) and total != out_size[concat_axis]:
+                issues.append(
+                    f"{name}(Concat) concat 轴 sum(inputs)={total} != out={out_size[concat_axis]}")
+        except (TypeError, ValueError):
+            pass  # 符号 size，跳过数值校验
+    return issues
+
 
 def _check_consistency(ops: Dict[str, dict]) -> List[str]:
     """检查 binary op 两路输入 size 是否一致、unary elementwise op 输入输出 size 是否一致。"""
@@ -234,6 +302,30 @@ class TestInductorNpuExt(unittest.TestCase):
         self.assertGreater(len(graphs), 0, "未生成任何 asc_graph.py")
         return graphs
 
+    def _run_with_extra_debug_option(self, option: str, code: str):
+        env = os.environ.copy()
+        debug_options = [opt for opt in env.get("TORCHINDUCTOR_NPU_EXT_DEBUG", "").split("+") if opt]
+        for opt in ("cpu", "decompose", "lowering", option):
+            if opt not in debug_options:
+                debug_options.append(opt)
+        env["TORCHINDUCTOR_NPU_EXT_DEBUG"] = "+".join(debug_options)
+        env.setdefault("TORCH_COMPILE_DEBUG", "1")
+        env.setdefault("TORCHINDUCTOR_FORCE_DISABLE_CACHES", "1")
+        env.setdefault("TORCH_DEVICE_BACKEND_AUTOLOAD", "0")
+        proc = subprocess.run(
+            [sys.executable, "-c", textwrap.dedent(code)],
+            cwd=Path.cwd(),
+            env=env,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(
+            proc.returncode,
+            0,
+            f"debug option {option!r} subprocess failed\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}",
+        )
+
     def _assert_fused_in_one_graph(self, graphs, required_ops, hint=""):
         """断言 required_ops 中所有类型在同一张 asc_graph 中出现。"""
         for path, ops in graphs:
@@ -244,6 +336,19 @@ class TestInductorNpuExt(unittest.TestCase):
                    for p, ops in graphs]
         self.fail(f"未找到同时包含 {required_ops} 的 kernel ({hint})；"
                   f"现有 kernels: {kernels}")
+
+    def _assert_not_fused_in_one_graph(self, graphs, forbidden_ops, hint=""):
+        """断言 forbidden_ops 不会同时出现在同一张 asc_graph 中。"""
+        offenders = []
+        for path, ops in graphs:
+            present = {o["type"] for o in ops.values()}
+            if all(t in present for t in forbidden_ops):
+                offenders.append((path.parent.name, sorted(present)))
+        self.assertEqual(
+            offenders, [],
+            f"不应找到同时包含 {forbidden_ops} 的 kernel ({hint})；"
+            f"违规 kernels: {offenders}",
+        )
 
     def _assert_all_consistent(self, graphs):
         all_issues = []
@@ -543,6 +648,55 @@ class TestInductorNpuExt(unittest.TestCase):
                                         "reduce_then_pointwise")
         self._assert_all_consistent(graphs)
 
+    def test_axis_merge_post_reduce_broadcast_axis_mapping(self):
+        """post-reduce consumer 少一维时，应跳过 reduce 轴而不是误映射到同 size 输出轴。"""
+        @torch.compile
+        def func(p1, p2, p3, p4):
+            buf0 = (p3 * p4).sum(dim=1)
+            return (p1 * p2) + buf0
+
+        graphs = self._run_and_collect(
+            func,
+            torch.randn(8, 4, 1, dtype=torch.float32),
+            torch.randn(8, 1, 16, dtype=torch.float32),
+            torch.randn(8, 4, 4, 1, dtype=torch.float32),
+            torch.randn(8, 4, 1, 16, dtype=torch.float32),
+        )
+        self._assert_fused_in_one_graph(graphs, ["Sum", "Mul", "Add"],
+                                        "post_reduce_broadcast_axis_mapping")
+
+    def test_axis_merge_post_reduce_flattened_consumer_axis_mapping(self):
+        """post-reduce consumer 被 Inductor flatten 成单轴时，应允许映射到非连续 canonical 轴。"""
+        @torch.compile
+        def func(p1, p2):
+            buf0 = (p1 * p2).sum(dim=1)
+            return buf0.abs()
+
+        graphs = self._run_and_collect(
+            func,
+            torch.randn(8, 4, 16, dtype=torch.float32),
+            torch.randn(8, 4, 16, dtype=torch.float32),
+        )
+        self._assert_fused_in_one_graph(graphs, ["Sum", "Abs"],
+                                        "post_reduce_flattened_consumer_axis_mapping")
+        self._assert_all_consistent(graphs)
+
+    def test_axis_merge_reduction_threshold_limits_vertical_fusion(self):
+        """reduction 轴大小必须严格小于阈值，等于阈值时不做垂直融合。"""
+        @torch.compile
+        def func(x):
+            return x.sum(dim=-1) + 1
+
+        saved = npu_ext_npu.fuse_reduction_axis_threshold
+        try:
+            npu_ext_npu.fuse_reduction_axis_threshold = 32
+            graphs = self._run_and_collect(func, torch.randn(8, 32, dtype=torch.float32))
+        finally:
+            npu_ext_npu.fuse_reduction_axis_threshold = saved
+        self._assert_not_fused_in_one_graph(graphs, ["Sum", "Add"],
+                                            "reduction_threshold_vertical")
+        self._assert_all_consistent(graphs)
+
     def test_axis_merge_mean(self):
         """mean = sum / N，post-reduce 上有 1D 除法节点。"""
         @torch.compile
@@ -594,6 +748,24 @@ class TestInductorNpuExt(unittest.TestCase):
                                 f"水平融合预期 ≥2 个 Sum，实际 {sum_count}（{path.parent.name}）")
         self._assert_all_consistent(graphs)
 
+    def test_axis_merge_reduction_threshold_limits_horizontal_fusion(self):
+        """水平融合中任一 reduction 轴大小不小于阈值时，不把 reduce 和 add 融到一起。"""
+        @torch.compile
+        def func(x, y):
+            return x.sum(dim=-1) + y.sum(dim=-1)
+
+        saved = npu_ext_npu.fuse_reduction_axis_threshold
+        try:
+            npu_ext_npu.fuse_reduction_axis_threshold = 32
+            graphs = self._run_and_collect(func,
+                                           torch.randn(16, 32, dtype=torch.float32),
+                                           torch.randn(16, 32, dtype=torch.float32))
+        finally:
+            npu_ext_npu.fuse_reduction_axis_threshold = saved
+        self._assert_not_fused_in_one_graph(graphs, ["Sum", "Add"],
+                                            "reduction_threshold_horizontal")
+        self._assert_all_consistent(graphs)
+
     # --- 水平融合2：两个独立 reduce 进同一个 kernel ---
     def test_axis_merge_sum_horizontal_fusion2(self):
         """两个独立 input 的 sum + 后续 add，scheduler 水平融合。"""
@@ -622,6 +794,237 @@ class TestInductorNpuExt(unittest.TestCase):
                                        torch.randn(16, 32, dtype=torch.float32))
         # 两个独立 sum 没共同消费者，scheduler 不一定融合，只校验一致性。
         self._assert_all_consistent(graphs)
+
+    # ---- cat 自定义 lowering（NPUConcatBuffer + ascir.Concat）相关用例 ----
+    # Phase 2 还没开融合：每个上游 pointwise 是独立 kernel，Concat 自己一个 kernel。
+    # 主要校验：
+    #   (1) 生成的图里真的出现 ascir.Concat 节点
+    #   (2) Concat 的 inputs 是 list 形式，partial size 在 concat 轴上各自独立，
+    #       输出 size = ΣM_i
+    #   (3) 非 concat 轴 size 在所有 input 和 output 上一致 (_check_concat 校验)
+    #   (4) 通用 elementwise 一致性 check 不被 Concat 误报
+
+    def _assert_concat_consistent(self, graphs):
+        all_issues = []
+        for path, ops in graphs:
+            for issue in _check_concat(ops):
+                all_issues.append(f"[{path.parent.name}] {issue}")
+        self.assertEqual(all_issues, [],
+                         "Concat 形状不一致:\n  " + "\n  ".join(all_issues))
+
+    def _find_concat(self, graphs):
+        """返回 (path, ops, concat_name) — 第一个含 Concat 的 graph；找不到 fail。"""
+        for path, ops in graphs:
+            for name, info in ops.items():
+                if info["type"] == "Concat":
+                    return path, ops, name
+        kernels = [(p.parent.name, sorted({o["type"] for o in ops.values()}))
+                   for p, ops in graphs]
+        self.fail(f"没有 graph 含 Concat 节点；现有 kernels: {kernels}")
+
+    def test_cat_basic(self):
+        """三个上游 pointwise + cat：验证 Concat op 生成、partial 输入数、输出 size。"""
+        @torch.compile
+        def func(x, y, z):
+            return torch.cat([x.relu(), y.abs(), torch.add(z, 1.0)], dim=1)
+
+        graphs = self._run_and_collect(
+            func,
+            torch.ones((8, 7), dtype=torch.float32),
+            torch.ones((8, 10), dtype=torch.float32),
+            torch.ones((8, 32), dtype=torch.float32),
+        )
+        path, ops, cname = self._find_concat(graphs)
+        srcs = ops[cname]["inputs"]["x"]
+        self.assertEqual(len(srcs), 3,
+                         f"Concat 应有 3 个输入，实际 {len(srcs)}（{path.parent.name}）")
+        out_size = ops[cname]["size"]
+        self.assertEqual(out_size, [8, 49],
+                         f"Concat 输出 size 期望 [8, 49]，实际 {out_size}")
+        in_sizes = [ops[s]["size"] for s in srcs]
+        self.assertEqual([s[1] for s in in_sizes], [7, 10, 32],
+                         f"各路输入 a1 size 期望 [7,10,32]，实际 {[s[1] for s in in_sizes]}")
+        self._assert_concat_consistent(graphs)
+        self._assert_all_consistent(graphs)
+
+    def test_cat_two_inputs_no_upstream(self):
+        """直接 cat 两个 input tensor（无上游 pointwise）。最简单 Concat 路径。"""
+        @torch.compile
+        def func(x, y):
+            return torch.cat([x, y], dim=0)
+
+        graphs = self._run_and_collect(
+            func,
+            torch.ones((4, 8), dtype=torch.float32),
+            torch.ones((6, 8), dtype=torch.float32),
+        )
+        path, ops, cname = self._find_concat(graphs)
+        srcs = ops[cname]["inputs"]["x"]
+        self.assertEqual(len(srcs), 2)
+        out_size = ops[cname]["size"]
+        self.assertEqual(out_size, [10, 8])
+        self._assert_concat_consistent(graphs)
+        self._assert_all_consistent(graphs)
+
+    def test_cat_preserves_strided_input_layout(self):
+        """cat 的 slice 输入应保留真实 stride，而不是按 partial size 重算 contiguous stride。"""
+        @torch.compile
+        def func(x, y):
+            return torch.cat([x, y], dim=-1)
+
+        graphs = self._run_and_collect(
+            func,
+            torch.ones((32, 512), dtype=torch.float32)[:, :448],
+            torch.ones((32, 64), dtype=torch.float32),
+        )
+        path, ops, cname = self._find_concat(graphs)
+        srcs = ops[cname]["inputs"]["x"]
+        self.assertEqual(len(srcs), 2)
+        first = ops[srcs[0]]
+        self.assertEqual(first["size"], [32, 448],
+                         f"slice 输入 size 应为 [32, 448]，实际 {first['size']}（{path.parent.name}）")
+        self.assertEqual(first["strides"], [512, 1],
+                         f"slice 输入 stride 应保留 [512, 1]，实际 {first['strides']}（{path.parent.name}）")
+        self._assert_concat_consistent(graphs)
+        self._assert_all_consistent(graphs)
+
+    def test_cat_preserves_internal_view_slice_layout(self):
+        """graph 内部 reshape+slice 后 cat，应保留 view 的 logical size/stride 而不是底层 storage。"""
+        @torch.compile
+        def func(x, y):
+            x = x.reshape(1, 4, 4, 4)[:, :, :, :3]
+            return torch.cat([x, y], dim=-1)
+
+        graphs = self._run_and_collect(
+            func,
+            torch.ones((1, 4, 2, 8), dtype=torch.float32),
+            torch.ones((1, 4, 4, 1), dtype=torch.float32),
+        )
+        path, ops, cname = self._find_concat(graphs)
+        srcs = ops[cname]["inputs"]["x"]
+        self.assertEqual(len(srcs), 2)
+        first = ops[srcs[0]]
+        self.assertEqual(first["size"], [1, 4, 4, 3],
+                         f"内部 slice 输入 size 应为 [1,4,4,3]，实际 {first['size']}（{path.parent.name}）")
+        self.assertEqual(first["strides"], [64, 16, 4, 1],
+                         f"内部 slice 输入 stride 应保留 [64,16,4,1]，实际 {first['strides']}（{path.parent.name}）")
+        self._assert_concat_consistent(graphs)
+        self._assert_all_consistent(graphs)
+
+    def test_cat_with_prologue_fusion(self):
+        """Phase A：cat 上游的 pointwise (abs/add) 应跟 NPUConcatBuffer 融到同一个 NPUKernel。
+        断言：单个 graph 同时包含 Concat 和上游对应的 pointwise op。"""
+        @torch.compile
+        def func(x, y):
+            return torch.cat([x.abs(), torch.add(y, 1.0)], dim=1)
+
+        graphs = self._run_and_collect(
+            func,
+            torch.ones((4, 5), dtype=torch.float32),
+            torch.ones((4, 11), dtype=torch.float32),
+        )
+        path, ops, cname = self._find_concat(graphs)
+        op_types = {o["type"] for o in ops.values()}
+        self.assertIn("Abs", op_types,
+                      f"prologue Abs 应跟 Concat 融在同 graph，实际 {sorted(op_types)}")
+        self.assertIn("Add", op_types,
+                      f"prologue Add 应跟 Concat 融在同 graph，实际 {sorted(op_types)}")
+        # 验证 Concat 直接吃 Pointwise 输出，而不是绕一道 Load
+        srcs = ops[cname]["inputs"]["x"]
+        src_types = [ops[s]["type"] for s in srcs]
+        self.assertIn("Abs", src_types,
+                      f"Concat 应直接吃 Abs.y，实际 srcs={src_types}")
+        self.assertIn("Add", src_types,
+                      f"Concat 应直接吃 Add.y，实际 srcs={src_types}")
+        self._assert_concat_consistent(graphs)
+        self._assert_all_consistent(graphs)
+
+    def test_cat_dtype_promotion(self):
+        """fp16 + fp32 混合输入：lowering 应在 fp16 输入上插 cast 到 fp32，
+        最终给 Concat 喂的输入 dtype 都是 fp32。"""
+        @torch.compile
+        def func(x_fp16, y_fp32):
+            return torch.cat([x_fp16, y_fp32], dim=1)
+
+        graphs = self._run_and_collect(
+            func,
+            torch.ones((4, 8), dtype=torch.float16),
+            torch.ones((4, 16), dtype=torch.float32),
+        )
+        path, ops, cname = self._find_concat(graphs)
+        # Concat 上游应至少出现一个 Cast（fp16→fp32 提升）
+        cast_count = sum(1 for _, og in graphs
+                         for o in og.values() if o["type"] == "Cast")
+        self.assertGreater(cast_count, 0, "dtype 提升应至少生成一个 Cast")
+        srcs = ops[cname]["inputs"]["x"]
+        self.assertEqual(len(srcs), 2)
+        self._assert_concat_consistent(graphs)
+        self._assert_all_consistent(graphs)
+
+    def test_debug_option_nocat_disables_cat_fuse(self):
+        """nocat 应禁用 cat lowering，不生成 AscIR Concat。"""
+        self._run_with_extra_debug_option(
+            "nocat",
+            """
+            import shutil
+            from pathlib import Path
+
+            import torch
+            import inductor_npu_ext
+
+            for name in ("torch_compile_debug", ".npu_kernels_root"):
+                path = Path.cwd() / name
+                if path.exists():
+                    shutil.rmtree(path)
+
+            @torch.compile
+            def func(x, y):
+                return torch.cat([x.abs(), y + 1.0], dim=1)
+
+            with torch.no_grad():
+                func(torch.ones((4, 5), dtype=torch.float32),
+                     torch.ones((4, 11), dtype=torch.float32))
+
+            paths = sorted((Path.cwd() / "torch_compile_debug").rglob("asc_graph.py"))
+            assert paths, "未生成任何 asc_graph.py"
+            offenders = [str(p) for p in paths if "ascir.ops.Concat" in p.read_text()]
+            assert not offenders, f"nocat 后不应生成 Concat: {offenders}"
+            """,
+        )
+
+    def test_debug_option_nocanfuse_disables_canfuse(self):
+        """nocanfuse 应禁用 scheduler can_fuse，不把 Sum 和 Add 融到同一 graph。"""
+        self._run_with_extra_debug_option(
+            "nocanfuse",
+            """
+            import shutil
+            from pathlib import Path
+
+            import torch
+            import inductor_npu_ext
+
+            for name in ("torch_compile_debug", ".npu_kernels_root"):
+                path = Path.cwd() / name
+                if path.exists():
+                    shutil.rmtree(path)
+
+            @torch.compile
+            def func(x):
+                return x.sum(dim=-1) + 1.0
+
+            with torch.no_grad():
+                func(torch.ones((8, 16), dtype=torch.float32))
+
+            paths = sorted((Path.cwd() / "torch_compile_debug").rglob("asc_graph.py"))
+            assert paths, "未生成任何 asc_graph.py"
+            offenders = []
+            for path in paths:
+                src = path.read_text()
+                if "ascir.ops.Sum" in src and "ascir.ops.Add" in src:
+                    offenders.append(str(path))
+            assert not offenders, f"nocanfuse 后不应融合 Sum 和 Add: {offenders}"
+            """,
+        )
 
 if __name__ == "__main__":
     unittest.main()

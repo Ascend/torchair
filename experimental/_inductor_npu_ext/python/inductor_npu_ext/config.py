@@ -15,22 +15,31 @@ def _get_asc_cache_dir() -> str:
         return _default_asc_cache_dir()
     return os.path.abspath(os.path.expanduser(cache_dir))
 
+asc_cache_dir = _get_asc_cache_dir()
+
 
 # Gen device sync before and after each fused kernel execution
-_sync_around_fuse_kernel = os.getenv("ASCEND_LAUNCH_BLOCKING", None) == "1"
+sync_around_fuse_kernel = os.getenv("ASCEND_LAUNCH_BLOCKING", None) == "1"
 
-_debug_options = set(os.getenv("TORCHINDUCTOR_NPU_EXT_DEBUG", "").split("+"))
+check_layout_enabled = os.getenv("TORCHINDUCTOR_NPU_EXT_LAYOUT_CHECK", "0") == "1"
 
-_debugging_on_cpu = "cpu" in _debug_options or "nothrow" in _debug_options
+debug_options = set(os.getenv("TORCHINDUCTOR_NPU_EXT_DEBUG", "").split("+"))
 
-_check_layout_enabled = os.getenv("TORCHINDUCTOR_NPU_EXT_LAYOUT_CHECK", "0") == "1"
+_allowed_debug_options = {
+    'cpu', # stub on cpu, mock asc codegen and runtime
+    'decompose', # allow all decompose
+    'lowering', # allow all native lowering
+    'nocat', # disable cat lowering
+    'nocanfuse', # disable canfuse
+    'nothrow', # add an unsupported op rather than raise error on unsupported asc op
+}
 
-_asc_cache_dir = _get_asc_cache_dir()
+for opt in debug_options:
+    if opt not in _allowed_debug_options:
+        raise RuntimeError(f"Unknown debug option {opt}, allowed: {_allowed_debug_options}")
 
-# Enable TaskQueue instead of launching them synchronously from the calling thread
-# Mode 0: synchronous mode (TASK_QUEUE_ENABLE=0)
-# Mode 1: enqueue without clearing queue (TASK_QUEUE_ENABLE=1, recommended)
-# Mode 2: enqueue after clearing queue (TASK_QUEUE_ENABLE=2)
-_enable_taskqueue_mode = int(os.getenv("TASK_QUEUE_ENABLE", "1"))
-if _enable_taskqueue_mode not in (0, 1, 2):
-    raise ValueError(f"Invalid TASK_QUEUE_ENABLE={_enable_taskqueue_mode}, must be 0, 1, or 2")
+debugging_on_cpu = "cpu" in debug_options or "nothrow" in debug_options
+disable_cat_fuse = "nocat" in debug_options
+disable_canfuse = "nocanfuse" in debug_options
+
+fuse_reduction_axis_threshold = 4096

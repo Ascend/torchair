@@ -10,7 +10,7 @@ from torch._inductor import graph as torch__inductor_graph
 from .npu import NPUScheduling, NpuWrapperCodeGen
 from .common import logger, current_soc, Soc
 from .common.utils import patch_fn
-from .config import _debug_options
+from .config import debug_options
 
 
 class _NPUDeviceOpOverrides(DeviceOpOverrides):
@@ -26,7 +26,7 @@ class _NPUDeviceOpOverrides(DeviceOpOverrides):
     def device_guard(self, device_idx):
         return f"torch_npu.npu._DeviceGuard({device_idx})"
 
-if "cpu" not in _debug_options and __package__.startswith('inductor_npu_ext'):
+if "cpu" not in debug_options and __package__.startswith('inductor_npu_ext'):
     _dynamo_module = sys.modules.get('torch_npu.utils._dynamo')
     if _dynamo_module is not None:
         if _dynamo_module.is_inductor_npu_initialized():
@@ -110,6 +110,8 @@ def _finetune_decompose():
 
 def _finetune_lowering():
     from .lowering import aten_lowering
+    if not config.disable_cat_fuse:
+        from .lowering import cat_lowering
 
 
 def _load_npu_lowering():
@@ -120,10 +122,10 @@ _finetune_inductor_config()
 _finetune_lowering()
 
 
-if "decompose" not in _debug_options:
+if "decompose" not in debug_options:
     _finetune_decompose()
 
-if "cpu" not in _debug_options:
+if "cpu" not in debug_options:
     _load_npu_lowering()
     _load_npu_passes()
 else:
@@ -139,7 +141,7 @@ def _fallback_node_due_to_unsupported_type(node: torch.fx.Node, allow_cpu_inputs
         _summary.fallback(node, "torch._inductor.lowering.fallback_node_due_to_unsupported_type")
         return True
 
-    if "lowering" in _debug_options:
+    if "lowering" in debug_options:
         _summary.lowered(node)
         return False
 

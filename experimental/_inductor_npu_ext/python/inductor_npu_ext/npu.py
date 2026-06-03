@@ -4,7 +4,7 @@ import itertools
 import contextlib
 import hashlib
 import os
-from typing import List, Dict, Union, Set
+from typing import List, Dict, Union, Set, Optional
 from collections import OrderedDict
 
 import sympy
@@ -31,7 +31,13 @@ from .common.symbols import AscExpr, Loop, DenseLoop
 from .common.asc_graph import _Tensor
 from . import asc_ops as ir
 from .asc_overrides import NPUOverrides
-from .config import _debug_options
+from .config import disable_cat_fuse, disable_canfuse, fuse_reduction_axis_threshold
+
+if disable_cat_fuse:
+    class NPUConcatBuffer:
+        pass
+else:
+    from .lowering.cat_lowering import NPUConcatBuffer
 
 
 class ASCBuffer:
@@ -168,14 +174,28 @@ class NPUKernel(Kernel):
     def _canonical_axes_for_kernel(self):
         """选择 axis 数量最多（最细分）的节点作为 canonical，统一改名为 a0/a1/...
         以避免和其他节点 var 同名冲突。其他节点会通过 contiguous flatten 多项式
-        映射到这组 canonical 轴。"""
+        映射到这组 canonical 轴。
+        如果 fused 组里有 NPUConcatBuffer，强制采用它的输出 sizes —— concat 轴必须是
+        ΣM_i 的那一份，否则上游 partial 节点的 size 会比 canonical 还大。"""
         chosen_sizes: List[sympy.Expr] = []
+
         for node in self._nodes:
-            body: LoopBody = getattr(node, '_body')
-            order = self._get_minimal_transpose_order(node)
-            sizes = [self.rename_indexing(body.var_ranges[v]) for v in order]
-            if len(sizes) > len(chosen_sizes):
-                chosen_sizes = sizes
+            buf = getattr(node, 'node', None)
+            if isinstance(buf, NPUConcatBuffer):
+                chosen_sizes = [self.rename_indexing(V.graph.sizevars.simplify(s))
+                                for s in buf.get_size()]
+                break
+
+        if not chosen_sizes:
+            for node in self._nodes:
+                body: LoopBody = getattr(node, '_body', None)
+                if body is None:
+                    continue
+                order = self._get_minimal_transpose_order(node)
+                sizes = [self.rename_indexing(body.var_ranges[v]) for v in order]
+                if len(sizes) > len(chosen_sizes):
+                    chosen_sizes = sizes
+
         if not chosen_sizes:
             return ["a0"], [sympy.S.One]
         names = [f"a{i}" for i in range(len(chosen_sizes))]
@@ -193,35 +213,147 @@ class NPUKernel(Kernel):
             expr = expr + axis * inner_prod
         return expr
 
+    @staticmethod
+    def _same_size(lhs, rhs) -> bool:
+        return sympy.simplify(lhs - rhs) == 0
+
+    def _local_zero_stride_axis_indices(self, canonical_axes) -> set:
+        zero_stride_axis_indices = set()
+        for _, loop in self._local_stores.values():
+            if len(loop.axis) != len(canonical_axes):
+                continue
+            for i, (loop_axis, stride, size) in enumerate(zip(loop.axis, loop.stride, loop.size)):
+                if str(loop_axis) != str(canonical_axes[i]):
+                    continue
+                if str(size) != "1" and sympy.simplify(stride) == 0:
+                    zero_stride_axis_indices.add(i)
+        return zero_stride_axis_indices
+
+    def _find_axis_mapping_groups(self, node_sizes, canonical_ranges, canonical_axes):
+        """Find ordered non-empty canonical axis groups for each node axis.
+
+        Fused kernels can contain nodes with fewer axes than the canonical loop,
+        for example a post-reduction consumer. In that case the missing canonical
+        axes are broadcast axes for this node. Prefer skipping axes that prior
+        local stores wrote with zero stride, since those are usually reduction
+        axes removed from the consumer's logical shape.
+        """
+        num_canonical_axes = len(canonical_ranges)
+        candidates: List[List[List[int]]] = []
+
+        def search_axis_group(node_size, start_idx, selected_indices, product):
+            for axis_idx in range(start_idx, num_canonical_axes):
+                next_product = product * canonical_ranges[axis_idx]
+                next_indices = selected_indices + [axis_idx]
+                if self._same_size(next_product, node_size):
+                    yield next_indices
+                yield from search_axis_group(node_size, axis_idx + 1, next_indices, next_product)
+
+        def search(node_idx: int, canonical_idx: int, groups: List[List[int]]):
+            if node_idx == len(node_sizes):
+                candidates.append(groups.copy())
+                return
+
+            for group_indices in search_axis_group(node_sizes[node_idx], canonical_idx, [], sympy.S.One):
+                groups.append(group_indices)
+                search(node_idx + 1, group_indices[-1] + 1, groups)
+                groups.pop()
+
+        search(0, 0, [])
+        if not candidates:
+            return None
+
+        zero_stride_axis_indices = self._local_zero_stride_axis_indices(canonical_axes)
+
+        def score(groups: List[List[int]]):
+            used_indices = {
+                axis_idx
+                for group_indices in groups
+                for axis_idx in group_indices
+            }
+            skipped_indices = set(range(num_canonical_axes)) - used_indices
+            skipped_zero_stride = len(skipped_indices & zero_stride_axis_indices)
+            skipped_nonzero_stride = len(skipped_indices - zero_stride_axis_indices)
+            # Prefer preserving trailing alignment when size equality is ambiguous.
+            later_axis_alignment = sum(group_indices[0] for group_indices in groups)
+            flatten_penalty = sum(len(group_indices) - 1 for group_indices in groups)
+            return (
+                skipped_zero_stride,
+                later_axis_alignment,
+                -skipped_nonzero_stride,
+                -flatten_penalty,
+            )
+
+        return max(candidates, key=score)
+
     def _node_axis_indexings(self, node, canonical_axes, canonical_ranges):
-        """计算 node.run() 的 axis_indexings：把每个 node 轴映射成一组连续 canonical
-        轴的 flatten 多项式。允许节点比 canonical 轴少（pointwise collapse 场景），
-        通过把单个 node 轴展开成多个 canonical 轴的线性组合来对齐。
-        如果 node 的总迭代量比 canonical 还少（典型场景：reduce 之后接 pointwise，
-        被 scheduler 融到了 reduce kernel），剩余 canonical 轴对该 node 等价于 broadcast，
-        load/store 在这些轴上 stride=0，AscIR 由 size 推导出实际 tile。"""
+        """`_align_node_to_canonical` 的输出之一，单独保留 thin wrapper 便于复用。"""
+        return self._align_node_to_canonical(node, canonical_axes, canonical_ranges)[0]
+
+    def _align_node_to_canonical(self, node, canonical_axes, canonical_ranges,
+                                 partial_axis_sizes: Optional[List[sympy.Expr]] = None):
+        """把 node 的轴对齐到 canonical 轴。三种模式：
+        - **1:1**（节点轴数 == canonical 轴数）：每个 node 轴直接对应一个 canonical 轴，
+          *不要求 size 相等*。覆盖常规 pointwise + concat 上游 pointwise 的简单场景。
+        - **flatten**（节点轴数 < canonical 轴数）：单个 node 轴展开成多个连续 canonical
+          轴的 contiguous 多项式（pointwise collapse）。剩余未映射的 canonical 轴等价
+          于 broadcast，size=1。
+        - **partial flatten**（concat prologue 专用）：node 把 [N, M_i] flatten 成
+          单 axis size = N*M_i。这时 canonical 是 [N, ΣM_i]，product 对不齐 ΣM_i。
+          调用方传 `partial_axis_sizes = [N, M_i]`，按 partial size 做 flatten，
+          表达式形如 `a0*M_i + a1`。
+
+        返回 (axis_indexings, node_canonical_sizes)。
+        """
         body: LoopBody = getattr(node, '_body')
         transpose_order = self._get_minimal_transpose_order(node)
         node_sizes = [self.rename_indexing(body.var_ranges[v]) for v in transpose_order]
 
         var_to_expr: Dict[sympy.Symbol, sympy.Expr] = {}
-        canonical_idx = 0
-        for node_var, node_size in zip(transpose_order, node_sizes):
-            group_axes: List[sympy.Symbol] = []
-            group_sizes: List[sympy.Expr] = []
-            product = sympy.S.One
-            while canonical_idx < len(canonical_axes):
-                group_axes.append(canonical_axes[canonical_idx])
-                group_sizes.append(canonical_ranges[canonical_idx])
-                product = product * canonical_ranges[canonical_idx]
-                canonical_idx += 1
-                if sympy.simplify(product - node_size) == 0:
-                    break
-            if sympy.simplify(product - node_size) != 0:
+        node_canonical_sizes: List[sympy.Expr] = [sympy.S.One] * len(canonical_axes)
+
+        if len(node_sizes) == len(canonical_axes):
+            # 1:1 模式
+            for i, (node_var, axis, sz) in enumerate(
+                    zip(transpose_order, canonical_axes, node_sizes)):
+                var_to_expr[node_var] = axis
+                node_canonical_sizes[i] = sz
+        elif (partial_axis_sizes is not None
+              and len(node_sizes) < len(canonical_axes)
+              and len(partial_axis_sizes) == len(canonical_axes)):
+            # partial flatten：用 partial_axis_sizes 来对齐
+            canonical_idx = 0
+            for node_var, node_size in zip(transpose_order, node_sizes):
+                group_axes: List[sympy.Symbol] = []
+                group_sizes: List[sympy.Expr] = []
+                product = sympy.S.One
+                start_idx = canonical_idx
+                while canonical_idx < len(canonical_axes):
+                    group_axes.append(canonical_axes[canonical_idx])
+                    group_sizes.append(partial_axis_sizes[canonical_idx])
+                    product = product * partial_axis_sizes[canonical_idx]
+                    node_canonical_sizes[canonical_idx] = partial_axis_sizes[canonical_idx]
+                    canonical_idx += 1
+                    if sympy.simplify(product - node_size) == 0:
+                        break
+                if sympy.simplify(product - node_size) != 0:
+                    raise RuntimeError(
+                        f"Cannot map node axis {node_var}(size={node_size}) using "
+                        f"partial sizes {partial_axis_sizes}")
+                var_to_expr[node_var] = self._flatten_expr(group_axes, group_sizes)
+        else:
+            mapping_groups = self._find_axis_mapping_groups(node_sizes, canonical_ranges, canonical_axes)
+            if mapping_groups is None:
                 raise RuntimeError(
-                    f"Cannot map node axis {node_var}(size={node_size}) into canonical axes "
+                    f"Cannot map node axes with sizes {node_sizes} into canonical axes "
                     f"with sizes {canonical_ranges}")
-            var_to_expr[node_var] = self._flatten_expr(group_axes, group_sizes)
+
+            for node_var, group_indices in zip(transpose_order, mapping_groups):
+                group_axes = [canonical_axes[idx] for idx in group_indices]
+                group_sizes = [canonical_ranges[idx] for idx in group_indices]
+                var_to_expr[node_var] = self._flatten_expr(group_axes, group_sizes)
+                for k in group_indices:
+                    node_canonical_sizes[k] = canonical_ranges[k]
 
         axis_indexings: List[List[sympy.Expr]] = []
         for var in body.var_ranges.keys():
@@ -229,23 +361,7 @@ class NPUKernel(Kernel):
             if expr is None:
                 expr = sympy.Symbol(var.name)
             axis_indexings.append([expr])
-        return axis_indexings
-
-    @staticmethod
-    def _node_loop_sizes(axis_indexings, canonical_axes, canonical_ranges):
-        """根据 node 实际用到的 canonical 轴推导 per-node contiguous_loop 的 size。
-        没有被 axis_indexings 引用的 canonical 轴，对该 node 等价于广播——size 设为 1，
-        DenseLoop 会自动给出 stride=0。这样像 to_dtype 这类没有显式传 loop 的算子，
-        默认拿到的形状就和后续基于 index 推导出的 store loop 一致，不会出现 Cast 输入/输出
-        size 不匹配的非法图。"""
-        used: Set[str] = set()
-        for expr_list in axis_indexings:
-            for expr in expr_list:
-                if isinstance(expr, sympy.Expr):
-                    for sym in expr.free_symbols:
-                        used.add(sym.name)
-        return [canonical_ranges[i] if axis.name in used else sympy.S.One
-                for i, axis in enumerate(canonical_axes)]
+        return axis_indexings, node_canonical_sizes
 
     def tracing_asc(self):
         with self:
@@ -264,15 +380,51 @@ class NPUKernel(Kernel):
                 self._graph.axis(axis.name, axis_range)
             self._graph.set_current_loop(canonical_loop)
 
+            # 找出本 kernel 里的 NPUConcatBuffer（最多一个），用来识别 prologue + 推 partial sizes
+            concat_buf: Optional[NPUConcatBuffer] = None
+            concat_input_shapes: Dict[str, List[sympy.Expr]] = {}
+            for n in self._nodes:
+                cb = getattr(n, 'node', None)
+                if isinstance(cb, NPUConcatBuffer):
+                    concat_buf = cb
+                    for inp, input_layout in zip(cb.inputs, cb.input_layouts):
+                        concat_input_shapes[inp.get_name()] = [
+                            self.rename_indexing(V.graph.sizevars.simplify(s))
+                            for s in input_layout.size
+                        ]
+                    break
+
             prior_loop = self._current_loop
             try:
                 for i, node in enumerate(self._nodes):
                     logger.debug("Codegen [%s] %s", f"{i+1}/{len(self._nodes)}", node.debug_str())
-                    axis_indexings = self._node_axis_indexings(node, canonical_axes, canonical_ranges)
-                    node_sizes = self._node_loop_sizes(axis_indexings, canonical_axes, canonical_ranges)
-                    self._current_loop = DenseLoop(axis=canonical_axes, size=node_sizes)
-                    with self.set_current_node(node):
-                        node.run(*axis_indexings)
+                    buf = getattr(node, 'node', None)
+                    if isinstance(buf, NPUConcatBuffer):
+                        # NPUConcatBuffer 没 body，绕开 node.run；直接调 kernel.concat
+                        self._current_loop = canonical_loop  # 输出取 canonical 全 size
+                        prior_node = self.current_node
+                        self.current_node = node  # 跳 set_current_node（依赖 _body.bounds）
+                        try:
+                            node.mark_run()  # 触发 wrapper.codegen_allocation 给输出 buffer
+                            self.concat(buf)
+                        finally:
+                            self.current_node = prior_node
+                    else:
+                        # 检测 prologue：node 输出在 NPUConcatBuffer 的 inputs 列表里。
+                        # 真实 shape 取那个 input buffer 的 size（concat 轴是 partial）。
+                        partial_sizes = None
+                        if concat_buf is not None:
+                            for out in getattr(node, 'outputs', []):
+                                shape = concat_input_shapes.get(out.node.name)
+                                if shape is not None:
+                                    partial_sizes = shape
+                                    break
+                        axis_indexings, node_sizes = self._align_node_to_canonical(
+                            node, canonical_axes, canonical_ranges,
+                            partial_axis_sizes=partial_sizes)
+                        self._current_loop = DenseLoop(axis=canonical_axes, size=node_sizes)
+                        with self.set_current_node(node):
+                            node.run(*axis_indexings)
                     logger.debug(f"{self._graph.name} reads {self._graph.inputs} and writes {self._graph.outputs}")
             finally:
                 self._current_loop = prior_loop
@@ -532,6 +684,50 @@ class NPUKernel(Kernel):
         reduction.dtype = dtype
         return reduction
 
+    def concat(self, concat_buffer: 'NPUConcatBuffer'):
+        """把 NPUConcatBuffer 翻译成一条 ascir.Concat。
+        - 如果上游 pointwise 已被融到本 kernel（_local_stores 命中），直接复用它产出的
+          partial 张量——无需再起一个 Data/Load；
+        - 否则按 input buffer 起 Data + Load，loop 取 partial（concat 轴 size = input 自己的）；
+        - Concat 输出取 canonical 全 size，由 _store_buffer 落盘到输出 buffer。
+        """
+        axis = concat_buffer.axis
+        out_name = concat_buffer.get_name()
+
+        loaded = []
+        for buf, input_layout in zip(concat_buffer.inputs, concat_buffer.input_layouts):
+            in_name = buf.get_name()
+            if in_name in self._local_stores:
+                # 上游融合命中：取已经在 partial loop 上算好的张量
+                value, _src_loop = self._local_stores[in_name]
+                loaded.append(value)
+                continue
+            asc_in = ASCBuffer(in_name, input_layout)
+            partial_loop = self._make_partial_loop(asc_in, axis)
+            data, _ = self._load_buffer(in_name, partial_loop)
+            load = ir.load(data, offset=sympy.S.Zero, loop=partial_loop)
+            loaded.append(load)
+
+        out = ir.concat(loaded, axis=axis)
+        self._store_buffer(out_name, out, self.contiguous_loop)
+
+    def _make_partial_loop(self, asc_in: 'ASCBuffer', concat_axis: int) -> Loop:
+        """input 的 loop：axis names 跟 canonical 对齐，concat 轴 size 用本 input 自己的，
+        其它 axis 用 canonical 的。stride 按 input 自身 layout 推。"""
+        canonical = self.contiguous_loop
+        size = []
+        for i, c_size in enumerate(canonical.size):
+            if i == concat_axis:
+                size.append(asc_in.size[i])
+            else:
+                size.append(c_size)
+        loop = Loop()
+        loop.axis = list(canonical.axis)
+        loop.size = size
+        loop.stride = list(asc_in.stride)
+        loop.offset = asc_in.offset
+        return loop
+
     def store_reduction(self, name, index, reduction: _Tensor):
         index = self.rename_indexing(index)
         reduce_dims, loop = self._get_reduce_dims_and_loop(index)
@@ -775,10 +971,164 @@ class NPUScheduling(BaseScheduling):
         self._kernel_cache: Dict[str, NPUKernel] = dict()
         self._fused_layout_import_emitted: bool = False
 
+    @staticmethod
+    def _find_concat_buffer(node: BaseSchedulerNode) -> Optional['NPUConcatBuffer']:
+        """从普通 SchedulerNode 或 FusedSchedulerNode 里抠出 NPUConcatBuffer，没有就返回 None。"""
+        for sub in node.get_nodes():
+            buf = getattr(sub, 'node', None)
+            if isinstance(buf, NPUConcatBuffer):
+                return buf
+        return None
+
+    @staticmethod
+    def _node_output_names(node: BaseSchedulerNode):
+        names = []
+        for sub in node.get_nodes():
+            for out in getattr(sub, 'outputs', []):
+                names.append(out.node.name)
+        return names
+
+    @classmethod
+    def _is_concat_prologue(cls, producer: BaseSchedulerNode, consumer: BaseSchedulerNode) -> bool:
+        """producer 直接喂给 consumer 内某个 NPUConcatBuffer 的某路输入，就允许融合。
+        注意 consumer 可能是 FusedSchedulerNode（NPUConcatBuffer 已经先跟其它 prologue
+        融过一轮），需要递归找内部的 NPUConcatBuffer。"""
+        cb = cls._find_concat_buffer(consumer)
+        if cb is None:
+            return False
+        cb_input_names = {inp.get_name() for inp in cb.inputs}
+        for name in cls._node_output_names(producer):
+            if name in cb_input_names:
+                return True
+        return False
+
+    @classmethod
+    def _share_concat(cls, node1: BaseSchedulerNode, node2: BaseSchedulerNode) -> bool:
+        """两个节点是不是同一个 NPUConcatBuffer 的兄弟 input —— 用于水平融合。"""
+        for n1_name in cls._node_output_names(node1):
+            for sub in [node1, node2]:
+                for s in sub.get_nodes():
+                    for o in getattr(s, 'outputs', []):
+                        for u in o.users:
+                            cb = cls._find_concat_buffer(u.node) if hasattr(u.node, 'get_nodes') else (
+                                u.node.node if isinstance(getattr(u.node, 'node', None), NPUConcatBuffer) else None
+                            )
+                            if cb is None:
+                                continue
+                            cb_inputs = {inp.get_name() for inp in cb.inputs}
+                            n1_outs = set(cls._node_output_names(node1))
+                            n2_outs = set(cls._node_output_names(node2))
+                            if n1_outs & cb_inputs and n2_outs & cb_inputs:
+                                return True
+        return False
+
+    @staticmethod
+    def _contiguous_strides_for_sizes(sizes):
+        strides = []
+        running = sympy.S.One
+        for size in reversed(sizes):
+            strides.append(sympy.S.Zero if str(size) == "1" else running)
+            running = running * size
+        return list(reversed(strides))
+
+    @classmethod
+    def _memory_dep_is_contiguous_write(cls, dep) -> bool:
+        if dep.is_contiguous():
+            return True
+        try:
+            if V.graph.sizevars.simplify(dep.get_offset()) != 0:
+                return False
+            actual_strides = V.graph.sizevars.stride_vars(dep.index, dep.var_names)
+            expected_strides = cls._contiguous_strides_for_sizes(dep.size)
+            return all(
+                V.graph.sizevars.simplify(actual - expected) == 0
+                for actual, expected in zip(actual_strides, expected_strides)
+            )
+        except Exception:
+            return False
+
+    @classmethod
+    def _vertical_outputs_are_contiguous(cls, producer: BaseSchedulerNode, consumer: BaseSchedulerNode) -> bool:
+        producer_rw = getattr(producer, 'read_writes', None)
+        consumer_rw = getattr(consumer, 'read_writes', None)
+        if producer_rw is None or consumer_rw is None:
+            return True
+        producer_writes = {
+            dep.name: dep
+            for dep in producer_rw.writes
+        }
+        consumer_reads = {
+            dep.name
+            for dep in consumer_rw.reads
+        }
+        shared_names = producer_writes.keys() & consumer_reads
+        return all(cls._memory_dep_is_contiguous_write(producer_writes[name]) for name in shared_names)
+
+    @staticmethod
+    def _reduction_axis_numel(node: BaseSchedulerNode):
+        sizes = getattr(node, '_sizes', None)
+        if not sizes or len(sizes) < 2:
+            return None
+        reduction_sizes = sizes[1]
+        if not reduction_sizes:
+            return None
+        numel = sympy.S.One
+        for size in reduction_sizes:
+            numel = numel * V.graph.sizevars.simplify(size)
+        return V.graph.sizevars.simplify(numel)
+
+    @staticmethod
+    def _is_reduction_axis_below_fuse_threshold(numel) -> bool:
+        numel = V.graph.sizevars.simplify(numel)
+        try:
+            return int(numel) < fuse_reduction_axis_threshold
+        except (TypeError, ValueError):
+            pass
+
+        try:
+            return bool(V.graph.sizevars.evaluate_expr(
+                sympy.Lt(numel, fuse_reduction_axis_threshold),
+                fallback_value=False,
+            ))
+        except Exception:
+            return False
+
+    @classmethod
+    def _reduction_axis_within_fuse_threshold(cls, node: BaseSchedulerNode) -> bool:
+        if fuse_reduction_axis_threshold < 0:
+            return True
+        for subnode in node.get_nodes():
+            if not subnode.is_reduction():
+                continue
+            numel = cls._reduction_axis_numel(subnode)
+            if numel is None:
+                return False
+            if not cls._is_reduction_axis_below_fuse_threshold(numel):
+                return False
+        return True
+
+    @classmethod
+    def _reduction_axes_within_fuse_threshold(cls, *nodes: BaseSchedulerNode) -> bool:
+        return all(cls._reduction_axis_within_fuse_threshold(node) for node in nodes)
+
     def can_fuse_vertical(self, node1: BaseSchedulerNode, node2: BaseSchedulerNode):
+        if disable_canfuse:
+            return False
+        if not self._vertical_outputs_are_contiguous(node1, node2):
+            return False
+        if not self._reduction_axes_within_fuse_threshold(node1, node2):
+            return False
+        if self._is_concat_prologue(node1, node2):
+            return True
         return self._fuse_judge.can_fuse_vertical(node1, node2)
 
     def can_fuse_horizontal(self, node1: BaseSchedulerNode, node2: BaseSchedulerNode):
+        if disable_canfuse:
+            return False
+        if not self._reduction_axes_within_fuse_threshold(node1, node2):
+            return False
+        if self._share_concat(node1, node2):
+            return True
         return self._fuse_judge.can_fuse_horizontal(node1, node2)
 
     def group_fn(self, sizes):
@@ -790,8 +1140,19 @@ class NPUScheduling(BaseScheduling):
             BackendFeature.INPLACE_BUFFERS,
         ])
 
-    def codegen_template(self, template_node: SchedulerNode, epilogue_nodes: List[SchedulerNode]):
-        raise NotImplementedError()
+    def codegen_template(
+            self, template_node: SchedulerNode, epilogue_nodes: List[SchedulerNode],
+            prologue_nodes: List[SchedulerNode] = (),
+    ):
+        # 目前只接 NPUConcatBuffer 一种 template。epilogue 还不支持，prologue 直接
+        # 跟 template 一起塞进 codegen_nodes —— tracing_asc 的主循环已能识别
+        # NPUConcatBuffer 节点并走 kernel.concat（其它节点照常 node.run）。
+        if not isinstance(getattr(template_node, 'node', None), NPUConcatBuffer):
+            raise NotImplementedError(
+                f"unknown template buffer: {type(template_node.node).__name__}")
+        if epilogue_nodes:
+            raise NotImplementedError("NPUConcatBuffer + epilogue fusion not yet supported")
+        self.codegen_nodes(list(prologue_nodes) + [template_node])
 
     def codegen_node(self, node: Union[FusedSchedulerNode, SchedulerNode]) -> None:
         self.codegen_nodes(node.get_nodes())

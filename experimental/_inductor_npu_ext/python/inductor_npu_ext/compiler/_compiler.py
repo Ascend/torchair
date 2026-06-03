@@ -94,7 +94,7 @@ def never_change_dir(func):
 
 @never_change_dir
 def build_ascend_lib(kernel_py):
-    if config._debugging_on_cpu:  # subprocess has no stub for building, run the command in-process
+    if config.debugging_on_cpu:  # subprocess has no stub for building, run the command in-process
         with open(kernel_py, 'r', encoding='utf-8') as f:
             exec(f.read())
         return

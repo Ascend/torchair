@@ -24,3 +24,5 @@ __pycache__
 .claude/skills/gitcode-issue
 .claude/skills/api-doc-generator
 .claude/skills/gitcode-pipeline
+**/autofuse*
+**/unsupported*autofuse*

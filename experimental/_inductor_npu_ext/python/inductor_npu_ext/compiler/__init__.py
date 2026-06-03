@@ -26,7 +26,7 @@ class _NpuInductorKernel:
             raise RuntimeError(f"NPU kernel {self.name} init failed")
 
     def __call__(self, *args):
-        if config._sync_around_fuse_kernel:
+        if config.sync_around_fuse_kernel:
             logger.info("Start sync previous kernel for %s", self.name)
             self.sync()
             logger.info("Succeed sync previous kernel for %s", self.name)
@@ -37,7 +37,7 @@ class _NpuInductorKernel:
         if result != 0:
             raise RuntimeError(f"NPU kernel {self.name} execution failed({result})")
 
-        if config._sync_around_fuse_kernel:
+        if config.sync_around_fuse_kernel:
             logger.info("Start sync kernel %s with args %s", self.name, self.args_str(args))
             self.sync()
             logger.info("Succeed sync kernel %s", self.name)
@@ -69,7 +69,7 @@ class _NpuInductorKernel:
 def get_lib_dir(artifacts: Dict) -> str:
     name = artifacts.get('name', 'default')
     hash_str = ''.join([v for k, v in artifacts.items() if k != 'name'])
-    lib_dir = os.path.join(config._asc_cache_dir, name, hashlib.sha256(hash_str.encode()).hexdigest())
+    lib_dir = os.path.join(config.asc_cache_dir, name, hashlib.sha256(hash_str.encode()).hexdigest())
     return lib_dir
 
 
@@ -101,10 +101,10 @@ def async_compile(executor: Optional[AsyncCompile], artifacts: Dict[str, str]):
             return _NpuInductorKernel(launcher)
 
     asserts_base = _get_asserts_base()
-    soc_version = 'cpu' if config._debugging_on_cpu else torch.npu.get_device_properties().name
+    soc_version = 'cpu' if config.debugging_on_cpu else torch.npu.get_device_properties().name
 
     compile_flags = []
-    if not config._debugging_on_cpu:
+    if not config.debugging_on_cpu:
         import torch_npu
         torch_npu_dir = os.path.dirname(torch_npu.__file__)
         ascend_dir = os.path.dirname(os.getenv("ASCEND_OPP_PATH", "/usr/local/Ascend/latest/opp"))
@@ -116,7 +116,7 @@ def async_compile(executor: Optional[AsyncCompile], artifacts: Dict[str, str]):
         compile_flags = [f"-I{os.path.join(os.path.dirname(__file__), 'cpu_stubs', 'include')}"]
     # Prevent force single-threaded compile by other stubs such as triton
     inductor_config.compile_threads = max(32, inductor_config.compile_threads)
-    if inductor_config.compile_threads > 1 and executor is not None and not config._debugging_on_cpu:
+    if inductor_config.compile_threads > 1 and executor is not None and not config.debugging_on_cpu:
         logger.debug("Async compile for %s", launcher)
         future = executor.process_pool().submit(_compiler.compile_ascendc, artifacts,
                                                 lib_dir, asserts_base, soc_version=soc_version, compile_flags=compile_flags)

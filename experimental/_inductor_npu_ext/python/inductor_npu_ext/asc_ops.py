@@ -253,6 +253,16 @@ def reduction(x, *, reduce_type):
 
 
 @asc_ops
+def concat(inputs, *, axis):
+    # ascir的Concat通过shape关系决定concat，但是这里的axis仍然是必要的：会根据入参进行cse判定。
+    # ascir.ops.Concat 接受 list 形式的 x；输出 size 是 sum(input_sizes) along axis，
+    # 由调用方在 _set_loop / _store_buffer 处把 output loop 设成 canonical 全 size。
+    op = Op("Concat")
+    op.x = list(inputs)
+    return op.y
+
+
+@asc_ops
 def data(*, name, dtype, index):
     # drop name for stable cache hint
     op = Op("Data")
@@ -813,9 +823,9 @@ def _unsupported_op(*args, _op=None, **kwargs):
 
 
 def _unsupported(*args, _op=None, **kwargs):
-    from .config import _debug_options
+    from .config import debug_options
 
-    if "nothrow" in _debug_options:
+    if "nothrow" in debug_options:
         return _unsupported_op(*args, _op=_op, **kwargs)
 
     raise NotImplementedError(f"Asc op '{_op}' is not implemented yet, args: {args}, kwargs: {kwargs}")

@@ -43,7 +43,7 @@ def _detect_soc():
     其余模式查 device name；torch_npu 未 load 或设备未就绪时不在 import 阶段
     硬崩，兜底为 None（等价"未知 SoC，不做 gating"）并告警。
     """
-    if config._debugging_on_cpu:
+    if config.debugging_on_cpu:
         return None
 
     if multiprocessing.get_start_method(allow_none=True) == 'fork':

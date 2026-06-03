@@ -41,7 +41,7 @@ def camel_to_snake(name):
 
 
 def is_kernel_need_stub(_):
-    if config._debugging_on_cpu:
+    if config.debugging_on_cpu:
         return True
     return False
 
