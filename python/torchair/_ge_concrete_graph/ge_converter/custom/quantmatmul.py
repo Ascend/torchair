@@ -216,9 +216,9 @@ def conveter_npu_npu_quant_matmul(
             scale = ge.Transpose(scale, perm)
 
     if is_a8w4 and y_scale is None and x2.dtype in [DataType.DT_INT8, DataType.DT_UINT8]:
-        if x2.symsize[-2] == 32:  # u8打包fp4，k=64对应weight[0].symsize[-2]=32
+        if x2.symsize[-2] <= 32:  # u8打包fp4，k=64对应weight[0].symsize[-2]=32
             raise RuntimeError(
-                "Current QMM-MxA8W4 does not support k=64 in graph mode. Please use eager mode if needed."
+                "Current QMM-MxA8W4 does not support k<=64 in graph mode. Please use eager mode if needed."
             )
         x2 = ge.Bitcast(x2, type=torch_dtype_value_to_ge_type(x2_dtype), keep_dim=True)
 
