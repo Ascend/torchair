@@ -227,6 +227,22 @@ W0312 19:26:40.470000 797352 site-packages/torch/_inductor/debug.py:507] [0/0] m
 **Cache hint ...** / **Reuse cached kernel ...**
 > 该日志表示 inductor-npu-ext 在编译某个融合 kernel 时命中缓存。
 
+**kernel '...': buffer '...' layout check ok**
+> 该日志表示 inductor-npu-ext 在运行时对融合 kernel 的输入 Tensor 进行了 layout 校验（size/stride/dtype/device），校验通过。
+
+```text
+[2026-03-12 19:26:40] [RANK0] [INFO] kernel 'autofused_add_sum_31aba041b5d992c026cdfc574b77ec24': buffer 'arg0_1' layout check ok
+[2026-03-12 19:26:40] [RANK0] [INFO] kernel 'autofused_add_sum_31aba041b5d992c026cdfc574b77ec24': buffer 'arg1_1' layout check ok
+```
+
+**layout mismatch kernel='...' buffer='...'**
+> 该日志表示融合 kernel 的输入 Tensor 在运行时的 layout（size/stride/dtype/device）与编译时预期的 layout 不一致，以下为假设匹配失败场景的示例输出。
+> 当 `TORCHINDUCTOR_NPU_EXT_LAYOUT_CHECK=1` 时，校验不一致会直接抛出 `FusedLayoutContractError` 异常；否则仅输出 WARNING 级别日志。两者的报错内容一致，示例如下。
+
+```text
+[2026-03-12 19:26:40] [RANK0] [WARNING] layout mismatch kernel='autofused_add_sum_31aba041b5d992c026cdfc574b77ec24' buffer='arg0_1': size: dim0: 64 != 32. expected size=(32, 1024) stride=(1024, 1) dtype=float32, actual size=(64, 1024) stride=(1024, 1) dtype=float32, graph path='torch_compile_debug/.../output_code.py'
+```
+
 **Launch args for  ...**
 > 该日志表示 inductor-npu-ext 生成的 kernel 正在执行下发。
 
