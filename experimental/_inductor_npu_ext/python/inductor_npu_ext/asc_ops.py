@@ -289,7 +289,7 @@ def load(buffer, *, offset):
 
 
 @asc_ops
-def store(value):
+def store(name, value):
     op = Op("Store")
     op.x = value
     return op.y

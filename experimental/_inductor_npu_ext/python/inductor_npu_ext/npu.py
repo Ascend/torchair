@@ -472,18 +472,21 @@ class NPUKernel(Kernel):
 
         index = self.rename_indexing(index)
         sizes = self.contiguous_loop.size
+        dtype = self.get_asc_buffer(name).dtype
 
         # 本地融合：当前 fused kernel 内已经 store 过 name，直接复用值，避免在同一图中
         # 同时存在 Data 和 Output 形成 FusedGraph 自环。
         if name in self._local_stores:
             value, src_loop = self._local_stores[name]
+            if dtype in {torch.bfloat16, torch.float16}:
+                src_loop = src_loop.copy().contiguous_()
+                value = ir.cast(value, dst=torch.float32, loop=src_loop)
             return self._reshape_local_value(value, src_loop, sizes)
 
         data, loop = self._load_buffer(name, self._index_to_loop(index, sizes=sizes))
         offset = loop.zero_offset_()
         road = self._get_view_road(loop, DenseLoop(axis=loop.axis, size=sizes))
 
-        dtype = self.get_asc_buffer(name).dtype
         if len(road) == 0:
             logger.debug("Road for %s from %s to %s is dense", index, loop, self.contiguous_loop)
             load = ir.load(data, offset=offset, loop=loop)
@@ -577,7 +580,7 @@ class NPUKernel(Kernel):
         self._local_stores[name] = (value, loop.copy())
         if name not in self._outputs:
             return value
-        store = ir.store(value, loop=loop)
+        store = ir.store(name, value, loop=loop)
         buf: ASCBuffer = self.get_asc_buffer(name)
         buf.bind(self.graph.output(name, buf.dtype, src=store))
         return store
