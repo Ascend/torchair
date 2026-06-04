@@ -59,7 +59,7 @@ class NpugraphExCacheSt(unittest.TestCase):
         from npugraph_ex.inference._cache_compiler import CacheBackend
         self.cachebackend_fw_compiler = CacheBackend.fw_compiler
         from npugraph_ex._acl_concrete_graph import cat_optimization
-        self.optimize_cat_with_out_tensor = cat_optimization.optimize_cat_with_out_tensor 
+        self.optimize_cat_with_out_tensor = cat_optimization.optimize_cat_with_out_tensor
         return super().setUp()
 
     def tearDown(self) -> None:
@@ -73,7 +73,7 @@ class NpugraphExCacheSt(unittest.TestCase):
         from npugraph_ex._acl_concrete_graph import cat_optimization
         cat_optimization.optimize_cat_with_out_tensor = self.optimize_cat_with_out_tensor
         return super().tearDown()
-    
+
     def test_aclgraph_cache(self):
         class Model(torch.nn.Module):
             def __init__(self):
@@ -92,7 +92,7 @@ class NpugraphExCacheSt(unittest.TestCase):
 
             def prompt(self, x):
                 return self._forward(x)
-        
+
         options = {"clone_input": False, "inplace_pass": True}
         model = Model()
         prompt_cache_bin = CompiledModel.get_cache_bin(model.prompt, config=buildCompileConfig(options))
@@ -403,7 +403,7 @@ class NpugraphExCacheSt(unittest.TestCase):
                 return self._forward(x)
 
         options = {"clone_input": False, "input_inplace_pass": True, "static_kernel_compile": True}
-        
+
         model = StaticKernelModel()
         prompt_cache_bin = CompiledModel.get_cache_bin(model.prompt, config=buildCompileConfig(options))
         ModelCacheSaver.remove_cache(os.path.abspath(os.path.dirname(prompt_cache_bin)))
@@ -424,7 +424,7 @@ class NpugraphExCacheSt(unittest.TestCase):
         prompt3_cache_dir = os.path.abspath(os.path.dirname(prompt3_cache_bin))
         self.assertEqual(prompt3_cache_dir, prompt_cache_dir,
                             "Cache bin dir with same config and same model should be the same.")
-        
+
     def test_aclgraph_cache_recompile_with_warning(self):
         class Model(torch.nn.Module):
             def __init__(self):
@@ -450,7 +450,7 @@ class NpugraphExCacheSt(unittest.TestCase):
             "input_inplace_pass": True
         }
         model = Model()
-    
+
         prompt_cache_bin = CompiledModel.get_cache_bin(model.prompt, config=buildCompileConfig(options))
         ModelCacheSaver.remove_cache(os.path.abspath(os.path.dirname(prompt_cache_bin)))
 
@@ -565,6 +565,7 @@ class NpugraphExCacheSt(unittest.TestCase):
         self.assertTrue(os.path.exists(prompt_cache_dir))  # cache compiled
         self.assertTrue("compile_configs[\"force_eager\"] = True" in stdout.getvalue())
         self.assertTrue("compile_configs[\"static_kernel_compile\"] = True" in stdout.getvalue())
+
 
 if __name__ == '__main__':
     unittest.main()

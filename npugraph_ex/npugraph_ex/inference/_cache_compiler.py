@@ -202,7 +202,7 @@ class CompiledModel:
         dist_dir = '_'.join(dist_suffixes)
 
         trace_tag = ['dynamic'] if dynamic else ['static']
-        md5 = hashlib.md5(constraint.encode()).hexdigest()
+        md5 = hashlib.md5(constraint.encode()).hexdigest() # nosec
 
         suffixes = [cls_name] + trace_tag + ['aclgraphcache'] + [str(md5)]
         cache_bin = os.path.join(cache_dir, '_'.join(suffixes), dist_dir, func.__name__, CompiledModel.FILE)
@@ -247,10 +247,10 @@ class CompiledModel:
                 if log is not None:
                     log.debug(f"Parse  buff_holder {buff_holder} from {attr_road[0]}")
                 if buff_holder == "self":
-                    user_buffer = eval(f"obj.{'.'.join(attr_road[1:])}", globals(), {'obj': model})
+                    user_buffer = eval(f"obj.{'.'.join(attr_road[1:])}", globals(), {'obj': model}) #nosec
                 elif func and buff_holder and buff_holder in func.__code__.co_freevars:
                     vars_map = dict(zip(func.__code__.co_freevars, [cell.cell_contents for cell in func.__closure__]))
-                    user_buffer = eval(f"obj.{'.'.join(attr_road[1:])}", globals(), {'obj': vars_map[buff_holder]})
+                    user_buffer = eval(f"obj.{'.'.join(attr_road[1:])}", globals(), {'obj': vars_map[buff_holder]}) #nosec
                 else:
                     raise ValueError(f"{type_str} {name} not supported now")
                 parameters.append(user_buffer)
@@ -334,9 +334,9 @@ def _get_str_options(options: CompilerConfig, sep=","):
 
 def _get_code_digest(value):
     try:
-        return hashlib.md5(_readable_inst(value).encode()).hexdigest()
+        return hashlib.md5(_readable_inst(value).encode()).hexdigest() #nosec
     except TypeError:
-        return hashlib.md5("custom_pass".encode()).hexdigest()
+        return hashlib.md5("custom_pass".encode()).hexdigest() #nosec
 
 
 def _pretty_title(title, length=100):
@@ -435,6 +435,9 @@ class ModelCacheSaver:
         if self.model is None:
             return
 
+        self.input_parameters.clear()
+        self.errors.clear()
+
         gm_params = {
             **dict(gm.named_parameters(remove_duplicate=False)),
             **dict(gm.named_buffers(remove_duplicate=False))
@@ -454,7 +457,7 @@ class ModelCacheSaver:
                 try:
                     source = getattr(gm, '_param_name_to_source')[name].name()
                     self.input_parameters.append((source, False))
-                except AttributeError or KeyError or ValueError as e:
+                except (AttributeError, KeyError, ValueError) as e:
                     self.errors.append(f"Failed to find source for gm parameter {name} as {e}")
 
     def save_compiled_fx(self, fx: torch.fx.GraphModule, example_inputs: List[torch.Tensor], config: CompilerConfig,
