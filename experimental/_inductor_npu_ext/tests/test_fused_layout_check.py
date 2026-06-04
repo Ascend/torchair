@@ -1,4 +1,3 @@
-# pylint: disable=R0401
 import os
 import shutil
 import unittest
@@ -8,7 +7,7 @@ os.environ["TORCH_COMPILE_DEBUG"] = "1"
 os.environ["TORCHINDUCTOR_FORCE_DISABLE_CACHES"] = "1"
 
 import torch
-import inductor_npu_ext  # noqa: F401 pylint: disable=R0401
+import inductor_npu_ext
 
 
 class TestFusedLayoutCheckSmoke(unittest.TestCase):
