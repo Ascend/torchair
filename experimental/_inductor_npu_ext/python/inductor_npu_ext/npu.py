@@ -705,7 +705,8 @@ class NPUKernel(Kernel):
             asc_in = ASCBuffer(in_name, input_layout)
             partial_loop = self._make_partial_loop(asc_in, axis)
             data, _ = self._load_buffer(in_name, partial_loop)
-            load = ir.load(data, offset=sympy.S.Zero, loop=partial_loop)
+            offset = partial_loop.zero_offset_()
+            load = ir.load(data, offset=offset, loop=partial_loop)
             loaded.append(load)
 
         out = ir.concat(loaded, axis=axis)
@@ -988,6 +989,27 @@ class NPUScheduling(BaseScheduling):
                 names.append(out.node.name)
         return names
 
+    @staticmethod
+    def _concat_output_names(node: BaseSchedulerNode):
+        names = []
+        for sub in node.get_nodes():
+            if not isinstance(getattr(sub, 'node', None), NPUConcatBuffer):
+                continue
+            for out in getattr(sub, 'outputs', []):
+                names.append(out.node.name)
+        return names
+
+    @classmethod
+    def _is_concat_epilogue(cls, producer: BaseSchedulerNode, consumer: BaseSchedulerNode) -> bool:
+        concat_outputs = set(cls._concat_output_names(producer))
+        if not concat_outputs:
+            return False
+        consumer_rw = getattr(consumer, 'read_writes', None)
+        if consumer_rw is None:
+            return False
+        consumer_reads = {dep.name for dep in consumer_rw.reads}
+        return bool(concat_outputs & consumer_reads)
+
     @classmethod
     def _is_concat_prologue(cls, producer: BaseSchedulerNode, consumer: BaseSchedulerNode) -> bool:
         """producer 直接喂给 consumer 内某个 NPUConcatBuffer 的某路输入，就允许融合。
@@ -1113,6 +1135,8 @@ class NPUScheduling(BaseScheduling):
 
     def can_fuse_vertical(self, node1: BaseSchedulerNode, node2: BaseSchedulerNode):
         if disable_canfuse:
+            return False
+        if self._is_concat_epilogue(node1, node2):
             return False
         if not self._vertical_outputs_are_contiguous(node1, node2):
             return False

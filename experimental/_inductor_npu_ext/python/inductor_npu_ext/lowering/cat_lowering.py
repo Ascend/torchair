@@ -62,6 +62,11 @@ class NPUConcatBuffer(TritonTemplateBuffer):
         self.axis = axis
         self.input_layouts = input_layouts
 
+    def is_multi_outputs_template(self) -> bool:
+        # NPUConcatBuffer is a pseudo template. Returning True lets concat prologue
+        # fusion skip Triton's low-precision template profitability heuristic.
+        return True
+
 
 # 注意：必须直接对 OpOverload 注册而不是对 packet 注册，否则 inductor 的 get_overloads()
 # 会因为 "other_fn not in lowerings" 而跳过已被默认 cat 占住的 overloads，

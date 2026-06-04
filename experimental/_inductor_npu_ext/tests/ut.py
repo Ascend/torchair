@@ -74,7 +74,15 @@ def _parse_asc_graph(path: Path) -> Dict[str, dict]:
             func = node.value.func
             if (isinstance(func, ast.Attribute) and isinstance(func.value, ast.Attribute)
                     and func.value.attr == "ops"):
-                ops[target.id] = {"type": func.attr, "inputs": {}, "size": None, "strides": None, "axis": None}
+                ops[target.id] = {
+                    "type": func.attr,
+                    "inputs": {},
+                    "size": None,
+                    "strides": None,
+                    "axis": None,
+                    "offset": None,
+                    "ir_offset": None,
+                }
             continue
         # 形态 2: name.attr.attr... = expr
         if not isinstance(target, ast.Attribute):
@@ -112,6 +120,10 @@ def _parse_asc_graph(path: Path) -> Dict[str, dict]:
                 ops[op_name]["strides"] = _eval_int_list(node.value)
             elif chain[1] == "axis":
                 ops[op_name]["axis"] = _eval_int_list(node.value)
+            elif chain[1] == "offset":
+                ops[op_name]["offset"] = ast.unparse(node.value)
+        elif len(chain) == 3 and chain == ["attr", "ir_attr", "offset"]:
+            ops[op_name]["ir_offset"] = ast.unparse(node.value)
     return ops
 
 def _check_concat(ops: Dict[str, dict]) -> List[str]:
@@ -888,6 +900,35 @@ class TestInductorNpuExt(unittest.TestCase):
         self._assert_concat_consistent(graphs)
         self._assert_all_consistent(graphs)
 
+    def test_cat_strided_input_offset_on_load_attr(self):
+        """cat 的 slice 输入 storage offset 应标在 Load.attr.ir_attr.offset，而不是 Load.y.offset。"""
+        @torch.compile
+        def func(x, y):
+            x = x[:, 64:]
+            return torch.cat([x, y], dim=-1)
+
+        graphs = self._run_and_collect(
+            func,
+            torch.ones((32, 512), dtype=torch.float32),
+            torch.ones((32, 64), dtype=torch.float32),
+        )
+        path, ops, cname = self._find_concat(graphs)
+        srcs = ops[cname]["inputs"]["x"]
+        self.assertEqual(len(srcs), 2)
+        first = ops[srcs[0]]
+        self.assertEqual(first["type"], "Load",
+                         f"slice 输入应由 Load 喂给 Concat，实际 {first['type']}（{path.parent.name}）")
+        self.assertEqual(first["size"], [32, 448],
+                         f"slice 输入 size 应为 [32, 448]，实际 {first['size']}（{path.parent.name}）")
+        self.assertEqual(first["strides"], [512, 1],
+                         f"slice 输入 stride 应保留 [512, 1]，实际 {first['strides']}（{path.parent.name}）")
+        self.assertEqual(first["ir_offset"], "64",
+                         f"slice 输入 offset 应写到 Load.attr.ir_attr.offset，实际 {first['ir_offset']}（{path.parent.name}）")
+        self.assertIsNone(first["offset"],
+                          f"slice 输入 offset 不应写到 Load.y.offset，实际 {first['offset']}（{path.parent.name}）")
+        self._assert_concat_consistent(graphs)
+        self._assert_all_consistent(graphs)
+
     def test_cat_preserves_internal_view_slice_layout(self):
         """graph 内部 reshape+slice 后 cat，应保留 view 的 logical size/stride 而不是底层 storage。"""
         @torch.compile
@@ -936,6 +977,44 @@ class TestInductorNpuExt(unittest.TestCase):
                       f"Concat 应直接吃 Abs.y，实际 srcs={src_types}")
         self.assertIn("Add", src_types,
                       f"Concat 应直接吃 Add.y，实际 srcs={src_types}")
+        self._assert_concat_consistent(graphs)
+        self._assert_all_consistent(graphs)
+
+    def test_cat_fp16_with_prologue_fusion(self):
+        """fp16 prologue 不应被 Triton 低精度模板启发式拦截。"""
+        @torch.compile
+        def func(x, y):
+            return torch.cat([x.abs(), y.abs()], dim=1)
+
+        graphs = self._run_and_collect(
+            func,
+            torch.ones((4, 5), dtype=torch.float16),
+            torch.ones((4, 11), dtype=torch.float16),
+        )
+        path, ops, cname = self._find_concat(graphs)
+        op_types = {o["type"] for o in ops.values()}
+        self.assertIn("Abs", op_types,
+                      f"fp16 prologue Abs 应跟 Concat 融在同 graph，实际 {sorted(op_types)}")
+        srcs = ops[cname]["inputs"]["x"]
+        src_types = [ops[s]["type"] for s in srcs]
+        self.assertNotIn("Load", src_types,
+                         f"Concat 不应通过中间 buffer Load 读取 fp16 prologue，实际 srcs={src_types}（{path.parent.name}）")
+        self._assert_concat_consistent(graphs)
+        self._assert_all_consistent(graphs)
+
+    def test_cat_epilogue_not_fused(self):
+        """cat 的 epilogue 还不支持，应该在 canfuse 阶段拦截，不能到 codegen_template 抛错。"""
+        @torch.compile
+        def func(x, y):
+            return torch.cat([x, y], dim=1).abs()
+
+        graphs = self._run_and_collect(
+            func,
+            torch.ones((4, 5), dtype=torch.float32),
+            torch.ones((4, 11), dtype=torch.float32),
+        )
+        self._assert_not_fused_in_one_graph(graphs, ["Concat", "Abs"],
+                                            "cat_epilogue")
         self._assert_concat_consistent(graphs)
         self._assert_all_consistent(graphs)
 
