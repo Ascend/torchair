@@ -23,7 +23,10 @@ sync_around_fuse_kernel = os.getenv("ASCEND_LAUNCH_BLOCKING", None) == "1"
 
 check_layout_enabled = os.getenv("TORCHINDUCTOR_NPU_EXT_LAYOUT_CHECK", "0") == "1"
 
-debug_options = set(os.getenv("TORCHINDUCTOR_NPU_EXT_DEBUG", "").split("+"))
+debug_options = set(
+    item for item in os.getenv("TORCHINDUCTOR_NPU_EXT_DEBUG", "").split("+")
+    if item.strip()
+)
 
 _allowed_debug_options = {
     'cpu', # stub on cpu, mock asc codegen and runtime
