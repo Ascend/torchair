@@ -88,7 +88,7 @@ def is_arg_param_match_index_by_operator_schema(op, param_index_map):
 
     if matched_count != len(param_index_map):
         return False
-    return True  
+    return True
 
 
 _REPLACE_FUNC_MAP = {}
@@ -137,7 +137,7 @@ if hasattr(torch.ops.atb, "_npu_paged_attention"):
 
 if hasattr(torch.ops.atb, "_npu_paged_attention_splitfuse"):
     arg_index_map = {"context_lens": 4, "seq_len": 6}
-    is_match = is_arg_param_match_index_by_operator_schema(torch.ops.atb._npu_paged_attention_splitfuse.default, 
+    is_match = is_arg_param_match_index_by_operator_schema(torch.ops.atb._npu_paged_attention_splitfuse.default,
                                                            arg_index_map)
     if is_match:
         _REPLACE_FUNC_MAP.update({torch.ops.atb._npu_paged_attention_splitfuse.default:
@@ -282,7 +282,7 @@ def get_unupdated_sym_input_index(graph_module: torch.fx.GraphModule, all_sym_in
             updated_op_params[func_iter.get_workspace] = func_iter.updated_param_keys
         updated_op_params[func_iter.out_operator] = func_iter.updated_param_keys
         updated_op_indices[func_iter.out_operator] = func_iter.updated_param_indices
-    logger.debug("In graph[%s], all updated inputs user nodes params: %s, arg indices: %s", id(graph_module), 
+    logger.debug("In graph[%s], all updated inputs user nodes params: %s, arg indices: %s", id(graph_module),
                  updated_op_params, updated_op_indices)
 
     unupdated_sym_input_index = set()
@@ -451,7 +451,7 @@ def get_updated_ops_rulers_param(graph_module: torch.fx.GraphModule, meta_inputs
         if node.target not in updated_dict.keys() or node.target not in updated_arg_indices.keys():
             continue
 
-        update_rulers, update_arg_index_map = get_update_ruler(node, updated_dict[node.target], updated_arg_indices[node.target], 
+        update_rulers, update_arg_index_map = get_update_ruler(node, updated_dict[node.target], updated_arg_indices[node.target],
                                         placeholder_nodes)
         if len(update_rulers) > 0:
             ops_update_rulers[node.name] = update_rulers
@@ -628,7 +628,7 @@ def construct_fx_node_shape(ori_shape: List, sym_inputs: dict, graph_id: int) ->
             proxy_nodes = {}
             for sym_i in sym_set:
                 globals()[str(sym_i)] = Proxy(sym_inputs[sym_i])
-            expr_proxy = eval(str(dim))
+            expr_proxy = eval(str(dim), {"__builtins__": None}, globals())  # nosec B307
             empty_shape.append(expr_proxy.node)
             _GLOBAL_SYM_EXPR_2_NODE_MAP[graph_id][str(dim)] = expr_proxy.node
             logger.debug("Record all created sym expr and fx node %s in graph[%s].",
@@ -677,7 +677,7 @@ def construct_and_add_output(node: fx.Node, graph_module: fx.GraphModule, kwargs
     return output_node
 
 
-@debug_compare_fx_graphs(pass_name="replace_dynamic_workspace_ops")
+@debug_compare_fx_graphs(pass_name="replace_dynamic_workspace_ops")  # nosec B106
 def replace_dynamic_workspace_ops(graph_module: fx.GraphModule, meta_inputs: List):
     logger.debug("Start to replace dynamic workspace ops to static workspace for ops[%s] in graph[%s].",
                  _REPLACE_FUNC_MAP.keys(), id(graph_module))
@@ -819,11 +819,6 @@ class AclGraph(object):
             self.sym_input_name = [f"input_{idx}" for idx in self.sym_input_index]
 
     def __call__(self, *args, **kwargs):
-        # run eagerly / force eager
-        if self.config.get('force_eager', False):
-            if self.config.get('static_kernel_compile', False):
-                self.run_eagerly_compile(*args, **kwargs)
-            return self.fx_run_eagerly(*args, **kwargs)
 
         # get graph_key and capture
         fn_key = self.compile(*args, **kwargs)
@@ -834,11 +829,22 @@ class AclGraph(object):
                 return self.fx_run_eagerly(*args, **kwargs)
 
         # input process
-        self.process_input(fn_key, *args)
+        args = self.process_input(fn_key, *args)
 
-        # run/replay
-        with record_function("acl_graph_replay"):
-            self.run(fn_key, *args, **kwargs)
+        # run eagerly / force eager
+        if self.config.get('force_eager', False):
+            if self.config.get('static_kernel_compile', False):
+                self.run_eagerly_compile(*args, **kwargs)
+            eager_output = self.fx_run_eagerly(*args, **kwargs)
+            if self.config.get('clone_output', False):
+                logger.debug(
+                    "We need clone output where in the Force_eager scenario and when the clone_output switch is ture")
+                return self._clone_outputs_if_enabled(eager_output)
+            return eager_output
+        else:
+            # run/replay
+            with record_function("acl_graph_replay"):
+                self.run(fn_key, *args, **kwargs)
 
         return self.reconstruct_outputs(fn_key)
 
@@ -933,7 +939,7 @@ class AclGraph(object):
                     torch.npu.synchronize()
 
             # compile operator kernel based on static shape for better execution performance
-            if self.config.get('static_kernel_compile', False):
+            if self.config.get('static_kernel_compile', False) and not self.config.get('force_eager', False):
                 compile_static_kernel(self.fx_forward, *args, config=self.config, **kwargs)
 
             self._unupdated_input_func = debug_time(get_unupdated_input_fn(self._unupdated_sym_input_index, self._parameter_user_inputs, self.config),
@@ -1094,15 +1100,14 @@ class AclGraph(object):
             # record the mutated_inputs address for subsequent comparison to determine if recapture is necessary
             if input_name in self._mutated_user_inputs:
                 self.graphs_meta[graph_key].captured_mutated_inputs.setdefault(input_idx, args[input_idx].data_ptr())
-        
+
         for ref_idx in self._userinput_ref_with_output.keys():
             self.graphs_meta[graph_key].captured_userinput_ref_with_output.setdefault(ref_idx, args[ref_idx])
             self._userinput_ref_data_ptr.setdefault(ref_idx, args[ref_idx].data_ptr())
             self.userinput_ref_with_output_storages_ptr.add(args[ref_idx].untyped_storage()._cdata)
         self.graphs_meta[graph_key].captured_output_idx_ref_with_userinput = set(itertools.chain(*self._userinput_ref_with_output.values()))
 
-        logger.debug('No find captured AclGraph{id: %s} of fx_graph %s with graph key {%s}, and start to capture it.',
-                     id(self.graph[graph_key]), self.name, graph_key)
+
 
         # set to common original memory state before capture
         # only enable mempool reuse when graph key exceeds 1
@@ -1123,8 +1128,18 @@ class AclGraph(object):
         self._save_stream_core_limits(graph_key)
 
         # start capture aclgraph
-        with record_function("acl_graph_capture"):
-            captured_outputs = self.capture(graph_key, *args, **kwargs)
+        captured_outputs = []
+        if self.config.get('force_eager', False):
+            self.capture_user_input(graph_key, list(args))
+            logger.debug(
+                'AclGraph{id: %s} of fx_graph %s with graph key {%s}, no need to capture and start to run it by force_eager.',
+                id(self.graph[graph_key]), self.name, graph_key)
+        else:
+            logger.debug(
+                'No find captured AclGraph{id: %s} of fx_graph %s with graph key {%s}, and start to capture it.',
+                id(self.graph[graph_key]), self.name, graph_key)
+            with record_function("acl_graph_capture"):
+                captured_outputs = self.capture(graph_key, *args, **kwargs)
 
         # The captured output and input tensors will not be held indefinitely
         # and they will be terminated after this capture.
@@ -1134,9 +1149,11 @@ class AclGraph(object):
                      'memory pool reuse is %s, the memory state is {%s}.',
                      self.name, graph_key, id(self.graph[graph_key]),
                      "enable" if enable_mempool_reuse else "disable", LazyMessage(debug_mem_state))
-        if self.config.get('clone_input', True):
+        if self.config.get('clone_input', True) and not self.config.get('force_eager', False):
             # Note that userinputs are not kept alive; they are reconstructed for process_input if clone_input is True.
             self._graphs_meta[graph_key].retained_userinputs.clear()
+        else:
+            logger.debug('retained userinput need kept alive, when clone_input is False or force_eager is True.')
         if enable_mempool_reuse and len(self._graphs_meta) > 1:
             del captured_outputs
         else:
@@ -1181,33 +1198,9 @@ class AclGraph(object):
         self._updated_node_infos.clear()
         with torch_npu.npu.graph(self.graph[graph_key], pool=self.pool, stream=self.stream,
                                  capture_error_mode=self.capture_error_mode):
-            for input_name, input_idx in self._user_inputs_mapping.items():
-                if input_name in self._mutated_user_inputs:
-                    continue
-                # if input is an alias of output, its metatensor will not be create.(it will be retained).
-                if input_idx in self._userinput_ref_with_output.keys():
-                    continue
-                if isinstance(args_list[input_idx], torch.Tensor):
-                    weak_ref = WeakRef(None)
-                    # If clone_input is set to True, each user input will have a unique data pointer, preventing
-                    # sharing between inputs. For capture, the original data_ptr in args_list[input_idx] is swapped
-                    # with a new one generated by torch.empty_like. This ensures the aclgraph records the new data
-                    # pointer for later reuse. Finally, the weak reference to each user input is set to None,
-                    # as the inputs will be reconstructed during processing.
-                    # If clone_input is set to False, records the original data_ptr in args_list[input_idx].
-                    if self.config.get('clone_input', True) and args_list[input_idx].is_npu:
-                        args_list[input_idx] = torch.empty_like(args_list[input_idx], memory_format=torch.contiguous_format)
-                    # Uses retained_userinputs to ensure capture of the args_list.
-                    self._graphs_meta[graph_key].retained_userinputs.setdefault(input_idx, args_list[input_idx])
-                else:
-                    weak_ref = WeakRef(args_list[input_idx])
-                self._graphs_meta[graph_key].userinputs_weakref.setdefault(input_idx, weak_ref)
-                self._graphs_meta[graph_key].userinputs_meta.setdefault(input_idx,
-                                                                        get_tensor_metadata(args_list[input_idx]))
-                self._graphs_meta[graph_key].userinputs_metatensor.setdefault(input_idx,
-                    reconstruct_from_tensor_metadata(self._graphs_meta[graph_key].userinputs_meta[input_idx]))
+            args_list = self.capture_user_input(graph_key, args_list)
             captured_outputs = self.fx_forward(*args_list, node_info=self._updated_node_infos, is_capturing=True,
-                                               **kwargs)
+                                                   **kwargs)
             for i, _ in enumerate(self._updated_node_infos):
                 logger.debug("Record the %s th updated node, node name[%s], node func[%s], node args length[%s], "
                              "node kwargs length[%s], update param name[%s], update task handle[%s], "
@@ -1258,7 +1251,7 @@ class AclGraph(object):
         enable_deadlock_check = self.config.get('deadlock_check', False)
 
         if enable_torch_compile_debug or enable_deadlock_check:
-            res = debug_dump() 
+            res = debug_dump()
 
             if enable_deadlock_check:
                 run_deadlock_check(res)
@@ -1280,6 +1273,48 @@ class AclGraph(object):
                                                                                 self._updated_node_infos)
 
         return captured_outputs
+
+    def capture_user_input(self, graph_key, args_list):
+        for input_name, input_idx in self._user_inputs_mapping.items():
+            if input_name in self._mutated_user_inputs:
+                continue
+            # if input is an alias of output, its metatensor will not be create.(it will be retained).
+            if input_idx in self._userinput_ref_with_output.keys():
+                continue
+            if isinstance(args_list[input_idx], torch.Tensor):
+                weak_ref = WeakRef(None)
+                # If clone_input is set to True, each user input will have a unique data pointer, preventing
+                # sharing between inputs. For capture, the original data_ptr in args_list[input_idx] is swapped
+                # with a new one generated by torch.empty_like. This ensures the aclgraph records the new data
+                # pointer for later reuse. Finally, the weak reference to each user input is set to None,
+                # as the inputs will be reconstructed during processing.
+                # If clone_input is set to False, records the original data_ptr in args_list[input_idx].
+                if self.config.get('clone_input', True) and args_list[input_idx].is_npu:
+                    args_list[input_idx] = torch.empty_like(args_list[input_idx], memory_format=torch.contiguous_format)
+                # Uses retained_userinputs to ensure capture of the args_list.
+                self._graphs_meta[graph_key].retained_userinputs.setdefault(input_idx, args_list[input_idx])
+            else:
+                weak_ref = WeakRef(args_list[input_idx])
+            self._graphs_meta[graph_key].userinputs_weakref.setdefault(input_idx, weak_ref)
+            self._graphs_meta[graph_key].userinputs_meta.setdefault(input_idx,
+                                                                    get_tensor_metadata(args_list[input_idx]))
+            if args_list[input_idx].is_npu:
+                self._graphs_meta[graph_key].userinputs_metatensor.setdefault(input_idx,
+                                                                              reconstruct_from_tensor_metadata(
+                                                                                  self._graphs_meta[
+                                                                                      graph_key].userinputs_meta[
+                                                                                      input_idx]))
+            else:
+                logger.warning(
+                    "The user input is CPU, it is not possible to create an NPU meta tensor. "
+                    "When processing the input, it needs to be batch copy input. "
+                    "However, there will be errors such as reply args is CPU, capture input device type is NPU,"
+                    "Tensor is not on the same device."
+                    "If you want to reuse the pool memory in the graph to capture user input when clone_input=true, "
+                    "please use npu input sensor.")
+                self._graphs_meta[graph_key].userinputs_metatensor.setdefault(input_idx, args_list[input_idx])
+        return args_list
+
 
     @debug_time(phase_name="[npugraph_ex overhead] process input")
     def process_input(self, graph_key, *args: Any):
@@ -1335,7 +1370,7 @@ class AclGraph(object):
                 capture_input = reconstructed_inputs[input_idx]
                 dst_tensors.append(capture_input)
                 src_tensors.append(replay_arg)
-                 
+
         # foreach copy
         with timer(f"{self.name} process inputs foreach copy"):
             if len(dst_tensors) > 1:
@@ -1352,6 +1387,12 @@ class AclGraph(object):
 
             elif len(dst_tensors) == 1:
                 dst_tensors[0].copy_(src_tensors[0])
+        if self.config.get('force_eager', False):
+            for input_idx, capture_input in reconstructed_inputs.items():
+                args_list = list(args)
+                args_list[input_idx] = capture_input
+                args = tuple(args_list)
+        return args
 
 
     def run(self, graph_key, *args, **kwargs):

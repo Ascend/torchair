@@ -2319,5 +2319,146 @@ class NpugraphExSt(unittest.TestCase):
         except Exception as e:
             self.assertIn("not in optional list", str(e))
 
+    def test_force_eager_run_with_clone_input_and_clone_output(self):
+        addr_records = []
+        external_output_addrs = []
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, a, b):
+                slice_x = a[:]
+                slice_y = b[:]
+                return slice_x + slice_y
+
+        def assert_args(*args, **kwargs):
+            addr2 = args[2].data_ptr()
+            addr3 = args[3].data_ptr()
+            # 此处需要clone，否则无法保存实时数据，因为地址一样但数据会刷新。
+            return addr2, addr3, args[2].clone(), args[3].clone()
+
+        def wrapper_aclGraph_fx_run_eagerly(call):
+            def wrapper(*args, **kwargs):
+                ret = call(*args, **kwargs)
+                addr2, addr3, arg2, arg3 = assert_args(*args, **kwargs)
+                ret_addr = ret[0].data_ptr()
+                addr_records.append((addr2, addr3, arg2, arg3, ret_addr, ret[0]))
+                return ret
+
+            return wrapper
+
+        from npugraph_ex._acl_concrete_graph.acl_graph import AclGraph
+        AclGraph.fx_run_eagerly = wrapper_aclGraph_fx_run_eagerly(AclGraph.fx_run_eagerly)
+
+        options = {"force_eager": True}
+        compiled_model = torch.compile(Model(), backend="npugraph_ex", options=options, dynamic=True)
+        x = torch.randn([2, 2])
+        x_back = x.clone()
+        y = torch.randn([2, 2])
+        y_back = y.clone()
+        out1 = compiled_model(x, y)
+        external_output_addrs.append(out1.data_ptr())
+        x1 = torch.randn([2, 2])
+        y1 = torch.randn([2, 2])
+        out2 = compiled_model(x1, y1)
+        external_output_addrs.append(out2.data_ptr())
+
+        # force_eager 默认情况下output地址时一样的
+        self.assertEqual(addr_records[0][4], external_output_addrs[0],
+                         "force_eager mode: internal return address mismatches external output address")
+        self.assertEqual(addr_records[1][4], external_output_addrs[1],
+                         "force_eager mode: internal return address mismatches external output address")
+
+        # force_eager 默认情况下output值也一样
+        self.assertTrue(torch.equal(addr_records[0][5], out1),
+                        "force_eager mode: internal tensor mismatches external output tensor")
+
+        # 2次的args[2]地址一样
+        self.assertEqual(addr_records[0][0], addr_records[1][0],
+                         "force_eager mode: address of args[2] differs between two runs")
+        # 2次的args[3]地址一样
+        self.assertEqual(addr_records[0][1], addr_records[1][1],
+                         "force_eager mode: address of args[3] differs between two runs")
+
+        # 第一次时x值校验
+        self.assertTrue(torch.equal(addr_records[0][2], x_back),
+                        "force_eager + clone_input=True: internal args[2] mismatches input x")
+        # 第一次时y值校验
+        self.assertTrue(torch.equal(addr_records[0][3], y_back),
+                        "force_eager + clone_input=True: internal args[3] mismatches input y")
+
+        # 第二次时x值校验
+        self.assertTrue(torch.equal(addr_records[1][2], x1),
+                        "force_eager + clone_input=True: internal args[2] mismatches input x1")
+        # 第二次时y值校验
+        self.assertTrue(torch.equal(addr_records[1][3], y1),
+                        "force_eager + clone_input=True: internal args[3] mismatches input y1")
+        addr_records.clear()
+        external_output_addrs.clear()
+        options = {"force_eager": True, "clone_input": False}
+        compiled_model = torch.compile(Model(), backend="npugraph_ex", options=options, dynamic=True)
+        x = torch.randn([2, 2])
+        # 此处需要clone一份保存下来，给后面校验，不然当前x会被持有保存下来，下次运行时会刷新这个保存的地址，
+        # 把下次运行的数据foreach_copy到这个地址值中，所以这个x的地址是不变的但值是play时的实时刷新的值
+        # clone_input=true时不需要因为持有保存的是新创建的tensor，不是用户创建的
+        x_back = x.clone()
+        y = torch.randn([2, 2])
+        y_back = y.clone()
+        out1 = compiled_model(x, y)
+        external_output_addrs.append(out1.data_ptr())
+        x1 = torch.randn([2, 2])
+        y1 = torch.randn([2, 2])
+        out2 = compiled_model(x1, y1)
+        external_output_addrs.append(out2.data_ptr())
+
+        # force_eager 默认情况下output地址是一样的
+        self.assertEqual(addr_records[0][4], external_output_addrs[0],
+                         "force_eager + clone_input=False: internal return address mismatches external output address")
+        self.assertEqual(addr_records[1][4], external_output_addrs[1],
+                         "force_eager + clone_input=False: internal return address mismatches external output address")
+
+        # force_eager 默认情况下output值也一样
+        self.assertTrue(torch.equal(addr_records[0][5], out1),
+                        "force_eager + clone_input=False: internal tensor mismatches external output tensor")
+
+        # 2次的args[2]地址一样
+        self.assertEqual(addr_records[0][0], addr_records[1][0],
+                         "force_eager + clone_input=False: address of args[2] differs between two runs")
+        # 2次的args[3]地址一样
+        self.assertEqual(addr_records[0][1], addr_records[1][1],
+                         "force_eager + clone_input=False: address of args[3] differs between two runs")
+
+        # 第一次时x值校验
+        self.assertTrue(torch.equal(addr_records[0][2], x_back),
+                        "force_eager + clone_input=False: internal args[2] mismatches input x")
+        # 第一次时y值校验
+        self.assertTrue(torch.equal(addr_records[0][3], y_back),
+                        "force_eager + clone_input=False: internal args[3] mismatches input y")
+
+        # 第二次时x值校验
+        self.assertTrue(torch.equal(addr_records[1][2], x1),
+                        "force_eager + clone_input=False: internal args[2] mismatches input x1")
+        # 第二次时y值校验
+        self.assertTrue(torch.equal(addr_records[1][3], y1),
+                        "force_eager + clone_input=False: internal args[3] mismatches input y1")
+
+        addr_records.clear()
+        external_output_addrs.clear()
+        options = {"force_eager": True, "clone_output": True}
+        compiled_model = torch.compile(Model(), backend="npugraph_ex", options=options, dynamic=True)
+        x = torch.randn([2, 2])
+        y = torch.randn([2, 2])
+        out1 = compiled_model(x, y)
+        external_output_addrs.append(out1.data_ptr())
+
+        # force_eager clone_out=true情况下output地址不一样的,需要做一次clone
+        self.assertNotEqual(addr_records[0][4], external_output_addrs[0],
+                            "force_eager + clone_out=True: internal and external output addresses should be different")
+
+        # force_eager clone_out=true情况下output值一样
+        self.assertTrue(torch.equal(addr_records[0][5], out1),
+                        "force_eager + clone_out=True: internal tensor value mismatches external output tensor")
+
 if __name__ == '__main__':
     unittest.main()
