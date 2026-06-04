@@ -84792,21 +84792,31 @@ def QuantGroupedMatMulAlltoAllv(gmm_x: Tensor,
 
 
 # This api is auto-generated from IR RotateQuant
-@auto_convert_to_tensor([False, False], [False, False])
+@auto_convert_to_tensor([False, False, False], [False, False, True])
 def RotateQuant(x: Tensor,
                 rotation: Tensor,
+                alpha: Optional[Tensor] = None,
                 *,
                 y_dtype: int = 0,
-                alpha: float = 0.000000,
+                axis: int = -1,
+                round_mode: str = "rint",
+                scale_alg: int = 0,
+                dst_type_max: float = 0.0,
+                transpose_y: bool = False,
                 dependencies=None,
                 node_name=None):
     """REG_OP(RotateQuant)\n
     .INPUT(x, TensorType({DT_FLOAT16, DT_BF16}))\n
     .INPUT(rotation, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .OPTIONAL_INPUT(alpha, TensorType({DT_BF16}))\n
     .OUTPUT(y, TensorType({DT_INT8, DT_INT4}))\n
     .OUTPUT(scale, TensorType({DT_FLOAT32}))\n
     .ATTR(y_dtype, Int, 0)\n
-    .ATTR(alpha, Float, 0.0)\n
+    .ATTR(axis, Int, -1)\n
+    .ATTR(round_mode, String, "rint")\n
+    .ATTR(scale_alg, Int, 0)\n
+    .ATTR(dst_type_max, Float, 0.0)\n
+    .ATTR(transpose_y, Bool, False)\n
     """
 
     if dependencies is None:
@@ -84815,12 +84825,17 @@ def RotateQuant(x: Tensor,
     inputs = {
         "x": x,
         "rotation": rotation,
+        "alpha": alpha,
     }
 
     # process attrs
     attrs = {
         "y_dtype": attr.Int(y_dtype),
-        "alpha": attr.Float(alpha),
+        "axis": attr.Int(axis),
+        "round_mode": attr.Str(round_mode),
+        "scale_alg": attr.Int(scale_alg),
+        "dst_type_max": attr.Float(dst_type_max),
+        "transpose_y": attr.Bool(transpose_y),
     }
 
     # process outputs
@@ -84838,8 +84853,13 @@ def RotateQuant(x: Tensor,
         ir=IrDef("RotateQuant") \
         .input("x", "DT_FLOAT16, DT_BF16") \
         .input("rotation", "DT_FLOAT16, DT_BF16") \
+        .optional_input("alpha", "DT_BF16") \
         .attr("y_dtype", attr.Int(0)) \
-        .attr("alpha", attr.Float(0.000000)) \
+        .attr("axis", attr.Int(-1)) \
+        .attr("round_mode", attr.Str("rint")) \
+        .attr("scale_alg", attr.Int(0)) \
+        .attr("dst_type_max", attr.Float(0.0)) \
+        .attr("transpose_y", attr.Bool(False)) \
         .output("y", "DT_INT8, DT_INT4") \
         .output("scale", "DT_FLOAT32")
     )

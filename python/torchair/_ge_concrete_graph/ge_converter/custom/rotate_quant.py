@@ -3,7 +3,7 @@ from torchair._ge_concrete_graph.ge_converter.converter_utils import *
 
 @declare_supported(
     [
-        Support(F16(128, 2048), F16(256, 256), alpha=0, dst_dtype=16),
+        Support(F16(128, 2048), F16(256, 256), alpha=None, dst_dtype=16),
     ]
 )
 @register_fx_node_ge_converter(torch.ops.npu.npu_rotate_quant.default)
@@ -11,8 +11,13 @@ def converter_npu_rotate_quant(
     x: Tensor,
     rotation: Tensor,
     *,
-    alpha: float = 0.000000,
+    alpha: Optional[Tensor] = None,
     dst_dtype: int = 0,
+    axis: int = -1,
+    round_mode: str = "rint",
+    scale_alg: int = 0,
+    dst_type_max: float = 0.0,
+    transpose_y: bool = False,
     meta_outputs: TensorSpec = None
 ):
     """
@@ -21,8 +26,13 @@ def converter_npu_rotate_quant(
     Args:
         x (Tensor): 输入特征张量，通常为待旋转量化的原始激活/特征图
         rotation (Tensor): 旋转角度/位置编码张量，与输入x进行旋转计算
-        alpha (float, optional): 预留
+        alpha (Optional[Tensor], optional): 可选的alpha张量输入
         dst_dtype (int, optional): 目标输出数据类型标识
+        axis (int, optional): 量化轴，默认-1表示最后一个维度
+        round_mode (str, optional): 舍入模式，默认"rint"
+        scale_alg (int, optional): 缩放算法标识，默认0
+        dst_type_max (float, optional): 目标类型最大值，默认0.0
+        transpose_y (bool, optional): 是否转置输出，默认False
         meta_outputs (TensorSpec, optional): 输出张量的元信息（shape/dtype/device），
             用于静态图推导输出结构，默认为 None
 
@@ -30,7 +40,9 @@ def converter_npu_rotate_quant(
         Any: 构造完成的GE图节点，代表npu_rotate_quant算子在GE中的执行逻辑
     """
     acl_dst_type = torch_dtype_value_to_ge_type(dst_dtype)
-    y, scale = ge.RotateQuant(x, rotation, y_dtype=acl_dst_type, alpha=alpha)
+    y, scale = ge.RotateQuant(x, rotation, alpha=alpha, y_dtype=acl_dst_type,
+                              axis=axis, round_mode=round_mode, scale_alg=scale_alg,
+                              dst_type_max=dst_type_max, transpose_y=transpose_y)
     y.desc.dtype = torch_dtype_value_to_ge_proto_type(dst_dtype)
     if dst_dtype == 16: # torch.quint4x2
         dim_num = x.rank
