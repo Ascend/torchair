@@ -17,7 +17,8 @@ def convert_npu_kronecker_quant(
 ):
     import torch_npu
     y_dtype = DataType.DT_INT32
-    if dst_dtype is not None and (dst_dtype != torch.int32 and dst_dtype != torch_npu.float4_e2m1fn_x2):
+    if dst_dtype is not None and (dst_dtype != torch.int32 and dst_dtype != 3 and dst_dtype != torch_npu.float4_e2m1fn_x2 and dst_dtype != 297):
+        #3:torch.int32,297:torch_npu.float4_e2m1fn_x2
         raise ValueError(f"dst_dtype should be int32 or float4_e2m1"
                          f"otherwise it should be None, but got {dst_dtype}")
     if clip_ratio is None:
