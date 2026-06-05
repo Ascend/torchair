@@ -86,8 +86,6 @@ add_custom_target(generate_ge_raw_custom_ops ALL
 add_custom_target(copy_pyfiles ALL
         COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/npugraph_ex/npugraph_ex ${CMAKE_BINARY_DIR}/dist/npugraph_ex/npugraph_ex
         COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/python ${CMAKE_BINARY_DIR}/dist
-        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/experimental/_inductor_npu_ext/python/inductor_npu_ext ${CMAKE_BINARY_DIR}/dist/torchair/_inductor_npu_ext
-        COMMAND ${CMAKE_COMMAND} -E rm -rf ${CMAKE_BINARY_DIR}/dist/torchair/_inductor_npu_ext/tests
         COMMENT "Copy python files"
         VERBATIM)
 
