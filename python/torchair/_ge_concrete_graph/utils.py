@@ -310,12 +310,9 @@ def generate_shape_from_tensor(fake: torch.Tensor) -> List[int]:
             generalized_shape.append(dim)
         else:
             try:
-                if torch.__version__ >= '2.12.0':
-                    generalized_shape.append(hint_int(dim))
-                else:
-                    generalized_shape.append(int(str(dim)))
+                generalized_shape.append(int(str(dim)))
             except Exception:
-                    generalized_shape.append(-1)
+                generalized_shape.append(-1)
     return generalized_shape
 
 
