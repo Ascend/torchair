@@ -49672,6 +49672,122 @@ def MaxPoolGradWithArgmaxV2(x: Tensor, grad: Tensor, argmax: Tensor, *, ksize: L
     # return outputs
     return y
 
+# This api is auto-generated from IR MaxPoolWithArgmaxV3
+@auto_convert_to_tensor([False], [False])
+def MaxPoolWithArgmaxV3(x: Tensor, *, ksize: List[int], strides: List[int], pads: List[int], dtype: int=3, dilation: List[int]=[1, 1], ceil_mode: bool=False, data_format: str="NCHW", dependencies=[], node_name=None):
+    """REG_OP(MaxPoolWithArgmaxV3)\n
+.INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16}))\n
+.OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16}))\n
+.OUTPUT(argmax, TensorType({DT_INT32, DT_INT64}))\n
+.REQUIRED_ATTR(ksize, ListInt)\n
+.REQUIRED_ATTR(strides, ListInt)\n
+.REQUIRED_ATTR(pads, ListInt)\n
+.ATTR(dtype, Int, 3)\n
+.ATTR(dilation, ListInt, {1, 1})\n
+.ATTR(ceil_mode, Bool, false)\n
+.ATTR(data_format, String, "NCHW")\n
+"""
+
+    # process inputs
+    inputs = {
+        "x": x,
+    }
+
+    # process attrs
+    attrs = {
+        "ksize": attr.ListInt(ksize),
+        "strides": attr.ListInt(strides),
+        "pads": attr.ListInt(pads),
+        "dtype": attr.Int(dtype),
+        "dilation": attr.ListInt(dilation),
+        "ceil_mode": attr.Bool(ceil_mode),
+        "data_format": attr.Str(data_format),
+    }
+
+    # process outputs
+    outputs = [
+    "y",
+    "argmax",
+    ]
+
+    return ge_op(
+        op_type="MaxPoolWithArgmaxV3",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("MaxPoolWithArgmaxV3") \
+        .input("x", "DT_FLOAT16, DT_FLOAT32, DT_BF16") \
+        .required_attr("ksize", attr.ListInt) \
+        .required_attr("strides", attr.ListInt) \
+        .required_attr("pads", attr.ListInt) \
+        .attr("dtype", attr.Int(3)) \
+        .attr("dilation", attr.ListInt([1, 1])) \
+        .attr("ceil_mode", attr.Bool(False)) \
+        .attr("data_format", attr.Str("NCHW")) \
+        .output("y" , "DT_FLOAT16, DT_FLOAT32, DT_BF16") \
+        .output("argmax" , "DT_INT32, DT_INT64")
+    )
+
+# This api is auto-generated from IR MaxPoolGradWithArgmaxV3
+@auto_convert_to_tensor([False, False, False], [False, False, False], inputs_tensor_type=[TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN, TensorType.TT_INDEX_NUMBER])
+def MaxPoolGradWithArgmaxV3(x: Tensor, grad: Tensor, argmax: Tensor, *, ksize: List[int], strides: List[int], pads: List[int], dtype: int=3, dilation: List[int]=[1, 1], ceil_mode: bool=False, data_format: str="NCHW", dependencies=[], node_name=None):
+    """REG_OP(MaxPoolGradWithArgmaxV3)\n
+.INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16}))\n
+.INPUT(grad, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16}))\n
+.INPUT(argmax, TensorType({DT_INT32, DT_INT64}))\n
+.OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16}))\n
+.REQUIRED_ATTR(ksize, ListInt)\n
+.REQUIRED_ATTR(strides, ListInt)\n
+.REQUIRED_ATTR(pads, ListInt)\n
+.ATTR(dtype, Int, 3)\n
+.ATTR(dilation, ListInt, {1, 1})\n
+.ATTR(ceil_mode, Bool, false)\n
+.ATTR(data_format, String, "NCHW")\n
+"""
+
+    # process inputs
+    inputs = {
+        "x": x,
+        "grad": grad,
+        "argmax": argmax,
+    }
+
+    # process attrs
+    attrs = {
+        "ksize": attr.ListInt(ksize),
+        "strides": attr.ListInt(strides),
+        "pads": attr.ListInt(pads),
+        "dtype": attr.Int(dtype),
+        "dilation": attr.ListInt(dilation),
+        "ceil_mode": attr.Bool(ceil_mode),
+        "data_format": attr.Str(data_format),
+    }
+
+    # process outputs
+    outputs = [
+    "y",
+    ]
+
+    return ge_op(
+        op_type="MaxPoolGradWithArgmaxV3",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("MaxPoolGradWithArgmaxV3") \
+        .input("x", "DT_FLOAT16, DT_FLOAT32, DT_BF16") \
+        .input("grad", "DT_FLOAT16, DT_FLOAT32, DT_BF16") \
+        .input("argmax", "DT_INT32, DT_INT64") \
+        .required_attr("ksize", attr.ListInt) \
+        .required_attr("strides", attr.ListInt) \
+        .required_attr("pads", attr.ListInt) \
+        .attr("dtype", attr.Int(3)) \
+        .attr("dilation", attr.ListInt([1, 1])) \
+        .attr("ceil_mode", attr.Bool(False)) \
+        .attr("data_format", attr.Str("NCHW")) \
+        .output("y" , "DT_FLOAT16, DT_FLOAT32, DT_BF16")
+    )
 
 # This api is auto-generated from IR MaxPoolV3
 @auto_convert_to_tensor([False], [False])

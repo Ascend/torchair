@@ -1,7 +1,6 @@
 from torchair._ge_concrete_graph.ge_converter.converter_utils import *
 from torchair._ge_concrete_graph.utils import specific_op_input_layout, specific_op_output_layout
 
-
 @register_fx_node_ge_converter(torch.ops.aten.max_pool2d_with_indices_backward.default)
 def conveter_aten_max_pool2d_with_indices_backward_default(
     grad_output: Tensor,
@@ -15,7 +14,7 @@ def conveter_aten_max_pool2d_with_indices_backward_default(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::max_pool2d_with_indices_backward(Tensor grad_output, Tensor self, int[2] kernel_size, int[2] stride, int[2] padding, int[2] dilation, bool ceil_mode, Tensor indices) -> Tensor"""
-    """ This converter is a stopgap measure designed to avoid a series issues caused by the imcompatibility between the CANN IR 'MaxPoolWithArgmaxV1' and 
+    """ This converter is a stopgap measure designed to avoid a series issues caused by the imcompatibility between the CANN IR 'MaxPoolWithArgmaxV1' and
         the aten IR 'max_pool2d_with_indices_backward'. Therefore, no testcast will be set and cannot be set. """
     k_h = kernel_size[0]
     k_w = k_h if len(kernel_size) == 1 else kernel_size[1]
@@ -34,17 +33,23 @@ def conveter_aten_max_pool2d_with_indices_backward_default(
     strides = [1, strides[0], strides[1], 1]
     pads = [1, paddings[0], paddings[1], 1]
     dilations = [1, dilations[0], dilations[1], 1]
-
-    output, argmax = ge.MaxPoolWithArgmaxV1(self, ksize=ksize, \
-                                            strides=strides, pads=pads, dilation=dilations, ceil_mode=ceil_mode)
-    specific_op_input_layout(output, indices=0, layout="NCHW")
-    specific_op_output_layout(output, indices=[0, 1], layout="NCHW")
-    grad_input = ge.MaxPoolGradWithArgmaxV1(self, grad_output, argmax, ksize=ksize, \
-                                            strides=strides, pads=pads, dilation=dilations, ceil_mode=ceil_mode)
-    specific_op_input_layout(grad_input, indices=[0, 1, 2], layout="NCHW")
-    specific_op_output_layout(grad_input, indices=0, layout="NCHW")
+    if is_arch35():
+        ksize = [k_h, k_w]
+        strides = [d_h, d_w]
+        pads = [pad_h, pad_w]
+        dilations = [dilation[0], dilation[1]]
+        grad_input = ge.MaxPoolGradWithArgmaxV3(self, grad_output, indices, ksize=ksize, \
+                                                strides=strides, pads=pads, dtype=9, dilation=dilations, ceil_mode=ceil_mode)
+    else:
+        output, argmax = ge.MaxPoolWithArgmaxV1(self, ksize=ksize, \
+                                                strides=strides, pads=pads, dilation=dilations, ceil_mode=ceil_mode)
+        specific_op_input_layout(output, indices=0, layout="NCHW")
+        specific_op_output_layout(output, indices=[0, 1], layout="NCHW")
+        grad_input = ge.MaxPoolGradWithArgmaxV1(self, grad_output, argmax, ksize=ksize, \
+                                                strides=strides, pads=pads, dilation=dilations, ceil_mode=ceil_mode)
+        specific_op_input_layout(grad_input, indices=[0, 1, 2], layout="NCHW")
+        specific_op_output_layout(grad_input, indices=0, layout="NCHW")
     return grad_input
-
 
 @register_fx_node_ge_converter(torch.ops.aten.max_pool2d_with_indices_backward.grad_input)
 def conveter_aten_max_pool2d_with_indices_backward_grad_input(
