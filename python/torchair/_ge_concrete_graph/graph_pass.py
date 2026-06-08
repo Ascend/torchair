@@ -558,6 +558,22 @@ def move_transpose_into_mm(graph: GeGraph):
             remove_transpose_node(*scale_relate_nodes)
             logger.debug('set attr transpose_weight to True in %s.', gmm_node.name)
 
+    def is_scalar_scale(node, scale_idx):
+        # 该 pass 阶段计算节点 shape 未填充，沿上游第一个数据输入一直回溯到 Data 节点，判断 scale 是否 1 维
+        name = node.input[scale_idx].split(":")[0]
+        for _ in range(8):  # 限制回溯层数，防御异常环路，根据经验不会超过8层
+            cur = name_to_op.get(name)
+            if cur is None:
+                return False
+            if cur.type == "Data":
+                return len(cur.output_desc[0].shape.dim) == 1
+            # 取第一个非控制输入(控制边端口为 -1)继续上溯
+            next_inputs = [i for i in cur.input if not i.endswith(":-1")]
+            if not next_inputs:
+                return False
+            name = next_inputs[0].split(":")[0]
+        return False
+
     qmm_nodes = [node for node in graph.op if node.type == "QuantBatchMatmulV4"]
     for qmm_node in qmm_nodes:
         weight_relate_nodes = find_nodes(qmm_node, (('Bitcast', 1), ('Transpose', 0), ('Const', 1)))
@@ -567,6 +583,11 @@ def move_transpose_into_mm(graph: GeGraph):
             remove_transpose_node(*weight_relate_nodes)
             remove_transpose_node(*scale_relate_nodes)
             logger.debug('set attr transpose_x2 to True in %s.', qmm_node.name)
+        elif weight_relate_nodes and not scale_relate_nodes and is_scalar_scale(qmm_node, 4): # 4 代表 weightscale 的索引，固定值
+            # weight 有 Bitcast->Transpose 组合，scale 无 bitcast 且为 per-tensor(1 维)，只消除 weight 的 transpose
+            qmm_node.attr['transpose_x2'].b = True
+            remove_transpose_node(*weight_relate_nodes)
+            logger.debug('set attr transpose_x2 to True (scalar scale) in %s.', qmm_node.name)
 
     gmmfr_nodes = [node for node in graph.op if node.type == "GroupedMatmulFinalizeRouting"]
     for gmmfr_node in gmmfr_nodes:
