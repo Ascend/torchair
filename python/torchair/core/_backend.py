@@ -105,15 +105,18 @@ def finalize_graph_engine():
 
 
 def _signal_handler(signum, frame):
-    finalize_graph_engine()
-    signal.signal(signum, signal.SIG_IGN)
-    os.kill(os.getpid(), signum)
+    signal.signal(signum, signal.SIG_DFL)
+    try:
+        finalize_graph_engine()
+    finally:
+        os.kill(os.getpid(), signum)
 
 
 atexit.register(finalize_graph_engine)
 if threading.current_thread() is threading.main_thread():
-    signal.signal(signal.SIGTERM, _signal_handler)
-    signal.signal(signal.SIGINT, _signal_handler)
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        if signal.getsignal(sig) == signal.SIG_DFL:
+            signal.signal(sig, _signal_handler)
 
 
 class TorchNpuGraph(_torchair.TorchNpuGraphBase):
