@@ -1,6 +1,7 @@
 __all__ = ['get_npu_backend', 'get_compiler', 'compile_fx', 'CompilerConfig', 'logger', 'register_replacement']
 
 import atexit
+import os
 import signal
 import threading
 
@@ -35,13 +36,15 @@ def _finalize():
 
 
 def _signal_handler(signum, frame):
-    _finalize()
-    signal.signal(signum, signal.SIG_IGN)
-    import os
-    os.kill(os.getpid(), signum)
+    signal.signal(signum, signal.SIG_DFL)
+    try:
+        _finalize()
+    finally:
+        os.kill(os.getpid(), signum)
 
 
 atexit.register(_finalize)
 if threading.current_thread() is threading.main_thread():
-    signal.signal(signal.SIGTERM, _signal_handler)
-    signal.signal(signal.SIGINT, _signal_handler)
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        if signal.getsignal(sig) == signal.SIG_DFL:
+            signal.signal(sig, _signal_handler)
